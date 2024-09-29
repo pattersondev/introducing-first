@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"context"
 
 	_ "github.com/lib/pq"
 	"github.com/joho/godotenv"
@@ -44,3 +45,10 @@ func insertFighter(dbpool *pgxpool.Pool, fighter models.Fighter) error{
     }
     return nil
 }
+
+// func getFighter(){
+// 	sql := ''
+
+// 	var fighter models.Fighter
+
+// }
