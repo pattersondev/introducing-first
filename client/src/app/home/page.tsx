@@ -760,21 +760,35 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <h1>Upcoming Fights</h1>
+    <div
+      style={{
+        backgroundColor: "#101a4d",
+        minHeight: "100vh",
+        padding: "20px",
+      }}
+    >
+      <h1 style={{ color: "#c3c0d6", textAlign: "center" }}>Upcoming Fights</h1>
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
           flexDirection: "column",
-          width: "50%",
+          width: "80%",
+          maxWidth: "800px",
+          margin: "0 auto",
         }}
       >
         {testData.map((fight) => (
           <Card
             key={fight.matchup.join("-")}
             onClick={() => handleCardClick(fight.matchup.join("-"))}
-            style={{ cursor: "pointer", marginBottom: "10px" }}
+            style={{
+              cursor: "pointer",
+              marginBottom: "10px",
+              backgroundColor: "#1e2363",
+              color: "#c3c0d6",
+              borderRadius: "10px",
+            }}
           >
             <CardContent>
               <div
@@ -788,21 +802,21 @@ export default function Home() {
                   <img
                     src={`/images/${fight.matchup[0]}.jpg`}
                     alt={`${fight.matchup[0]} fighter image`}
-                    width={100}
-                    height={100}
-                    style={{ marginRight: "10px" }}
+                    width={80}
+                    height={80}
+                    style={{ marginRight: "10px", borderRadius: "50%" }}
                   />
-                  <span>{fight.matchup[0]}</span>
+                  <span style={{ fontSize: "1.2rem" }}>{fight.matchup[0]}</span>
                 </div>
-                <span>vs</span>
+                <span style={{ color: "#535ce1", fontWeight: "bold" }}>vs</span>
                 <div style={{ display: "flex", alignItems: "center" }}>
-                  <span>{fight.matchup[1]}</span>
+                  <span style={{ fontSize: "1.2rem" }}>{fight.matchup[1]}</span>
                   <img
                     src={`/images/${fight.matchup[1]}.jpg`}
                     alt={`${fight.matchup[1]} fighter image`}
-                    width={100}
-                    height={100}
-                    style={{ marginLeft: "10px" }}
+                    width={80}
+                    height={80}
+                    style={{ marginLeft: "10px", borderRadius: "50%" }}
                   />
                 </div>
               </div>
@@ -812,7 +826,7 @@ export default function Home() {
               timeout="auto"
               unmountOnExit
             >
-              <CardContent>
+              <CardContent style={{ backgroundColor: "#323a9e" }}>
                 <div
                   style={{ display: "flex", justifyContent: "space-between" }}
                 >
@@ -820,8 +834,12 @@ export default function Home() {
                     <div key={fighter} style={{ width: "48%" }}>
                       {Object.entries(fight.tale_of_the_tape).map(
                         ([key, value]) => (
-                          <Typography key={key}>
-                            <strong>{key}:</strong> {value[fighter]}
+                          <Typography
+                            key={key}
+                            style={{ color: "#c3c0d6", marginBottom: "5px" }}
+                          >
+                            <strong style={{ color: "#535ce1" }}>{key}:</strong>{" "}
+                            {value[fighter]}
                           </Typography>
                         )
                       )}
