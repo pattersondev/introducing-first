@@ -9,11 +9,13 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/joho/godotenv"
+	
+
 )
 
 var db *sql.DB
 
-func startDbConnection() *sql.DB {
+func StartDbConnection() *sql.DB {
 	connStr := os.Getenv("CONNECTION_STRING")
 
 	db, err := sql.Open("postgres", connStr)
