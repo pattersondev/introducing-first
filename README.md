@@ -1,4 +1,4 @@
-# UFC Fight Predictor
+# Introducing First! FIGHTING!
 
 ## About
 
