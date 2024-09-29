@@ -762,7 +762,7 @@ export default function Home() {
   return (
     <div
       style={{
-        backgroundColor: "#101a4d",
+        backgroundColor: "#26303f",
         minHeight: "100vh",
         padding: "20px",
       }}
@@ -785,7 +785,7 @@ export default function Home() {
             style={{
               cursor: "pointer",
               marginBottom: "10px",
-              backgroundColor: "#1e2363",
+              backgroundColor: "#2f3949",
               color: "#c3c0d6",
               borderRadius: "10px",
             }}
