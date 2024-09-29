@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"server/db"
-
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
