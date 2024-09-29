@@ -34,7 +34,7 @@ func StartDbConnection() *sql.DB {
 func insertFighter(dbpool *pgxpool.Pool, fighter models.Fighter) error{
 	sql := 'INSERT INTO public.fighter(
 	name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach)
-	VALUES ($10, $2, $3, $4, $5, $6, $7, $8, $9, , $11, $12, $13, $14, $15, $16, $17);'
+	VALUES ($10, $2, $3, $4, $5, $6, $7, $8, $9, $11, $12, $13, $14, $15, $16, $17);'
 	
 	_, err := dbpool.Exec(context.Background(), sql, 
 	fighter.FighterID, fighter.Name, fighter.Nickname, fighter.DivisionTitle, fighter.Status, 
