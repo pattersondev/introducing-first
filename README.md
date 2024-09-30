@@ -32,7 +32,7 @@ UFC Fight Predictor is a cutting-edge web application designed to provide compre
 
 1. Clone the repository:
    ```
-   git clone (https://github.com/pattersondev/introducing-first)(https://github.com/pattersondev/introducing-first)
+   git clone https://github.com/pattersondev/introducing-first.git
    ```
 2. Navigate to the project directory:
    ```
