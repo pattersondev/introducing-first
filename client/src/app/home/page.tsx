@@ -878,6 +878,10 @@ export default function Home() {
                   width: "100%",
                   textAlign: "center",
                   marginTop: "10px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  flexDirection: "column",
                 }}
               >
                 <span
