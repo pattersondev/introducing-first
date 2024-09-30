@@ -4,8 +4,6 @@ import { useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import IconButton from "@mui/material/IconButton";
 import Collapse from "@mui/material/Collapse";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
@@ -872,38 +870,38 @@ export default function Home() {
                     )}
                   </div>
                 ))}
-              </div>
-              <div
-                style={{
-                  width: "100%",
-                  textAlign: "center",
-                  marginTop: "10px",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexDirection: "column",
-                }}
-              >
-                <span
+                <div
                   style={{
-                    color: "#535ce1",
-                    fontWeight: "bold",
-                    marginRight: "10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "absolute",
+                    left: "50%",
+                    transform: "translateX(-50%)",
                   }}
                 >
-                  vs
-                </span>
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "#c3c0d6",
-                  }}
-                >
-                  {fight.tale_of_the_tape.Weight[
-                    fight
-                      .matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
-                  ] ?? "N/A"}
-                </span>
+                  <span
+                    style={{
+                      color: "#535ce1",
+                      fontWeight: "bold",
+                      fontSize: isMobile ? "1rem" : "1.2rem",
+                    }}
+                  >
+                    vs
+                  </span>
+                  <span
+                    style={{
+                      fontSize: isMobile ? "0.7rem" : "0.8rem",
+                      color: "#c3c0d6",
+                    }}
+                  >
+                    {fight.tale_of_the_tape.Weight[
+                      fight
+                        .matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
+                    ] ?? "N/A"}
+                  </span>
+                </div>
               </div>
             </CardContent>
             <Collapse
