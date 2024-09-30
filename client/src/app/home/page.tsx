@@ -7,6 +7,7 @@ import Typography from "@mui/material/Typography";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import IconButton from "@mui/material/IconButton";
 import Collapse from "@mui/material/Collapse";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 const testData = [
   {
@@ -750,10 +751,22 @@ const testData = [
   },
 ];
 
+function calculateAge(dob: string): number {
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export default function Home() {
   const [expandedCards, setExpandedCards] = useState<{
     [key: string]: boolean;
   }>({});
+  const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleCardClick = (matchup: string) => {
     setExpandedCards((prev) => ({ ...prev, [matchup]: !prev[matchup] }));
@@ -762,18 +775,25 @@ export default function Home() {
   return (
     <div
       style={{
-        backgroundColor: "#101a4d",
+        backgroundColor: "#26303f",
         minHeight: "100vh",
-        padding: "20px",
+        padding: isMobile ? "10px" : "20px",
       }}
     >
-      <h1 style={{ color: "#c3c0d6", textAlign: "center" }}>Upcoming Fights</h1>
+      <h1
+        style={{
+          color: "#c3c0d6",
+          textAlign: "center",
+          fontSize: isMobile ? "1.5rem" : "2rem",
+        }}
+      >
+        Upcoming Fights
+      </h1>
       <div
         style={{
           display: "flex",
-          flexWrap: "wrap",
           flexDirection: "column",
-          width: "80%",
+          width: isMobile ? "95%" : "80%",
           maxWidth: "800px",
           margin: "0 auto",
         }}
@@ -785,7 +805,7 @@ export default function Home() {
             style={{
               cursor: "pointer",
               marginBottom: "10px",
-              backgroundColor: "#1e2363",
+              backgroundColor: "#2f3949",
               color: "#c3c0d6",
               borderRadius: "10px",
             }}
@@ -798,27 +818,92 @@ export default function Home() {
                   alignItems: "center",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <img
-                    src={`/images/${fight.matchup[0]}.jpg`}
-                    alt={`${fight.matchup[0]} fighter image`}
-                    width={80}
-                    height={80}
-                    style={{ marginRight: "10px", borderRadius: "50%" }}
-                  />
-                  <span style={{ fontSize: "1.2rem" }}>{fight.matchup[0]}</span>
-                </div>
-                <span style={{ color: "#535ce1", fontWeight: "bold" }}>vs</span>
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <span style={{ fontSize: "1.2rem" }}>{fight.matchup[1]}</span>
-                  <img
-                    src={`/images/${fight.matchup[1]}.jpg`}
-                    alt={`${fight.matchup[1]} fighter image`}
-                    width={80}
-                    height={80}
-                    style={{ marginLeft: "10px", borderRadius: "50%" }}
-                  />
-                </div>
+                {fight.matchup.map((fighter, index) => (
+                  <div
+                    key={fighter}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      width: "45%",
+                      justifyContent: index === 0 ? "flex-start" : "flex-end",
+                    }}
+                  >
+                    {index === 0 ? (
+                      <>
+                        <img
+                          src={`/images/${fighter}.jpg`}
+                          alt={`${fighter} fighter image`}
+                          width={isMobile ? 50 : 80}
+                          height={isMobile ? 50 : 80}
+                          style={{ marginRight: "10px", borderRadius: "50%" }}
+                        />
+                        <span
+                          style={{
+                            fontSize: isMobile ? "0.8rem" : "1.2rem",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {fighter}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span
+                          style={{
+                            fontSize: isMobile ? "0.8rem" : "1.2rem",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            textAlign: "right",
+                          }}
+                        >
+                          {fighter}
+                        </span>
+                        <img
+                          src={`/images/${fighter}.jpg`}
+                          alt={`${fighter} fighter image`}
+                          width={isMobile ? 50 : 80}
+                          height={isMobile ? 50 : 80}
+                          style={{ marginLeft: "10px", borderRadius: "50%" }}
+                        />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  textAlign: "center",
+                  marginTop: "10px",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  flexDirection: "column",
+                }}
+              >
+                <span
+                  style={{
+                    color: "#535ce1",
+                    fontWeight: "bold",
+                    marginRight: "10px",
+                  }}
+                >
+                  vs
+                </span>
+                <span
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#c3c0d6",
+                  }}
+                >
+                  {fight.tale_of_the_tape.Weight[
+                    fight
+                      .matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
+                  ] ?? "N/A"}
+                </span>
               </div>
             </CardContent>
             <Collapse
@@ -826,26 +911,100 @@ export default function Home() {
               timeout="auto"
               unmountOnExit
             >
-              <CardContent style={{ backgroundColor: "#323a9e" }}>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  {fight.matchup.map((fighter, index) => (
-                    <div key={fighter} style={{ width: "48%" }}>
-                      {Object.entries(fight.tale_of_the_tape).map(
-                        ([key, value]) => (
-                          <Typography
-                            key={key}
-                            style={{ color: "#c3c0d6", marginBottom: "5px" }}
-                          >
-                            <strong style={{ color: "#535ce1" }}>{key}:</strong>{" "}
-                            {value[fighter]}
-                          </Typography>
-                        )
-                      )}
+              <CardContent style={{ backgroundColor: "#2f3949" }}>
+                {Object.entries(fight.tale_of_the_tape).map(([key, value]) => {
+                  if (key === "") return null;
+
+                  if (key === "DOB") {
+                    return (
+                      <div
+                        key={key}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        <Typography
+                          style={{
+                            color: "#c3c0d6",
+                            width: "40%",
+                            textAlign: "left",
+                            fontSize: isMobile ? "0.8rem" : "1rem",
+                          }}
+                        >
+                          {calculateAge(value[fight.matchup[0]])}
+                        </Typography>
+                        <Typography
+                          style={{
+                            color: "#c3c0d6",
+                            width: "20%",
+                            textAlign: "center",
+                            fontSize: isMobile ? "0.9rem" : "1rem",
+                            fontWeight: "bolder",
+                          }}
+                        >
+                          Age
+                        </Typography>
+                        <Typography
+                          style={{
+                            color: "#c3c0d6",
+                            width: "40%",
+                            textAlign: "right",
+                            fontSize: isMobile ? "0.8rem" : "1rem",
+                          }}
+                        >
+                          {calculateAge(value[fight.matchup[1]])}
+                        </Typography>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: "5px",
+                      }}
+                    >
+                      <Typography
+                        style={{
+                          color: "#c3c0d6",
+                          width: "40%",
+                          textAlign: "left",
+                          fontSize: isMobile ? "0.8rem" : "1rem",
+                        }}
+                      >
+                        {value[fight.matchup[0]]}
+                      </Typography>
+                      <Typography
+                        style={{
+                          color: "#c3c0d6",
+                          width: "20%",
+                          textAlign: "center",
+                          fontSize: isMobile ? "0.9rem" : "1rem",
+                          fontWeight: "bolder",
+                        }}
+                      >
+                        {key}
+                      </Typography>
+                      <Typography
+                        style={{
+                          color: "#c3c0d6",
+                          width: "40%",
+                          textAlign: "right",
+                          fontSize: isMobile ? "0.8rem" : "1rem",
+                        }}
+                      >
+                        {value[fight.matchup[1]]}
+                      </Typography>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </CardContent>
             </Collapse>
           </Card>
