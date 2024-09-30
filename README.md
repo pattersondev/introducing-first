@@ -16,15 +16,15 @@ UFC Fight Predictor is a cutting-edge web application designed to provide compre
 ## Technology Stack
 
 - Frontend: Next.js with TypeScript
-- Backend: [Your backend technology]
-- Database: [Your database technology]
-- APIs: [Any external APIs you're using]
+- Backend: Golang
+- Database: PostgreSQL
+- APIs: shhh
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (version X.X.X)
+- Node.js v20.11.1
 - npm or yarn
 - [Any other prerequisites]
 
