@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"server/db"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
@@ -16,7 +18,7 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	dbtoolbox.StartDbConnection()
+	db.StartDbConnection()
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
