@@ -6,6 +6,8 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Collapse from "@mui/material/Collapse";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
+import { LinearProgress } from "@mui/material";
 
 const testData = [
   {
@@ -770,6 +772,12 @@ export default function Home() {
     setExpandedCards((prev) => ({ ...prev, [matchup]: !prev[matchup] }));
   };
 
+  const getWinProbabilityColor = (probability: number) => {
+    if (probability > 50) return "#4caf50"; // green
+    if (probability < 50) return "#f44336"; // red
+    return "#ffffff"; // white
+  };
+
   return (
     <div
       style={{
@@ -816,60 +824,110 @@ export default function Home() {
                   alignItems: "center",
                 }}
               >
-                {fight.matchup.map((fighter, index) => (
-                  <div
-                    key={fighter}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      width: "45%",
-                      justifyContent: index === 0 ? "flex-start" : "flex-end",
-                    }}
-                  >
-                    {index === 0 ? (
-                      <>
-                        <img
-                          src={`/images/${fighter}.jpg`}
-                          alt={`${fighter} fighter image`}
-                          width={isMobile ? 50 : 80}
-                          height={isMobile ? 50 : 80}
-                          style={{ marginRight: "10px", borderRadius: "50%" }}
-                        />
-                        <span
+                {fight.matchup.map((fighter, index) => {
+                  // Placeholder win probability (replace with actual calculation later)
+                  const winProbability = index === 0 ? 55 : 45;
+
+                  return (
+                    <div
+                      key={fighter}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: index === 0 ? "flex-start" : "flex-end",
+                        width: "45%",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        {index === 0 ? (
+                          <>
+                            <img
+                              src={`/images/${fighter}.jpg`}
+                              alt={`${fighter} fighter image`}
+                              width={isMobile ? 50 : 80}
+                              height={isMobile ? 50 : 80}
+                              style={{
+                                marginRight: "10px",
+                                borderRadius: "50%",
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: isMobile ? "0.8rem" : "1.2rem",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {fighter}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              style={{
+                                fontSize: isMobile ? "0.8rem" : "1.2rem",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                textAlign: "right",
+                              }}
+                            >
+                              {fighter}
+                            </span>
+                            <img
+                              src={`/images/${fighter}.jpg`}
+                              alt={`${fighter} fighter image`}
+                              width={isMobile ? 50 : 80}
+                              height={isMobile ? 50 : 80}
+                              style={{
+                                marginLeft: "10px",
+                                borderRadius: "50%",
+                              }}
+                            />
+                          </>
+                        )}
+                      </div>
+                      <div style={{ width: "100%" }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={winProbability}
                           style={{
-                            fontSize: isMobile ? "0.8rem" : "1.2rem",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            height: 10,
+                            borderRadius: 5,
+                            backgroundColor: "#444",
+                            transform: index === 1 ? "rotate(180deg)" : "none",
+                          }}
+                          sx={{
+                            "& .MuiLinearProgress-bar": {
+                              backgroundColor:
+                                getWinProbabilityColor(winProbability),
+                              transform:
+                                index === 1 ? "translateX(-100%)" : "none",
+                            },
+                          }}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent:
+                              index === 0 ? "flex-start" : "flex-end",
+                            fontSize: "0.8rem",
+                            marginTop: "2px",
                           }}
                         >
-                          {fighter}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          style={{
-                            fontSize: isMobile ? "0.8rem" : "1.2rem",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            textAlign: "right",
-                          }}
-                        >
-                          {fighter}
-                        </span>
-                        <img
-                          src={`/images/${fighter}.jpg`}
-                          alt={`${fighter} fighter image`}
-                          width={isMobile ? 50 : 80}
-                          height={isMobile ? 50 : 80}
-                          style={{ marginLeft: "10px", borderRadius: "50%" }}
-                        />
-                      </>
-                    )}
-                  </div>
-                ))}
+                          {winProbability}%
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
                 <div
                   style={{
                     display: "flex",
