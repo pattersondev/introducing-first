@@ -16,6 +16,7 @@ var db *sql.DB
 func StartDbConnection() *sql.DB {
 	connStr := os.Getenv("CONNECTION_STRING")
 
+	var err error
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatalf("Error opening database connection: %v", err)
@@ -29,7 +30,7 @@ func StartDbConnection() *sql.DB {
 	return db
 }
 
-func insertFighter(fighter models.Fighter) error {
+func InsertFighter(fighter models.Fighter) error {
 	sqlStatement := "INSERT INTO public.fighter(name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach) VALUES ($10, $2, $3, $4, $5, $6, $7, $8, $9, $11, $12, $13, $14, $15, $16, $17);"
 
 	_, err := db.ExecContext(context.Background(), sqlStatement,
@@ -45,7 +46,7 @@ func insertFighter(fighter models.Fighter) error {
 }
 
 // func getFighter(){
-// 	sql := ''
+// 	sqlStatement := ""
 
 // 	var fighter models.Fighter
 

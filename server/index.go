@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"server/db"
+	"server/models"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -18,7 +19,29 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
+	testfighter := models.Fighter{
+		Name:          "Rhabib Nurmagomedov",
+		Nickname:      "Pebble",
+		DivisionTitle: "Heaviest Weight",
+		Status:        "Active",
+		Hometown:      "Roanoke, Virginia",
+		OctagonDebut:  "Feb 2024",
+		ImageLink:     "exampleimagelink",
+		Girth:         ".01",
+		Stance:        "Mutant",
+		FighterID:     123,
+		FightingStyle: "Sniffer",
+		Gym:           "MMA Lab",
+		Age:           42,
+		Height:        5,
+		Weight:        290,
+		Reach:         2.0,
+		LegReach:      4.0,
+	}
+
 	db.StartDbConnection()
+
+	db.InsertFighter(testfighter)
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
