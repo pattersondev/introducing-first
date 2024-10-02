@@ -794,14 +794,14 @@ function calculateAge(dob: string): number {
 }
 
 export default function Home() {
-  const [expandedCards, setExpandedCards] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event>(testEvents[0]);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleCardClick = (matchup: string) => {
-    setExpandedCards((prev) => ({ ...prev, [matchup]: !prev[matchup] }));
+    setExpandedCard((prevExpanded) =>
+      prevExpanded === matchup ? null : matchup
+    );
   };
 
   const handleEventChange = (event: SelectChangeEvent<string>) => {
@@ -999,7 +999,7 @@ export default function Home() {
               </div>
             </CardContent>
             <Collapse
-              in={expandedCards[fight.matchup.join("-")]}
+              in={expandedCard === fight.matchup.join("-")}
               timeout="auto"
               unmountOnExit
             >
