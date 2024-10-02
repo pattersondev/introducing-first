@@ -91,3 +91,8 @@ func SelectFighter(fId int) (models.Fighter, error) {
 	return fighter, nil
 
 }
+
+func DeleteFighter(fId int) error(){
+
+	sqlStatement := 
+}
