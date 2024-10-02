@@ -6,8 +6,10 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import Collapse from "@mui/material/Collapse";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { useTheme } from "@mui/material/styles";
 import { LinearProgress } from "@mui/material";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormControl from "@mui/material/FormControl";
 
 const testData = [
   {
@@ -751,6 +753,35 @@ const testData = [
   },
 ];
 
+interface Event {
+  name: string;
+  date: string;
+  venue: string;
+  location: string;
+}
+
+const testEvents: Event[] = [
+  {
+    name: "UFC 307: Pereira vs. Rountree Jr.",
+    date: "October 5, 2024",
+    venue: "Delta Center",
+    location: "Salt Lake City, UT",
+  },
+  {
+    name: "UFC Fight Night: Imavov vs. Allen",
+    date: "September 14, 2024",
+    venue: "UFC APEX",
+    location: "Las Vegas, NV",
+  },
+  {
+    name: "UFC 300",
+    date: "April 13, 2024",
+    venue: "T-Mobile Arena",
+    location: "Las Vegas, NV",
+  },
+  // ... add more events as needed
+];
+
 function calculateAge(dob: string): number {
   const birthDate = new Date(dob);
   const today = new Date();
@@ -763,13 +794,21 @@ function calculateAge(dob: string): number {
 }
 
 export default function Home() {
-  const [expandedCards, setExpandedCards] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event>(testEvents[0]);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleCardClick = (matchup: string) => {
-    setExpandedCards((prev) => ({ ...prev, [matchup]: !prev[matchup] }));
+    setExpandedCard((prevExpanded) =>
+      prevExpanded === matchup ? null : matchup
+    );
+  };
+
+  const handleEventChange = (event: SelectChangeEvent<string>) => {
+    const newEvent = testEvents.find((e) => e.name === event.target.value);
+    if (newEvent) {
+      setSelectedEvent(newEvent);
+    }
   };
 
   const getWinProbabilityColor = (probability: number) => {
@@ -783,27 +822,43 @@ export default function Home() {
       style={{
         backgroundColor: "#26303f",
         minHeight: "100vh",
-        padding: isMobile ? "10px" : "20px",
+        padding: isMobile ? "5px" : "10px",
       }}
     >
-      <h1
-        style={{
-          color: "#c3c0d6",
-          textAlign: "center",
-          fontSize: isMobile ? "1.5rem" : "2rem",
-        }}
-      >
-        Upcoming Fights
-      </h1>
       <div
         style={{
           display: "flex",
           flexDirection: "column",
-          width: isMobile ? "95%" : "80%",
-          maxWidth: "800px",
+          width: isMobile ? "95%" : "87.5%",
+          maxWidth: "625px",
           margin: "0 auto",
         }}
       >
+        <Card style={{ marginBottom: "19px", backgroundColor: "#2f3949" }}>
+          <CardContent>
+            <FormControl fullWidth>
+              <Select
+                value={selectedEvent.name}
+                onChange={handleEventChange}
+                style={{ color: "#c3c0d6" }}
+              >
+                {testEvents.map((event) => (
+                  <MenuItem key={event.name} value={event.name}>
+                    {event.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Typography
+              style={{ color: "#c3c0d6", marginTop: "10px", fontSize: "1rem" }}
+            >
+              {selectedEvent.date}
+            </Typography>
+            <Typography style={{ color: "#c3c0d6", fontSize: "0.9rem" }}>
+              {selectedEvent.venue}, {selectedEvent.location}
+            </Typography>
+          </CardContent>
+        </Card>
         {testData.map((fight) => (
           <Card
             key={fight.matchup.join("-")}
@@ -816,7 +871,21 @@ export default function Home() {
               borderRadius: "10px",
             }}
           >
-            <CardContent>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "10px",
+                borderBottom: "1px solid #c3c0d6",
+                fontSize: isMobile ? "0.875rem" : "1.0625rem",
+                color: "#c3c0d6",
+                fontWeight: "bold",
+              }}
+            >
+              {fight.tale_of_the_tape.Weight[
+                fight.matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
+              ] ?? "N/A"}
+            </div>
+            <CardContent style={{ padding: isMobile ? "12.5px" : "18.75px" }}>
               <div
                 style={{
                   display: "flex",
@@ -825,7 +894,6 @@ export default function Home() {
                 }}
               >
                 {fight.matchup.map((fighter, index) => {
-                  // Placeholder win probability (replace with actual calculation later)
                   const winProbability = index === 0 ? 55 : 45;
 
                   return (
@@ -842,7 +910,7 @@ export default function Home() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          marginBottom: "5px",
+                          marginBottom: "4px",
                         }}
                       >
                         {index === 0 ? (
@@ -850,8 +918,8 @@ export default function Home() {
                             <img
                               src={`/images/${fighter}.jpg`}
                               alt={`${fighter} fighter image`}
-                              width={isMobile ? 50 : 80}
-                              height={isMobile ? 50 : 80}
+                              width={isMobile ? 48 : 62}
+                              height={isMobile ? 48 : 62}
                               style={{
                                 marginRight: "10px",
                                 borderRadius: "50%",
@@ -859,7 +927,7 @@ export default function Home() {
                             />
                             <span
                               style={{
-                                fontSize: isMobile ? "0.8rem" : "1.2rem",
+                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -872,7 +940,7 @@ export default function Home() {
                           <>
                             <span
                               style={{
-                                fontSize: isMobile ? "0.8rem" : "1.2rem",
+                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -884,8 +952,8 @@ export default function Home() {
                             <img
                               src={`/images/${fighter}.jpg`}
                               alt={`${fighter} fighter image`}
-                              width={isMobile ? 50 : 80}
-                              height={isMobile ? 50 : 80}
+                              width={isMobile ? 48 : 62}
+                              height={isMobile ? 48 : 62}
                               style={{
                                 marginLeft: "10px",
                                 borderRadius: "50%",
@@ -899,8 +967,8 @@ export default function Home() {
                           variant="determinate"
                           value={winProbability}
                           style={{
-                            height: 10,
-                            borderRadius: 5,
+                            height: 7,
+                            borderRadius: 4,
                             backgroundColor: "#444",
                             transform: index === 1 ? "rotate(180deg)" : "none",
                           }}
@@ -918,8 +986,8 @@ export default function Home() {
                             display: "flex",
                             justifyContent:
                               index === 0 ? "flex-start" : "flex-end",
-                            fontSize: "0.8rem",
-                            marginTop: "2px",
+                            fontSize: "0.9375rem",
+                            marginTop: "3px",
                           }}
                         >
                           {winProbability}%
@@ -928,46 +996,19 @@ export default function Home() {
                     </div>
                   );
                 })}
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    position: "absolute",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "#535ce1",
-                      fontWeight: "bold",
-                      fontSize: isMobile ? "1rem" : "1.2rem",
-                    }}
-                  >
-                    vs
-                  </span>
-                  <span
-                    style={{
-                      fontSize: isMobile ? "0.7rem" : "0.8rem",
-                      color: "#c3c0d6",
-                    }}
-                  >
-                    {fight.tale_of_the_tape.Weight[
-                      fight
-                        .matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
-                    ] ?? "N/A"}
-                  </span>
-                </div>
               </div>
             </CardContent>
             <Collapse
-              in={expandedCards[fight.matchup.join("-")]}
+              in={expandedCard === fight.matchup.join("-")}
               timeout="auto"
               unmountOnExit
             >
-              <CardContent style={{ backgroundColor: "#2f3949" }}>
+              <CardContent
+                style={{
+                  backgroundColor: "#2f3949",
+                  padding: isMobile ? "12.5px" : "18.75px",
+                }}
+              >
                 {Object.entries(fight.tale_of_the_tape).map(([key, value]) => {
                   if (key === "") return null;
 
@@ -979,7 +1020,7 @@ export default function Home() {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
-                          marginBottom: "5px",
+                          marginBottom: "4px",
                         }}
                       >
                         <Typography
@@ -987,7 +1028,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "40%",
                             textAlign: "left",
-                            fontSize: isMobile ? "0.8rem" : "1rem",
+                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
                           }}
                         >
                           {calculateAge(value[fight.matchup[0]])}
@@ -997,7 +1038,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "20%",
                             textAlign: "center",
-                            fontSize: isMobile ? "0.9rem" : "1rem",
+                            fontSize: isMobile ? "1.0625rem" : "1.25rem",
                             fontWeight: "bolder",
                           }}
                         >
@@ -1008,7 +1049,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "40%",
                             textAlign: "right",
-                            fontSize: isMobile ? "0.8rem" : "1rem",
+                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
                           }}
                         >
                           {calculateAge(value[fight.matchup[1]])}
@@ -1024,7 +1065,7 @@ export default function Home() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        marginBottom: "5px",
+                        marginBottom: "4px",
                       }}
                     >
                       <Typography
@@ -1032,7 +1073,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "40%",
                           textAlign: "left",
-                          fontSize: isMobile ? "0.8rem" : "1rem",
+                          fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
                         {value[fight.matchup[0]]}
@@ -1042,7 +1083,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "20%",
                           textAlign: "center",
-                          fontSize: isMobile ? "0.9rem" : "1rem",
+                          fontSize: isMobile ? "1.0625rem" : "1.25rem",
                           fontWeight: "bolder",
                         }}
                       >
@@ -1053,7 +1094,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "40%",
                           textAlign: "right",
-                          fontSize: isMobile ? "0.8rem" : "1rem",
+                          fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
                         {value[fight.matchup[1]]}
