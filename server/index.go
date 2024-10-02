@@ -19,6 +19,7 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
+	//manually creating a test fighter
 	testfighter := models.Fighter{
 		Name:          "Rhabib Nurmagomedov",
 		Nickname:      "Pebble",
@@ -29,7 +30,7 @@ func main() {
 		ImageLink:     "exampleimagelink",
 		Girth:         ".01",
 		Stance:        "Mutant",
-		FighterID:     123,
+		FighterID:     123457,
 		FightingStyle: "Sniffer",
 		Gym:           "MMA Lab",
 		Age:           42,

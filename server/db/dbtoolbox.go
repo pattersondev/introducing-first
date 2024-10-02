@@ -45,6 +45,23 @@ func InsertFighter(fighter models.Fighter) error {
 	return nil
 }
 
+func BulkInsertFighters(fighters []models.Fighter) error {
+	//if fighters array is empty, don't do anything
+	if len(fighters) == 0 {
+		return nil
+	}
+
+	//calling the existing InsertFighter function for each fighter in the fighter array
+	for _, fighter := range fighters {
+
+		if err := InsertFighter(fighter); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // func getFighter(){
 // 	sqlStatement := ""
 
