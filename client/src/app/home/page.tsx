@@ -829,12 +829,12 @@ export default function Home() {
         style={{
           display: "flex",
           flexDirection: "column",
-          width: isMobile ? "95%" : "70%",
-          maxWidth: "500px",
+          width: isMobile ? "95%" : "87.5%",
+          maxWidth: "625px",
           margin: "0 auto",
         }}
       >
-        <Card style={{ marginBottom: "15px", backgroundColor: "#2f3949" }}>
+        <Card style={{ marginBottom: "19px", backgroundColor: "#2f3949" }}>
           <CardContent>
             <FormControl fullWidth>
               <Select
@@ -865,18 +865,18 @@ export default function Home() {
             onClick={() => handleCardClick(fight.matchup.join("-"))}
             style={{
               cursor: "pointer",
-              marginBottom: "8px",
+              marginBottom: "10px",
               backgroundColor: "#2f3949",
               color: "#c3c0d6",
-              borderRadius: "8px",
+              borderRadius: "10px",
             }}
           >
             <div
               style={{
                 textAlign: "center",
-                padding: "8px",
+                padding: "10px",
                 borderBottom: "1px solid #c3c0d6",
-                fontSize: isMobile ? "0.7rem" : "0.85rem",
+                fontSize: isMobile ? "0.875rem" : "1.0625rem",
                 color: "#c3c0d6",
                 fontWeight: "bold",
               }}
@@ -885,7 +885,7 @@ export default function Home() {
                 fight.matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
               ] ?? "N/A"}
             </div>
-            <CardContent style={{ padding: isMobile ? "10px" : "15px" }}>
+            <CardContent style={{ padding: isMobile ? "12.5px" : "18.75px" }}>
               <div
                 style={{
                   display: "flex",
@@ -910,7 +910,7 @@ export default function Home() {
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          marginBottom: "3px",
+                          marginBottom: "4px",
                         }}
                       >
                         {index === 0 ? (
@@ -918,16 +918,16 @@ export default function Home() {
                             <img
                               src={`/images/${fighter}.jpg`}
                               alt={`${fighter} fighter image`}
-                              width={isMobile ? 38 : 50}
-                              height={isMobile ? 38 : 50}
+                              width={isMobile ? 48 : 62}
+                              height={isMobile ? 48 : 62}
                               style={{
-                                marginRight: "8px",
+                                marginRight: "10px",
                                 borderRadius: "50%",
                               }}
                             />
                             <span
                               style={{
-                                fontSize: isMobile ? "0.75rem" : "1rem",
+                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -940,7 +940,7 @@ export default function Home() {
                           <>
                             <span
                               style={{
-                                fontSize: isMobile ? "0.75rem" : "1rem",
+                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -952,10 +952,10 @@ export default function Home() {
                             <img
                               src={`/images/${fighter}.jpg`}
                               alt={`${fighter} fighter image`}
-                              width={isMobile ? 38 : 50}
-                              height={isMobile ? 38 : 50}
+                              width={isMobile ? 48 : 62}
+                              height={isMobile ? 48 : 62}
                               style={{
-                                marginLeft: "8px",
+                                marginLeft: "10px",
                                 borderRadius: "50%",
                               }}
                             />
@@ -967,8 +967,8 @@ export default function Home() {
                           variant="determinate"
                           value={winProbability}
                           style={{
-                            height: 6,
-                            borderRadius: 3,
+                            height: 7,
+                            borderRadius: 4,
                             backgroundColor: "#444",
                             transform: index === 1 ? "rotate(180deg)" : "none",
                           }}
@@ -986,8 +986,8 @@ export default function Home() {
                             display: "flex",
                             justifyContent:
                               index === 0 ? "flex-start" : "flex-end",
-                            fontSize: "0.75rem",
-                            marginTop: "2px",
+                            fontSize: "0.9375rem",
+                            marginTop: "3px",
                           }}
                         >
                           {winProbability}%
@@ -1006,7 +1006,7 @@ export default function Home() {
               <CardContent
                 style={{
                   backgroundColor: "#2f3949",
-                  padding: isMobile ? "10px" : "15px",
+                  padding: isMobile ? "12.5px" : "18.75px",
                 }}
               >
                 {Object.entries(fight.tale_of_the_tape).map(([key, value]) => {
@@ -1028,7 +1028,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "40%",
                             textAlign: "left",
-                            fontSize: isMobile ? "0.75rem" : "0.9rem",
+                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
                           }}
                         >
                           {calculateAge(value[fight.matchup[0]])}
@@ -1038,7 +1038,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "20%",
                             textAlign: "center",
-                            fontSize: isMobile ? "0.85rem" : "1rem",
+                            fontSize: isMobile ? "1.0625rem" : "1.25rem",
                             fontWeight: "bolder",
                           }}
                         >
@@ -1049,7 +1049,7 @@ export default function Home() {
                             color: "#c3c0d6",
                             width: "40%",
                             textAlign: "right",
-                            fontSize: isMobile ? "0.75rem" : "0.9rem",
+                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
                           }}
                         >
                           {calculateAge(value[fight.matchup[1]])}
@@ -1073,7 +1073,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "40%",
                           textAlign: "left",
-                          fontSize: isMobile ? "0.75rem" : "0.9rem",
+                          fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
                         {value[fight.matchup[0]]}
@@ -1083,7 +1083,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "20%",
                           textAlign: "center",
-                          fontSize: isMobile ? "0.85rem" : "1rem",
+                          fontSize: isMobile ? "1.0625rem" : "1.25rem",
                           fontWeight: "bolder",
                         }}
                       >
@@ -1094,7 +1094,7 @@ export default function Home() {
                           color: "#c3c0d6",
                           width: "40%",
                           textAlign: "right",
-                          fontSize: isMobile ? "0.75rem" : "0.9rem",
+                          fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
                         {value[fight.matchup[1]]}
