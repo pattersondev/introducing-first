@@ -13,6 +13,67 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type JSONEvent struct {
+	Name     string          `json:"name"`
+	Date     string          `json:"date"`
+	Location string          `json:"location"`
+	Matchups []JSONFightData `json:"matchups"`
+}
+
+type JSONFightData struct {
+	Fighter1 string `json:"fighter1"`
+	Fighter2 string `json:"fighter2"`
+	Result   string `json:"result"`
+	Winner   string `json:"winner"`
+}
+
+type JSONFighter struct {
+	Name         string                  `json:"name"`
+	Stats        []JSONFightStats        `json:"stats"`
+	Bio          JSONFighterBio          `json:"bio"`
+	FightHistory []JSONFightHistoryEntry `json:"fighthistory"`
+}
+
+type JSONFighterBio struct {
+	Country   string `json:"country"`
+	WTClass   string `json:"wtclass"`
+	HTWT      string `json:"htwt"`
+	Birthdate string `json:"dob"`
+	Team      string `json:"team"`
+	Nickname  string `json:"nickname"`
+	Stance    string `json:"stance"`
+	Reach     string `json:"reach"`
+}
+
+type JSONFightStats struct {
+	Date     string `json:"date"`
+	Opponent string `json:"opponent"`
+	Event    string `json:"event"`
+	Result   string `json:"result"`
+	SDBL_A   string `json:"sdBla"`
+	SDHL_A   string `json:"sdHla"`
+	SDLL_A   string `json:"sdLla"`
+	TSL      string `json:"tsl"`
+	TSA      string `json:"tsa"`
+	SSL      string `json:"ssl"`
+	SSA      string `json:"ssa"`
+	TSL_TSA  string `json:"tsltsa"`
+	KD       string `json:"kd"`
+	BodyPerc string `json:"bodyperc"`
+	HeadPerc string `json:"headperc"`
+	LegPerc  string `json:"legperc"`
+}
+
+type JSONFightHistoryEntry struct {
+	Date     string `json:"date"`
+	Opponent string `json:"opponent"`
+	Result   string `json:"result"`
+	Decision string `json:"decision"`
+	Round    string `json:"round"`
+	Time     string `json:"time"`
+	Event    string `json:"event"`
+}
+
 func main() {
 
 	err := godotenv.Load()
@@ -47,7 +108,7 @@ func main() {
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
-	http.HandleFunc("/fighter", addFighter)
+	http.HandleFunc("/fighter/create", addFighter)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -70,13 +131,18 @@ func addFighter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newFighter models.Fighter
+	var newFighter JSONFighter
 
-	//handle bad requests
+	//decoding json and creating temp fighter object / handling bad requests
 	err := json.NewDecoder(r.Body).Decode(&newFighter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	//print fighter for now, will eventually add the fighter to the db
+	fmt.Fprintf(w, "Recieved new fighter", newFighter)
+
+	//need to modify fighter class and validate schema of JSON before actually adding fighter. DB schema may change too
+	//db.InsertFighter(newFighter)
 }
