@@ -4,13 +4,19 @@ import { useState } from "react";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
-import Collapse from "@mui/material/Collapse";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { LinearProgress } from "@mui/material";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
-//test
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+import React from "react";
+import Chat from "../components/chat";
+
 const testData = [
   {
     matchup: ["Renato Moicano", "Benoit Saint Denis"],
@@ -794,14 +800,16 @@ function calculateAge(dob: string): number {
 }
 
 export default function Home() {
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [openDialog, setOpenDialog] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event>(testEvents[0]);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   const handleCardClick = (matchup: string) => {
-    setExpandedCard((prevExpanded) =>
-      prevExpanded === matchup ? null : matchup
-    );
+    setOpenDialog(matchup);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(null);
   };
 
   const handleEventChange = (event: SelectChangeEvent<string>) => {
@@ -821,154 +829,309 @@ export default function Home() {
     <div
       style={{
         backgroundColor: "#26303f",
-        minHeight: "100vh",
-        padding: isMobile ? "5px" : "10px",
+        maxHeight: "100%",
+        padding: isMobile ? "10px" : "20px",
       }}
     >
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          width: isMobile ? "95%" : "87.5%",
-          maxWidth: "625px",
+          justifyContent: "space-between",
+          maxWidth: "1200px",
           margin: "0 auto",
+          gap: "20px",
         }}
       >
-        <Card style={{ marginBottom: "19px", backgroundColor: "#2f3949" }}>
-          <CardContent>
-            <FormControl fullWidth>
-              <Select
-                value={selectedEvent.name}
-                onChange={handleEventChange}
-                style={{ color: "#c3c0d6" }}
-              >
-                {testEvents.map((event) => (
-                  <MenuItem key={event.name} value={event.name}>
-                    {event.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Typography
-              style={{ color: "#c3c0d6", marginTop: "10px", fontSize: "1rem" }}
-            >
-              {selectedEvent.date}
-            </Typography>
-            <Typography style={{ color: "#c3c0d6", fontSize: "0.9rem" }}>
-              {selectedEvent.venue}, {selectedEvent.location}
-            </Typography>
-          </CardContent>
-        </Card>
-        {testData.map((fight) => (
+        <div
+          style={{
+            width: isMobile ? "100%" : "60%",
+            maxWidth: "625px",
+            backgroundColor: "#1e2530",
+            padding: "20px",
+            borderRadius: "15px",
+            display: "flex",
+            flexDirection: "column",
+            height: "90vh",
+            overflowY: "auto",
+          }}
+        >
           <Card
-            key={fight.matchup.join("-")}
-            onClick={() => handleCardClick(fight.matchup.join("-"))}
             style={{
-              cursor: "pointer",
-              marginBottom: "10px",
+              marginBottom: "20px",
               backgroundColor: "#2f3949",
-              color: "#c3c0d6",
-              borderRadius: "10px",
+              minHeight: "14vh",
             }}
           >
-            <div
-              style={{
-                textAlign: "center",
-                padding: "10px",
-                borderBottom: "1px solid #c3c0d6",
-                fontSize: isMobile ? "0.875rem" : "1.0625rem",
-                color: "#c3c0d6",
-                fontWeight: "bold",
-              }}
-            >
-              {fight.tale_of_the_tape.Weight[
-                fight.matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
-              ] ?? "N/A"}
-            </div>
-            <CardContent style={{ padding: isMobile ? "12.5px" : "18.75px" }}>
+            <CardContent style={{ padding: "16px" }}>
+              <FormControl fullWidth size="small">
+                <Select
+                  value={selectedEvent.name}
+                  onChange={handleEventChange}
+                  style={{ color: "#c3c0d6", marginBottom: "10px" }}
+                >
+                  {testEvents.map((event) => (
+                    <MenuItem key={event.name} value={event.name}>
+                      {event.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography
+                style={{
+                  color: "#c3c0d6",
+                  fontSize: "1rem",
+                  marginBottom: "5px",
+                }}
+              >
+                {selectedEvent.date}
+              </Typography>
+              <Typography style={{ color: "#c3c0d6", fontSize: "0.9rem" }}>
+                {selectedEvent.venue}, {selectedEvent.location}
+              </Typography>
+            </CardContent>
+          </Card>
+          <div style={{ flexGrow: 1, overflowY: "auto" }}>
+            {testData.map((fight) => (
+              <Card
+                key={fight.matchup.join("-")}
+                onClick={() => handleCardClick(fight.matchup.join("-"))}
+                style={{
+                  cursor: "pointer",
+                  marginBottom: "10px",
+                  backgroundColor: "#2f3949",
+                  color: "#c3c0d6",
+                  borderRadius: "10px",
+                }}
+              >
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "10px",
+                    borderBottom: "1px solid #c3c0d6",
+                    fontSize: isMobile ? "0.875rem" : "1.0625rem",
+                    color: "#c3c0d6",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {fight.tale_of_the_tape.Weight[
+                    fight
+                      .matchup[0] as keyof typeof fight.tale_of_the_tape.Weight
+                  ] ?? "N/A"}
+                </div>
+                <CardContent
+                  style={{ padding: isMobile ? "12.5px" : "18.75px" }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {fight.matchup.map((fighter, index) => {
+                      const winProbability = index === 0 ? 55 : 45;
+
+                      return (
+                        <div
+                          key={fighter}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: index === 0 ? "flex-start" : "flex-end",
+                            width: "45%",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            {index === 0 ? (
+                              <>
+                                <img
+                                  src={`/images/${fighter}.jpg`}
+                                  alt={`${fighter} fighter image`}
+                                  width={isMobile ? 48 : 62}
+                                  height={isMobile ? 48 : 62}
+                                  style={{
+                                    marginRight: "10px",
+                                    borderRadius: "50%",
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    fontSize: isMobile
+                                      ? "0.9375rem"
+                                      : "1.25rem",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  }}
+                                >
+                                  {fighter}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span
+                                  style={{
+                                    fontSize: isMobile
+                                      ? "0.9375rem"
+                                      : "1.25rem",
+                                    whiteSpace: "nowrap",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    textAlign: "right",
+                                  }}
+                                >
+                                  {fighter}
+                                </span>
+                                <img
+                                  src={`/images/${fighter}.jpg`}
+                                  alt={`${fighter} fighter image`}
+                                  width={isMobile ? 48 : 62}
+                                  height={isMobile ? 48 : 62}
+                                  style={{
+                                    marginLeft: "10px",
+                                    borderRadius: "50%",
+                                  }}
+                                />
+                              </>
+                            )}
+                          </div>
+                          <div style={{ width: "100%" }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={winProbability}
+                              style={{
+                                height: 7,
+                                borderRadius: 4,
+                                backgroundColor: "#444",
+                                transform:
+                                  index === 1 ? "rotate(180deg)" : "none",
+                              }}
+                              sx={{
+                                "& .MuiLinearProgress-bar": {
+                                  backgroundColor:
+                                    getWinProbabilityColor(winProbability),
+                                  transform:
+                                    index === 1 ? "translateX(-100%)" : "none",
+                                },
+                              }}
+                            />
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent:
+                                  index === 0 ? "flex-start" : "flex-end",
+                                fontSize: "0.9375rem",
+                                marginTop: "3px",
+                              }}
+                            >
+                              {winProbability}%
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+        {!isMobile && (
+          <div
+            style={{
+              width: "35%",
+              backgroundColor: "#1e2530",
+              position: "sticky",
+              top: "10px",
+              alignSelf: "flex-start",
+              borderRadius: "15px",
+              padding: "10px", // Add some padding around the ChatComponent
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <Chat />
+          </div>
+        )}
+      </div>
+      {/* Dialog for displaying tale of the tape */}
+      <Dialog
+        open={openDialog !== null}
+        onClose={handleCloseDialog}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle
+          style={{
+            backgroundColor: "#2f3949",
+            color: "#c3c0d6",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          Tale of the Tape
+          <IconButton
+            edge="end"
+            color="inherit"
+            onClick={handleCloseDialog}
+            aria-label="close"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent style={{ backgroundColor: "#2f3949", color: "#c3c0d6" }}>
+          {openDialog && (
+            <>
+              {/* Fighter names, pictures, and progress bar */}
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
+                  marginBottom: "20px",
                 }}
               >
-                {fight.matchup.map((fighter, index) => {
+                {openDialog.split("-").map((fighter, index) => {
                   const winProbability = index === 0 ? 55 : 45;
-
                   return (
                     <div
                       key={fighter}
                       style={{
                         display: "flex",
                         flexDirection: "column",
-                        alignItems: index === 0 ? "flex-start" : "flex-end",
+                        alignItems: "center",
                         width: "45%",
                       }}
                     >
-                      <div
+                      <img
+                        src={`/images/${fighter}.jpg`}
+                        alt={`${fighter} fighter image`}
+                        width={80}
+                        height={80}
+                        style={{ borderRadius: "50%", marginBottom: "10px" }}
+                      />
+                      <Typography
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          marginBottom: "4px",
+                          color: "#c3c0d6",
+                          fontSize: "1.25rem",
+                          marginBottom: "10px",
                         }}
                       >
-                        {index === 0 ? (
-                          <>
-                            <img
-                              src={`/images/${fighter}.jpg`}
-                              alt={`${fighter} fighter image`}
-                              width={isMobile ? 48 : 62}
-                              height={isMobile ? 48 : 62}
-                              style={{
-                                marginRight: "10px",
-                                borderRadius: "50%",
-                              }}
-                            />
-                            <span
-                              style={{
-                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                            >
-                              {fighter}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <span
-                              style={{
-                                fontSize: isMobile ? "0.9375rem" : "1.25rem",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                textAlign: "right",
-                              }}
-                            >
-                              {fighter}
-                            </span>
-                            <img
-                              src={`/images/${fighter}.jpg`}
-                              alt={`${fighter} fighter image`}
-                              width={isMobile ? 48 : 62}
-                              height={isMobile ? 48 : 62}
-                              style={{
-                                marginLeft: "10px",
-                                borderRadius: "50%",
-                              }}
-                            />
-                          </>
-                        )}
-                      </div>
+                        {fighter}
+                      </Typography>
                       <div style={{ width: "100%" }}>
                         <LinearProgress
                           variant="determinate"
                           value={winProbability}
                           style={{
-                            height: 7,
-                            borderRadius: 4,
+                            height: 10,
+                            borderRadius: 5,
                             backgroundColor: "#444",
                             transform: index === 1 ? "rotate(180deg)" : "none",
                           }}
@@ -981,83 +1144,30 @@ export default function Home() {
                             },
                           }}
                         />
-                        <div
+                        <Typography
                           style={{
-                            display: "flex",
-                            justifyContent:
-                              index === 0 ? "flex-start" : "flex-end",
-                            fontSize: "0.9375rem",
-                            marginTop: "3px",
+                            color: "#c3c0d6",
+                            fontSize: "1rem",
+                            marginTop: "5px",
+                            textAlign: "center",
                           }}
                         >
                           {winProbability}%
-                        </div>
+                        </Typography>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </CardContent>
-            <Collapse
-              in={expandedCard === fight.matchup.join("-")}
-              timeout="auto"
-              unmountOnExit
-            >
-              <CardContent
-                style={{
-                  backgroundColor: "#2f3949",
-                  padding: isMobile ? "12.5px" : "18.75px",
-                }}
-              >
-                {Object.entries(fight.tale_of_the_tape).map(([key, value]) => {
-                  if (key === "") return null;
 
-                  if (key === "DOB") {
-                    return (
-                      <div
-                        key={key}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        <Typography
-                          style={{
-                            color: "#c3c0d6",
-                            width: "40%",
-                            textAlign: "left",
-                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
-                          }}
-                        >
-                          {calculateAge(value[fight.matchup[0]])}
-                        </Typography>
-                        <Typography
-                          style={{
-                            color: "#c3c0d6",
-                            width: "20%",
-                            textAlign: "center",
-                            fontSize: isMobile ? "1.0625rem" : "1.25rem",
-                            fontWeight: "bolder",
-                          }}
-                        >
-                          Age
-                        </Typography>
-                        <Typography
-                          style={{
-                            color: "#c3c0d6",
-                            width: "40%",
-                            textAlign: "right",
-                            fontSize: isMobile ? "0.9375rem" : "1.125rem",
-                          }}
-                        >
-                          {calculateAge(value[fight.matchup[1]])}
-                        </Typography>
-                      </div>
-                    );
-                  }
+              {/* Existing tale of the tape data */}
+              {Object.entries(
+                testData.find((fight) => fight.matchup.join("-") === openDialog)
+                  ?.tale_of_the_tape || {}
+              ).map(([key, value]) => {
+                if (key === "") return null;
 
+                if (key === "DOB") {
                   return (
                     <div
                       key={key}
@@ -1076,7 +1186,7 @@ export default function Home() {
                           fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
-                        {value[fight.matchup[0]]}
+                        {calculateAge(value[openDialog.split("-")[0]])}
                       </Typography>
                       <Typography
                         style={{
@@ -1087,7 +1197,7 @@ export default function Home() {
                           fontWeight: "bolder",
                         }}
                       >
-                        {key}
+                        Age
                       </Typography>
                       <Typography
                         style={{
@@ -1097,16 +1207,60 @@ export default function Home() {
                           fontSize: isMobile ? "0.9375rem" : "1.125rem",
                         }}
                       >
-                        {value[fight.matchup[1]]}
+                        {calculateAge(value[openDialog.split("-")[1]])}
                       </Typography>
                     </div>
                   );
-                })}
-              </CardContent>
-            </Collapse>
-          </Card>
-        ))}
-      </div>
+                }
+
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    <Typography
+                      style={{
+                        color: "#c3c0d6",
+                        width: "40%",
+                        textAlign: "left",
+                        fontSize: isMobile ? "0.9375rem" : "1.125rem",
+                      }}
+                    >
+                      {value[openDialog.split("-")[0]]}
+                    </Typography>
+                    <Typography
+                      style={{
+                        color: "#c3c0d6",
+                        width: "20%",
+                        textAlign: "center",
+                        fontSize: isMobile ? "1.0625rem" : "1.25rem",
+                        fontWeight: "bolder",
+                      }}
+                    >
+                      {key}
+                    </Typography>
+                    <Typography
+                      style={{
+                        color: "#c3c0d6",
+                        width: "40%",
+                        textAlign: "right",
+                        fontSize: isMobile ? "0.9375rem" : "1.125rem",
+                      }}
+                    >
+                      {value[openDialog.split("-")[1]]}
+                    </Typography>
+                  </div>
+                );
+              })}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
