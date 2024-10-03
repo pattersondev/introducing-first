@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS public.fighter
     image_link character varying(1000) COLLATE pg_catalog."default",
     girth character varying(255) COLLATE pg_catalog."default",
     stance character varying(255) COLLATE pg_catalog."default",
-    fighter_id integer NOT NULL,
     fighting_style character varying(255) COLLATE pg_catalog."default",
     gym character varying(255) COLLATE pg_catalog."default",
     age integer,
@@ -17,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.fighter
     weight double precision,
     reach double precision,
     leg_reach double precision,
+    fighter_id bigint NOT NULL DEFAULT nextval('fighter_fighter_id_seq'::regclass),
     CONSTRAINT fighter_pkey PRIMARY KEY (fighter_id)
 )
 
@@ -94,4 +94,18 @@ CREATE TABLE IF NOT EXISTS public.win_stat_collection
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
         NOT VALID
+)
+
+CREATE TABLE IF NOT EXISTS public.app_users
+(
+    uuid integer NOT NULL DEFAULT nextval('app_users_uuid_seq'::regclass),
+    username character varying(255)[] COLLATE pg_catalog."default",
+    password_hash character varying(1000)[] COLLATE pg_catalog."default",
+    salt character varying(255)[] COLLATE pg_catalog."default",
+    created_at timestamp with time zone[],
+    last_login timestamp with time zone[],
+    is_active boolean[],
+    CONSTRAINT app_users_pkey PRIMARY KEY (uuid),
+    CONSTRAINT username UNIQUE (username)
+        INCLUDE(username)
 )
