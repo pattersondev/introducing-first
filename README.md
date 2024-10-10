@@ -16,15 +16,15 @@ UFC Fight Predictor is a cutting-edge web application designed to provide compre
 ## Technology Stack
 
 - Frontend: Next.js with TypeScript
-- Backend: [Your backend technology]
-- Database: [Your database technology]
-- APIs: [Any external APIs you're using]
+- Backend: Golang
+- Database: PostgreSQL
+- APIs: shhh
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js (version X.X.X)
+- Node.js v20.11.1
 - npm or yarn
 - [Any other prerequisites]
 
@@ -32,11 +32,11 @@ UFC Fight Predictor is a cutting-edge web application designed to provide compre
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/ufc-fight-predictor.git
+   git clone https://github.com/pattersondev/introducing-first.git
    ```
 2. Navigate to the project directory:
    ```
-   cd ufc-fight-predictor
+   cd introducing-first
    ```
 3. Install dependencies:
    ```
@@ -64,7 +64,7 @@ UFC Fight Predictor is a cutting-edge web application designed to provide compre
 
 ## Contributing
 
-We welcome contributions to UFC Fight Predictor! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+We welcome contributions to Introducing First! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ## License
 
