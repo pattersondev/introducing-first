@@ -124,8 +124,7 @@ func handleHello(w http.ResponseWriter, r *http.Request) {
 }
 
 func addFighter(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Gimme dat fighter data")
-
+	fmt.Fprintf(w, "Gimme dat fighter data: ")
 	//only allow processing if it's a Post Request
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -149,7 +148,7 @@ func addFighter(w http.ResponseWriter, r *http.Request) {
 }
 
 func addEvent(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Gimme dat event data")
+	fmt.Fprintf(w, "Show me dat event data: ")
 
 	//only allow processing if it's a Post Request
 	if r.Method != http.MethodPost {
