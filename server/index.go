@@ -14,17 +14,17 @@ import (
 )
 
 type JSONEvent struct {
-	Name     string          `json:"name"`
-	Date     string          `json:"date"`
-	Location string          `json:"location"`
+	Name     string          `json:"Name"`
+	Date     string          `json:"Date"`
+	Location string          `json:"Location"`
 	Matchups []JSONFightData `json:"matchups"`
 }
 
 type JSONFightData struct {
-	Fighter1 string `json:"fighter1"`
-	Fighter2 string `json:"fighter2"`
-	Result   string `json:"result"`
-	Winner   string `json:"winner"`
+	Fighter1 string `json:"Fighter1"`
+	Fighter2 string `json:"Fighter2"`
+	Result   string `json:"Result"`
+	Winner   string `json:"Winner"`
 }
 
 type JSONFighter struct {
