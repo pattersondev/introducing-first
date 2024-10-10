@@ -5,6 +5,7 @@ import { Event } from "@/types";
 import { EventSelector } from "@/components/EventSelector";
 import { EventDetails } from "@/components/EventDetails";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sidebar } from "@/components/Sidebar";
 
 const eventData: Event[] = [
   {
@@ -141,6 +142,7 @@ const eventData: Event[] = [
 export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     // Simulate API call
@@ -175,29 +177,46 @@ export default function Home() {
     }, 1000); // Simulate 1 second loading time
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      <main className="max-w-7xl mx-auto space-y-8">
-        <h1 className="text-4xl font-bold text-center mb-8 text-white">
-          Introducing First
-        </h1>
+    <div className="h-screen overflow-hidden bg-gray-950 text-white">
+      <div className="flex h-full overflow-hidden">
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
+        <main
+          className={`flex-1 overflow-y-auto p-4 lg:p-6 transition-all duration-300
+            ${isSidebarCollapsed ? "" : "lg:ml-[16vw]"}`}
+        >
+          <h1 className="text-4xl font-bold text-center mb-8 text-white pt-4 lg:pt-0">
+            Introducing First
+          </h1>
 
-        {isLoading ? (
-          <Skeleton className="w-full h-10 bg-gray-800" />
-        ) : (
-          <EventSelector
-            events={eventData}
-            selectedEvent={selectedEvent}
-            onEventChange={handleEventChange}
-          />
-        )}
+          {isLoading ? (
+            <Skeleton className="w-full h-10 bg-gray-800 mb-8" />
+          ) : (
+            <div className="mb-4">
+              <EventSelector
+                events={eventData}
+                selectedEvent={selectedEvent}
+                onEventChange={handleEventChange}
+              />
+            </div>
+          )}
 
-        {isLoading ? (
-          <EventDetailsSkeleton />
-        ) : (
-          selectedEvent && <EventDetails event={selectedEvent} />
-        )}
-      </main>
+          {isLoading ? (
+            <EventDetailsSkeleton />
+          ) : (
+            selectedEvent && (
+              <EventDetails
+                event={selectedEvent}
+                isSidebarCollapsed={isSidebarCollapsed}
+              />
+            )
+          )}
+        </main>
+      </div>
     </div>
   );
 }
