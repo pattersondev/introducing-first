@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -14,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Introducing First",
-  description: "MMA Fighter Database",
+  title: "MMA Stats App",
+  description: "View MMA event stats and matchups",
 };
 
 export default function RootLayout({
@@ -24,8 +25,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className="dark">
+      <body
+        className={cn(
+          "min-h-screen bg-black text-white font-sans antialiased",
+          geistSans.variable,
+          geistMono.variable
+        )}
+      >
         {children}
       </body>
     </html>
