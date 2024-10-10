@@ -30,7 +30,7 @@ interface Event {
   Matchups: Matchup[];
 }
 
-const eventData = [
+const eventData: Event[] = [
   {
     Name: "Bellator Champions Series London: McCourt vs. Collins",
     Date: "September 14, 2024",
@@ -92,8 +92,104 @@ const eventData = [
       },
     ],
   },
+  {
+    Name: "PFL Super Fights: Battle of the Giants - Ngannou vs. Ferreira",
+    Date: "October 19, 2024",
+    Location: "The Mayadeen, Riyadh, Saudi Arabia",
+    Matchups: [
+      {
+        Fighter1: "Francis Ngannou",
+        Fighter2: "Renan Ferreira",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Cris Cyborg",
+        Fighter2: "Larissa Pacheco",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Johnny Eblen",
+        Fighter2: "Fabian Edwards",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Husein Kadimagomaev",
+        Fighter2: "Zafar Mohsen",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "AJ McKee",
+        Fighter2: "Paul Hughes",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Raufeon Stots",
+        Fighter2: "Marcos Breno",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Makkasharip Zaynukov",
+        Fighter2: "Dedrek Sanders",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Ibragim Ibragimov",
+        Fighter2: "Nacho Campos",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Mostafa Nada",
+        Fighter2: "Ahmed Sami",
+        Result: "",
+        Winner: "",
+      },
+      {
+        Fighter1: "Youssef Al",
+        Fighter2: "Taha Bendaoud",
+        Result: "",
+        Winner: "",
+      },
+    ],
+  },
   // ... (include other events from your JSON file)
 ];
+
+// Function to calculate win probability
+const calculateWinProbability = (
+  fighter1: string,
+  fighter2: string
+): [number, number] => {
+  // Generate a random probability for Fighter1 between 0.3 and 0.7
+  const fighter1Prob = Math.random() * 0.4 + 0.3;
+  // Fighter2's probability is the complement
+  const fighter2Prob = 1 - fighter1Prob;
+  return [fighter1Prob, fighter2Prob];
+};
+
+const ProbabilityBar = ({ probability }: { probability: number }) => {
+  const getBarColor = (prob: number) => {
+    if (prob > 0.5) return "bg-green-500";
+    if (prob < 0.5) return "bg-red-500";
+    return "bg-blue-500";
+  };
+
+  return (
+    <div className="w-full bg-gray-700 h-2 rounded-full mt-2">
+      <div
+        className={`${getBarColor(probability)} h-full rounded-full`}
+        style={{ width: `${probability * 100}%` }}
+      ></div>
+    </div>
+  );
+};
 
 export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -121,11 +217,15 @@ export default function Home() {
     setSelectedEvent(event || null);
   };
 
+  const isEventInFuture = (date: string) => {
+    return new Date(date) > new Date();
+  };
+
   return (
     <div className="min-h-screen bg-black text-white p-8">
       <main className="max-w-4xl mx-auto space-y-8">
         <h1 className="text-4xl font-bold text-center mb-8 text-white">
-          Introuducing First
+          Introducing First
         </h1>
 
         <Select onValueChange={handleEventChange} value={selectedEvent?.Name}>
@@ -154,42 +254,66 @@ export default function Home() {
                 Matchups
               </h3>
               <div className="space-y-4">
-                {selectedEvent.Matchups.map((matchup, index) => (
-                  <Card key={index} className="bg-gray-800 border-gray-700">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <p
-                            className={`font-semibold ${
-                              matchup.Winner === matchup.Fighter1
-                                ? "text-green-400"
-                                : "text-white"
-                            }`}
-                          >
-                            {matchup.Fighter1}
+                {selectedEvent.Matchups.map((matchup, index) => {
+                  const [fighter1Prob, fighter2Prob] = calculateWinProbability(
+                    matchup.Fighter1,
+                    matchup.Fighter2
+                  );
+                  return (
+                    <Card key={index} className="bg-gray-800 border-gray-700">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <p
+                              className={`font-semibold ${
+                                matchup.Winner === matchup.Fighter1
+                                  ? "text-green-400"
+                                  : "text-white"
+                              }`}
+                            >
+                              {matchup.Fighter1}
+                            </p>
+                            {isEventInFuture(selectedEvent.Date) && (
+                              <div className="mt-1">
+                                <ProbabilityBar probability={fighter1Prob} />
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {(fighter1Prob * 100).toFixed(1)}%
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 text-center">
+                            <p className="text-sm text-gray-400">vs</p>
+                          </div>
+                          <div className="flex-1 text-right">
+                            <p
+                              className={`font-semibold ${
+                                matchup.Winner === matchup.Fighter2
+                                  ? "text-green-400"
+                                  : "text-white"
+                              }`}
+                            >
+                              {matchup.Fighter2}
+                            </p>
+                            {isEventInFuture(selectedEvent.Date) && (
+                              <div className="mt-1">
+                                <ProbabilityBar probability={fighter2Prob} />
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {(fighter2Prob * 100).toFixed(1)}%
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {!isEventInFuture(selectedEvent.Date) && (
+                          <p className="text-sm text-gray-400 mt-2">
+                            Result: {matchup.Result}
                           </p>
-                        </div>
-                        <div className="flex-1 text-center">
-                          <p className="text-sm text-gray-400">vs</p>
-                        </div>
-                        <div className="flex-1 text-right">
-                          <p
-                            className={`font-semibold ${
-                              matchup.Winner === matchup.Fighter2
-                                ? "text-green-400"
-                                : "text-white"
-                            }`}
-                          >
-                            {matchup.Fighter2}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-400 mt-2">
-                        Result: {matchup.Result}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
