@@ -12,13 +12,18 @@ import { MatchupChat } from "./MatchupChat";
 interface EventDetailsProps {
   event: Event;
   isLoading?: boolean;
+  isSidebarCollapsed: boolean;
 }
 
-export function EventDetails({ event, isLoading = false }: EventDetailsProps) {
+export function EventDetails({
+  event,
+  isLoading = false,
+  isSidebarCollapsed,
+}: EventDetailsProps) {
   return (
-    <div className="space-y-8 lg:space-y-0 lg:flex lg:gap-8 max-w-7xl mx-auto">
-      <div className="lg:w-3/5">
-        <Card className="bg-gray-900 border-gray-800">
+    <div className="flex flex-col lg:flex-row gap-8">
+      <div className="w-full lg:w-2/3 flex-grow">
+        <Card className="bg-gray-900 border-gray-800 h-full">
           <CardHeader>
             <CardTitle className="text-white">{event.Name}</CardTitle>
             <CardDescription className="text-gray-400">
@@ -37,9 +42,8 @@ export function EventDetails({ event, isLoading = false }: EventDetailsProps) {
           </CardContent>
         </Card>
       </div>
-
-      <div className="lg:w-2/5">
-        <Card className="bg-gray-900 border-gray-800">
+      <div className="w-full lg:w-1/3 flex-grow">
+        <Card className="bg-gray-900 border-gray-800 h-full">
           <CardHeader>
             <CardTitle className="text-white">Chat</CardTitle>
           </CardHeader>

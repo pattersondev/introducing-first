@@ -132,7 +132,7 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
               placeholder="Type your message..."
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
+              onKeyUp={(e) => {
                 if (e.key === "Enter") {
                   handleSendMessage();
                 }
