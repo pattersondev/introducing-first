@@ -74,6 +74,8 @@ type JSONFightHistoryEntry struct {
 	Event    string `json:"event"`
 }
 
+type EventList []JSONEvent
+
 func main() {
 
 	err := godotenv.Load()
@@ -110,6 +112,7 @@ func main() {
 	http.HandleFunc("/hello", handleHello)
 	http.HandleFunc("/fighter/create", addFighter)
 	http.HandleFunc("/event/create", addEvent)
+	http.HandleFunc("/events/create", addEvents)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -167,5 +170,30 @@ func addEvent(w http.ResponseWriter, r *http.Request) {
 
 	//print event for now, will eventually add the event to the db
 	fmt.Fprintf(w, "Recieved new event: ", newEvent)
+
+}
+
+func addEvents(w http.ResponseWriter, r *http.Request) {
+
+	var eventsArray EventList
+
+	fmt.Fprintf(w, "Show me dat event data: ")
+
+	//only allow processing if it's a Post Request
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	//decoding json response body array and storing in temp eventsArray object / handling bad requests
+
+	err := json.NewDecoder(r.Body).Decode(&eventsArray)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//print event for now, will eventually add the event to the db
+	fmt.Fprintf(w, "Recieved new event: ", eventsArray[0])
 
 }
