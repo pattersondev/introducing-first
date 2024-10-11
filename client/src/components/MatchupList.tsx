@@ -107,5 +107,9 @@ export function MatchupList({
     </div>
   );
 
-  return <ScrollArea className="h-[calc(100vh-300px)]">{content}</ScrollArea>;
+  return (
+    <ScrollArea className="h-[calc(100vh-320px)] min-h-[480px]">
+      <div className="pb-6">{content}</div>
+    </ScrollArea>
+  );
 }
