@@ -30,6 +30,22 @@ func StartDbConnection() *sql.DB {
 	return db
 }
 
+func InsertFighterJSON(fighter models.Fighter) error {
+	//func to insert fighter into database. (used to create a new fighter in the DB)
+	sqlStatement := "INSERT INTO public.fighter(name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);"
+
+	_, err := db.ExecContext(context.Background(), sqlStatement,
+		fighter.Name, fighter.Nickname, fighter.DivisionTitle, fighter.Status,
+		fighter.Hometown, fighter.OctagonDebut, fighter.ImageLink, fighter.Girth, fighter.Stance,
+		fighter.FighterID, fighter.FightingStyle, fighter.Gym, fighter.Age, fighter.Height,
+		fighter.Weight, fighter.Reach, fighter.LegReach)
+
+	if err != nil {
+		return fmt.Errorf("unable to insert fighter: %w", err)
+	}
+	return nil
+}
+
 func InsertFighter(fighter models.Fighter) error {
 	//func to insert fighter into database. (used to create a new fighter in the DB)
 	sqlStatement := "INSERT INTO public.fighter(name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);"
