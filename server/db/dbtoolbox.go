@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"server/models"
+	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -30,31 +32,49 @@ func StartDbConnection() *sql.DB {
 	return db
 }
 
-func InsertFighterJSON(fighter models.Fighter) error {
-	//func to insert fighter into database. (used to create a new fighter in the DB)
-	sqlStatement := "INSERT INTO public.fighter(name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);"
-
-	_, err := db.ExecContext(context.Background(), sqlStatement,
-		fighter.Name, fighter.Nickname, fighter.DivisionTitle, fighter.Status,
-		fighter.Hometown, fighter.OctagonDebut, fighter.ImageLink, fighter.Girth, fighter.Stance,
-		fighter.FighterID, fighter.FightingStyle, fighter.Gym, fighter.Age, fighter.Height,
-		fighter.Weight, fighter.Reach, fighter.LegReach)
-
-	if err != nil {
-		return fmt.Errorf("unable to insert fighter: %w", err)
-	}
-	return nil
-}
-
 func InsertFighter(fighter models.Fighter) error {
 	//func to insert fighter into database. (used to create a new fighter in the DB)
-	sqlStatement := "INSERT INTO public.fighter(name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);"
+	sqlStatement := "INSERT INTO public.fighter(first_name, last_name, weight, height, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
+
+	//*** height and weight calculation ***
+	var heightAndWeight = strings.Split(fighter.HeightAndWeight, ",")
+
+	var fheight = heightAndWeight[0]
+	var fweight = heightAndWeight[1]
+
+	//extracting just the integer, removing the "LBS" after
+	fweight = strings.Split(fweight, " ")[0]
+
+	//split the height into feet and inches
+	parts := strings.Split(fheight, "'")
+
+	//trim spaces
+	feet := strings.TrimSpace(parts[0])
+	inches := strings.TrimSpace(parts[1])
+
+	//format as "feet.inches" with leading zeros. Ex: "5' 11" will be stored in the database as a double of "5.11"
+	decimalHeight := fmt.Sprintf("%s.%02s", feet, inches)
+
+	//*** age and birthday calculation ***
+	var birthdateAndAge = fighter.Birthdate
+
+	//spliting the string by the space to separate date and age
+	bDayParts := strings.Split(birthdateAndAge, " (")
+	dateStr := strings.TrimSpace(bDayParts[0])
+	ageStr := strings.TrimSuffix(bDayParts[1], ")")
+
+	//converting age to int
+	age := 0
+	fmt.Sscanf(ageStr, "%d", &age)
+
+	//converting date string to time.Time
+	//using a dummy date so the formatter knows expected date format
+	date, _ := time.Parse("1/2/2006", dateStr)
 
 	_, err := db.ExecContext(context.Background(), sqlStatement,
-		fighter.Name, fighter.Nickname, fighter.DivisionTitle, fighter.Status,
-		fighter.Hometown, fighter.OctagonDebut, fighter.ImageLink, fighter.Girth, fighter.Stance,
-		fighter.FighterID, fighter.FightingStyle, fighter.Gym, fighter.Age, fighter.Height,
-		fighter.Weight, fighter.Reach, fighter.LegReach)
+		fighter.FirstName, fighter.LastName, fweight, decimalHeight,
+		date.Format("2006-01-02"), age, fighter.Team, fighter.Nickname,
+		fighter.Stance, fighter.WinLossRecord, fighter.TKORecord, fighter.SubRecord)
 
 	if err != nil {
 		return fmt.Errorf("unable to insert fighter: %w", err)
@@ -80,33 +100,33 @@ func BulkInsertFighters(fighters []models.Fighter) error {
 	return nil
 }
 
-func SelectFighter(fId int) (models.Fighter, error) {
-	//func to select a fighter from the database, based on the fighter's fighter_id (Primary Key)
-	//returns a fighter object created using data retrieved from DB (or an error)
+// func SelectFighter(fId int) (models.Fighter, error) {
+// 	//func to select a fighter from the database, based on the fighter's fighter_id (Primary Key)
+// 	//returns a fighter object created using data retrieved from DB (or an error)
 
-	var fighter models.Fighter
+// 	var fighter models.Fighter
 
-	sqlStatement := "SELECT name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach FROM public.fighter WHERE fighter_id = $1;"
+// 	sqlStatement := "SELECT name, nickname, division_title, status, hometown, octagon_debut, image_link, girth, stance, fighter_id, fighting_style, gym, age, height, weight, reach, leg_reach FROM public.fighter WHERE fighter_id = $1;"
 
-	row := db.QueryRowContext(context.Background(), sqlStatement, fId)
+// 	row := db.QueryRowContext(context.Background(), sqlStatement, fId)
 
-	err := row.Scan(&fighter.Name, &fighter.Nickname, &fighter.DivisionTitle, &fighter.Status,
-		&fighter.Hometown, &fighter.OctagonDebut, &fighter.ImageLink, &fighter.Girth,
-		&fighter.Stance, &fighter.FighterID, &fighter.FightingStyle, &fighter.Gym,
-		&fighter.Age, &fighter.Height, &fighter.Weight, &fighter.Reach, &fighter.LegReach)
+// 	err := row.Scan(&fighter.Name, &fighter.Nickname, &fighter.DivisionTitle, &fighter.Status,
+// 		&fighter.Hometown, &fighter.OctagonDebut, &fighter.ImageLink, &fighter.Girth,
+// 		&fighter.Stance, &fighter.FighterID, &fighter.FightingStyle, &fighter.Gym,
+// 		&fighter.Age, &fighter.Height, &fighter.Weight, &fighter.Reach, &fighter.LegReach)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			//error message if no fighter is found for provided fighter id
-			return fighter, fmt.Errorf("No Fighter found with given fighter id of: ", fId)
-		}
-		//other message for other problems
-		return fighter, fmt.Errorf("Error when selecting fighter: ", err)
-	}
+// 	if err != nil {
+// 		if err == sql.ErrNoRows {
+// 			//error message if no fighter is found for provided fighter id
+// 			return fighter, fmt.Errorf("No Fighter found with given fighter id of: ", fId)
+// 		}
+// 		//other message for other problems
+// 		return fighter, fmt.Errorf("Error when selecting fighter: ", err)
+// 	}
 
-	return fighter, nil
+// 	return fighter, nil
 
-}
+// }
 
 // func DeleteFighter(fId int) error(){
 

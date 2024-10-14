@@ -13,96 +13,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type JSONEvent struct {
-	Name     string          `json:"Name"`
-	Date     string          `json:"Date"`
-	Location string          `json:"Location"`
-	Matchups []JSONFightData `json:"matchups"`
-}
+type EventList []models.Event
 
-type JSONFightData struct {
-	Fighter1 string `json:"Fighter1"`
-	Fighter2 string `json:"Fighter2"`
-	Result   string `json:"Result"`
-	Winner   string `json:"Winner"`
-}
-
-type JSONStrikingStats struct {
-	Date        string `json:"date"`
-	Opponent    string `json:"opponent"`
-	Event       string `json:"event"`
-	Result      string `json:"result"`
-	SDblA       string `json:"sdbl_a"`  // Significant Distance Blows Landed/Attempted
-	SDhlA       string `json:"sdhl_a"`  // Significant Head Blows Landed/Attempted
-	SDllA       string `json:"sdll_a"`  // Significant Leg Blows Landed/Attempted
-	TSL         string `json:"tsl"`     // Total Strikes Landed
-	TSA         string `json:"tsa"`     // Total Strikes Attempted
-	SSL         string `json:"ssl"`     // Significant Strikes Landed
-	SSA         string `json:"ssa"`     // Significant Strikes Attempted
-	TSL_TSA     string `json:"tsl_tsa"` // Total Strikes Landed/Attempted
-	KD          string `json:"kd"`      // Knockdowns
-	PercentBody string `json:"percent_body"`
-	PercentHead string `json:"percent_head"`
-	PercentLeg  string `json:"percent_leg"`
-}
-
-type JSONClinchStats struct {
-	Date     string `json:"date"`
-	Opponent string `json:"opponent"`
-	Event    string `json:"event"`
-	Result   string `json:"result"`
-	SCBL     string `json:"scbl"`   // Significant Distance Blows Landed/Attempted
-	SCBA     string `json:"scba"`   // Significant Head Blows Landed/Attempted
-	SCHL     string `json:"schl"`   // Significant Leg Blows Landed/Attempted
-	SCHA     string `json:"scha"`   // Significant Strikes Landed
-	SCLL     string `json:"scll"`   // Significant Strikes Attempted
-	SCLA     string `json:"scla"`   // Significant Strikes Attempted
-	RV       string `json:"rv"`     // Reversal Volumes
-	SR       string `json:"sr"`     // Reversal Volumes
-	TDL      string `json:"tdl"`    // takedowns landed
-	TDA      string `json:"tda"`    // takedowns attempted
-	TDS      string `json:"tds"`    // Takedown slams
-	TK_ACC   string `json:"tk_acc"` // Takedown Accuracy
-}
-
-type JSONGroundStats struct {
-	Date     string `json:"date"`
-	Opponent string `json:"opponent"`
-	Event    string `json:"event"`
-	Result   string `json:"result"`
-	SGBL     string `json:"sgbl"` // Significant Ground Body Strikes Landed/
-	SGBA     string `json:"sgba"` // Significant Ground Body Strikes Attempted
-	SGHL     string `json:"sghl"` // Significant Ground Head Strikes Landed
-	SGHA     string `json:"sgha"` // Significant Ground Head Strikes Attempted
-	SGLL     string `json:"sgll"` // Significant Ground Leg Strikes Landed
-	SGLA     string `json:"sgla"` // Significant Ground Leg Strikes Attempted
-	AD       string `json:"ad"`   // Advances
-	ADTB     string `json:"adtb"` // Advance to back
-	ADHG     string `json:"adhg"` // Advance to half guard
-	ADTM     string `json:"adtm"` // Advance to mount
-	ADTS     string `json:"adts"` // Advance to side control
-	SM       string `json:"sm"`   // Submissions
-}
-
-type JSONFighter struct {
-	FirstName       string              `json:"first_name"`
-	LastName        string              `json:"last_name"`
-	HeightAndWeight string              `json:"height_and_weight"`
-	Birthdate       string              `json:"birthdate"`
-	Team            string              `json:"team"`
-	Nickname        string              `json:"nickname"`
-	Stance          string              `json:"stance"`
-	WinLossRecord   string              `json:"win_loss_record"`
-	TKORecord       string              `json:"tko_record"`
-	SubRecord       string              `json:"sub_record"`
-	StrikingStats   []JSONStrikingStats `json:"striking_stats"` // Array of striking stats
-	ClinchStats     []JSONClinchStats   `json:"clinch_stats"`   // Array of clinch stats
-	GroundStats     []JSONGroundStats   `json:"ground_stats"`   // Array of ground stats
-}
-
-type EventList []JSONEvent
-
-type FighterList []JSONFighter
+type FighterList []models.Fighter
 
 func main() {
 
@@ -112,29 +25,29 @@ func main() {
 	}
 
 	//manually creating a test fighter
-	testfighter := models.Fighter{
-		Name:          "Rhabib Nurmagomedov",
-		Nickname:      "Pebble",
-		DivisionTitle: "Heaviest Weight",
-		Status:        "Active",
-		Hometown:      "Roanoke, Virginia",
-		OctagonDebut:  "Feb 2024",
-		ImageLink:     "exampleimagelink",
-		Girth:         ".01",
-		Stance:        "Mutant",
-		FighterID:     123457,
-		FightingStyle: "Sniffer",
-		Gym:           "MMA Lab",
-		Age:           42,
-		Height:        5,
-		Weight:        290,
-		Reach:         2.0,
-		LegReach:      4.0,
-	}
+	// testfighter := models.Fighter{
+	// 	Name:          "Rhabib Nurmagomedov",
+	// 	Nickname:      "Pebble",
+	// 	DivisionTitle: "Heaviest Weight",
+	// 	Status:        "Active",
+	// 	Hometown:      "Roanoke, Virginia",
+	// 	OctagonDebut:  "Feb 2024",
+	// 	ImageLink:     "exampleimagelink",
+	// 	Girth:         ".01",
+	// 	Stance:        "Mutant",
+	// 	FighterID:     123457,
+	// 	FightingStyle: "Sniffer",
+	// 	Gym:           "MMA Lab",
+	// 	Age:           42,
+	// 	Height:        5,
+	// 	Weight:        290,
+	// 	Reach:         2.0,
+	// 	LegReach:      4.0,
+	// }
 
 	db.StartDbConnection()
 
-	db.InsertFighter(testfighter)
+	//db.InsertFighter(testfighter)
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
@@ -163,7 +76,7 @@ func addFighter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newFighter JSONFighter
+	var newFighter models.Fighter
 
 	//decoding json and creating temp fighter object / handling bad requests
 	err := json.NewDecoder(r.Body).Decode(&newFighter)
@@ -208,7 +121,7 @@ func addEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var newEvent JSONEvent
+	var newEvent models.Event
 
 	//decoding json and creating temp event object / handling bad requests
 	err := json.NewDecoder(r.Body).Decode(&newEvent)
