@@ -34,7 +34,9 @@ func StartDbConnection() *sql.DB {
 
 func InsertFighter(fighter models.Fighter) error {
 	//func to insert fighter into database. (used to create a new fighter in the DB)
-	sqlStatement := "INSERT INTO public.fighter(first_name, last_name, weight, height, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);"
+	sqlStatement := "INSERT INTO public.fighter(first_name, last_name, weight, height, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING fighter_id;"
+
+	var fighterID int
 
 	//*** height and weight calculation ***
 	var heightAndWeight = strings.Split(fighter.HeightAndWeight, ",")
@@ -71,13 +73,39 @@ func InsertFighter(fighter models.Fighter) error {
 	//using a dummy date so the formatter knows expected date format
 	date, _ := time.Parse("1/2/2006", dateStr)
 
-	_, err := db.ExecContext(context.Background(), sqlStatement,
+	err := db.QueryRowContext(context.Background(), sqlStatement,
 		fighter.FirstName, fighter.LastName, fweight, decimalHeight,
 		date.Format("2006-01-02"), age, fighter.Team, fighter.Nickname,
-		fighter.Stance, fighter.WinLossRecord, fighter.TKORecord, fighter.SubRecord)
+		fighter.Stance, fighter.WinLossRecord, fighter.TKORecord, fighter.SubRecord).Scan(&fighterID)
 
 	if err != nil {
 		return fmt.Errorf("unable to insert fighter: %w", err)
+	}
+	// Insert StrikingStats
+	if err := InsertStrikingStats(fighterID, fighter.StrikingStats); err != nil {
+		return 0, err
+	}
+
+	// Insert ClinchStats
+	if err := InsertClinchStats(fighterID, fighter.ClinchStats); err != nil {
+		return 0, err
+	}
+
+	// Insert GroundStats
+	if err := InsertGroundStats(fighterID, fighter.GroundStats); err != nil {
+		return 0, err
+	}
+
+	return fighterID, nil
+}
+
+func InsertStrikingStats(fighterID int, stats []models.StrikingStats) error {
+	for _, stat := range stats {
+		sqlStatement := "INSERT INTO striking_stats(fighter_id, total_strikes, significant_strikes, strikes_accuracy) VALUES ($1, $2, $3, $4);"
+		_, err := db.ExecContext(context.Background(), sqlStatement, fighterID, stat.TotalStrikes, stat.SignificantStrikes, stat.StrikesAccuracy)
+		if err != nil {
+			return fmt.Errorf("unable to insert striking stats for fighter %d: %w", fighterID, err)
+		}
 	}
 	return nil
 }
