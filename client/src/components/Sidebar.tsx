@@ -1,8 +1,9 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { FighterSearch } from "./FighterSearch";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, User, Calendar, Home } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -10,6 +11,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const pathname = usePathname();
+
+  const isActive = (path: string) => pathname === path;
+
   return (
     <div
       className={`h-screen ${
@@ -30,10 +35,35 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           ${isCollapsed ? "w-0 lg:w-full" : "w-full"}
           fixed lg:relative overflow-hidden`}
       >
-        <CardContent className="p-2 h-full overflow-y-auto">
+        <CardContent className="p-4 h-full overflow-y-auto">
           <div className="pt-16 lg:pt-4">
-            <FighterSearch />
-            {/* Add other sidebar components here in the future */}
+            <Link href="/">
+              <Button
+                variant={isActive("/") ? "default" : "outline"}
+                className="w-full justify-start mb-2"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Home
+              </Button>
+            </Link>
+            <Link href="/fighter-search">
+              <Button
+                variant={isActive("/fighter-search") ? "default" : "outline"}
+                className="w-full justify-start mb-2"
+              >
+                <User className="mr-2 h-4 w-4" />
+                Fighter Search
+              </Button>
+            </Link>
+            <Link href="/event-search">
+              <Button
+                variant={isActive("/event-search") ? "default" : "outline"}
+                className="w-full justify-start"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Event Search
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
