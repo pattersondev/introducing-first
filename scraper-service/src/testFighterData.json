@@ -1,0 +1,168 @@
+[
+    {
+      "FirstName": "Jon",
+      "LastName": "Jones",
+      "HeightAndWeight": "6'4\", 248 lbs",
+      "Birthdate": "July 19, 1987",
+      "Team": "Jackson Wink MMA",
+      "Nickname": "Bones",
+      "Stance": "Orthodox",
+      "WinLossRecord": "26-1-0",
+      "TKORecord": "10-0",
+      "SubRecord": "6-0",
+      "Fights": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Ciryl Gane",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "Decision": "KO/TKO",
+          "Rnd": "2",
+          "Time": "3:45"
+        }
+      ],
+      "StrikingStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Ciryl Gane",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SDblA": "45/78",
+          "SDhlA": "30/50",
+          "SDllA": "10/15",
+          "TSL": "85",
+          "TSA": "143",
+          "SSL": "75",
+          "SSA": "120",
+          "TSL_TSA": "59%",
+          "KD": "1",
+          "PercentBody": "15%",
+          "PercentHead": "70%",
+          "PercentLeg": "15%"
+        }
+      ],
+      "ClinchStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Ciryl Gane",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SCBL": "10",
+          "SCBA": "15",
+          "SCHL": "5",
+          "SCHA": "8",
+          "SCLL": "2",
+          "SCLA": "3",
+          "RV": "1",
+          "SR": "2",
+          "TDL": "3",
+          "TDA": "5",
+          "TDS": "1",
+          "TK_ACC": "60%"
+        }
+      ],
+      "GroundStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Ciryl Gane",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SGBL": "15",
+          "SGBA": "20",
+          "SGHL": "10",
+          "SGHA": "15",
+          "SGLL": "5",
+          "SGLA": "7",
+          "AD": "2",
+          "ADTB": "1",
+          "ADHG": "1",
+          "ADTM": "0",
+          "ADTS": "0",
+          "SM": "1"
+        }
+      ]
+    },
+    {
+      "FirstName": "Israel",
+      "LastName": "Adesanya",
+      "HeightAndWeight": "6'4\", 185 lbs",
+      "Birthdate": "July 22, 1989",
+      "Team": "City Kickboxing",
+      "Nickname": "The Last Stylebender",
+      "Stance": "Switch",
+      "WinLossRecord": "23-2-0",
+      "TKORecord": "15-1",
+      "SubRecord": "0-0",
+      "Fights": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Khamzat Chimaev",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "Decision": "Unanimous Decision",
+          "Rnd": "5",
+          "Time": "5:00"
+        }
+      ],
+      "StrikingStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Khamzat Chimaev",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SDblA": "120/200",
+          "SDhlA": "100/150",
+          "SDllA": "15/30",
+          "TSL": "135",
+          "TSA": "230",
+          "SSL": "125",
+          "SSA": "210",
+          "TSL_TSA": "59%",
+          "KD": "0",
+          "PercentBody": "10%",
+          "PercentHead": "80%",
+          "PercentLeg": "10%"
+        }
+      ],
+      "ClinchStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Khamzat Chimaev",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SCBL": "5",
+          "SCBA": "10",
+          "SCHL": "3",
+          "SCHA": "5",
+          "SCLL": "1",
+          "SCLA": "2",
+          "RV": "0",
+          "SR": "1",
+          "TDL": "0",
+          "TDA": "2",
+          "TDS": "0",
+          "TK_ACC": "0%"
+        }
+      ],
+      "GroundStats": [
+        {
+          "Date": "2024-04-13",
+          "Opponent": "Khamzat Chimaev",
+          "Event": "UFC 300: Legacy",
+          "Result": "Win",
+          "SGBL": "5",
+          "SGBA": "8",
+          "SGHL": "3",
+          "SGHA": "5",
+          "SGLL": "1",
+          "SGLA": "2",
+          "AD": "1",
+          "ADTB": "0",
+          "ADHG": "1",
+          "ADTM": "0",
+          "ADTS": "0",
+          "SM": "0"
+        }
+      ]
+    }
+  ]

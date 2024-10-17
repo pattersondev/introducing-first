@@ -1,0 +1,40 @@
+[
+    {
+      "Name": "UFC 300: Legacy",
+      "Date": "2024-04-13",
+      "Location": "T-Mobile Arena, Las Vegas, NV",
+      "Matchups": [
+        {
+          "Fighter1": "Jon Jones",
+          "Fighter2": "Ciryl Gane",
+          "Result": "KO/TKO",
+          "Winner": "Jon Jones"
+        },
+        {
+          "Fighter1": "Israel Adesanya",
+          "Fighter2": "Khamzat Chimaev",
+          "Result": "Decision",
+          "Winner": "Israel Adesanya"
+        }
+      ]
+    },
+    {
+      "Name": "UFC Fight Night: Rising Stars",
+      "Date": "2024-05-18",
+      "Location": "UFC APEX, Las Vegas, NV",
+      "Matchups": [
+        {
+          "Fighter1": "Paddy Pimblett",
+          "Fighter2": "Tony Ferguson",
+          "Result": "Submission",
+          "Winner": "Paddy Pimblett"
+        },
+        {
+          "Fighter1": "Erin Blanchfield",
+          "Fighter2": "Manon Fiorot",
+          "Result": "",
+          "Winner": ""
+        }
+      ]
+    }
+  ]
