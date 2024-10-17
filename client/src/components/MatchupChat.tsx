@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
 
 interface ChatMessage {
   id: number;
@@ -24,8 +23,7 @@ interface MatchupChatProps {
 }
 
 export function MatchupChat({ matchups }: MatchupChatProps) {
-  const [activeTabs, setActiveTabs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
   const [chats, setChats] = useState<Record<string, ChatMessage[]>>({});
   const [inputMessage, setInputMessage] = useState("");
   const [availableMatchups, setAvailableMatchups] = useState<string[]>(
@@ -33,25 +31,15 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
   );
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const handleAddTab = (value: string) => {
-    if (!activeTabs.includes(value)) {
-      setActiveTabs([...activeTabs, value]);
-      setActiveTab(value);
-      setAvailableMatchups(availableMatchups.filter((m) => m !== value));
-    }
-  };
-
-  const handleRemoveTab = (tab: string) => {
-    const newActiveTabs = activeTabs.filter((t) => t !== tab);
-    setActiveTabs(newActiveTabs);
-    setAvailableMatchups([...availableMatchups, tab].sort());
-    if (activeTab === tab) {
-      setActiveTab(newActiveTabs[newActiveTabs.length - 1] || null);
+  const handleChatSelect = (value: string) => {
+    setActiveChat(value);
+    if (!chats[value]) {
+      setChats((prevChats) => ({ ...prevChats, [value]: [] }));
     }
   };
 
   const handleSendMessage = () => {
-    if (inputMessage.trim() === "" || !activeTab) return;
+    if (inputMessage.trim() === "" || !activeChat) return;
 
     const newMessage: ChatMessage = {
       id: Date.now(),
@@ -62,7 +50,7 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
 
     setChats((prevChats) => ({
       ...prevChats,
-      [activeTab]: [...(prevChats[activeTab] || []), newMessage],
+      [activeChat]: [...(prevChats[activeChat] || []), newMessage],
     }));
 
     setInputMessage("");
@@ -72,14 +60,17 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [chats, activeTab]);
+  }, [chats, activeChat]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-full flex flex-col w-full">
       <div className="mb-4">
-        <Select onValueChange={handleAddTab}>
+        <Select
+          onValueChange={handleChatSelect}
+          value={activeChat || undefined}
+        >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Add a matchup chat" />
+            <SelectValue placeholder="Select a matchup chat" />
           </SelectTrigger>
           <SelectContent>
             {availableMatchups.map((matchup) => (
@@ -90,35 +81,11 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
           </SelectContent>
         </Select>
       </div>
-      {activeTabs.length > 0 ? (
+      {activeChat ? (
         <div className="flex-grow flex flex-col">
-          <div className="flex overflow-x-auto space-x-2 mb-4 pb-2">
-            {activeTabs.map((tab) => (
-              <div
-                key={tab}
-                className={`flex items-center bg-gray-800 rounded-md cursor-pointer ${
-                  activeTab === tab ? "ring-2 ring-blue-500" : ""
-                }`}
-                onClick={() => setActiveTab(tab)}
-              >
-                <span className="px-2 py-1 text-xs">{tab}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveTab(tab);
-                  }}
-                  className="ml-1 p-1"
-                >
-                  <X size={12} />
-                </Button>
-              </div>
-            ))}
-          </div>
           <ScrollArea className="flex-grow w-full rounded border border-gray-800 p-4 mb-4 h-[400px]">
             <div ref={scrollAreaRef} className="space-y-2">
-              {chats[activeTab || ""]?.map((message) => (
+              {chats[activeChat]?.map((message) => (
                 <div key={message.id} className="mb-2">
                   <span className="font-bold">{message.user}: </span>
                   <span>{message.message}</span>
@@ -144,7 +111,7 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
         </div>
       ) : (
         <div className="flex-grow flex items-center justify-center text-gray-500">
-          No active chats. Add a matchup to start chatting.
+          Select a matchup to start chatting.
         </div>
       )}
     </div>
