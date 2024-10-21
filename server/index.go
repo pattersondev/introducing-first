@@ -55,6 +55,8 @@ func main() {
 	http.HandleFunc("/fighters/create", addFighters)
 	http.HandleFunc("/event/create", addEvent)
 	http.HandleFunc("/events/create", addEvents)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/register", registerHandler)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -66,6 +68,24 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 func handleHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, World!")
+}
+
+func registerHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	//registration logic WIP
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	//login logic WIP
 }
 
 func addFighter(w http.ResponseWriter, r *http.Request) {
