@@ -2,8 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
 
 dotenv.config();
 
@@ -154,26 +152,6 @@ async function processFighter(fighter: any) {
   }
 }
 
-async function initializeDatabase() {
-  const client = await pool.connect();
-  try {
-    const sqlFile = path.join(__dirname, 'database.sql');
-    const sqlContent = fs.readFileSync(sqlFile, 'utf8');
-    await client.query(sqlContent);
-    console.log('Database schema initialized successfully');
-  } catch (error) {
-    console.error('Error initializing database schema:', error);
-  } finally {
-    client.release();
-  }
-}
-
-// Initialize the database before starting the server
-initializeDatabase().then(() => {
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
-}).catch(error => {
-  console.error('Failed to initialize database:', error);
-  process.exit(1);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
