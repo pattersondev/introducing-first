@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import crypto from 'crypto';
@@ -25,7 +25,7 @@ function generateId(...data: string[]): string {
   return hash.digest('hex');
 }
 
-app.post('/api/events', async (req, res) => {
+app.post('/api/events', async (req: Request, res: Response) => {
   const events = req.body;
   try {
     for (const event of events) {
@@ -38,7 +38,7 @@ app.post('/api/events', async (req, res) => {
   }
 });
 
-app.post('/api/fighters', async (req, res) => {
+app.post('/api/fighters', async (req: Request, res: Response) => {
   const fighters = req.body;
   try {
     for (const fighter of fighters) {
