@@ -157,6 +157,6 @@ async function processFighter(fighter: any) {
   }
 }
 
-app.listen(port, () => {
+app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
