@@ -1,11 +1,11 @@
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     event_id VARCHAR(32) PRIMARY KEY,
     name VARCHAR(255),
     date DATE,
     location VARCHAR(255)
 );
 
-CREATE TABLE matchups (
+CREATE TABLE IF NOT EXISTS matchups (
     matchup_id VARCHAR(32) PRIMARY KEY,
     event_id VARCHAR(32) REFERENCES events(event_id),
     fighter1_id VARCHAR(32),
@@ -14,7 +14,7 @@ CREATE TABLE matchups (
     winner VARCHAR(255)
 );
 
-CREATE TABLE fighters (
+CREATE TABLE IF NOT EXISTS fighters (
     fighter_id VARCHAR(32) PRIMARY KEY,
     first_name VARCHAR(255),
     last_name VARCHAR(255),
@@ -28,7 +28,7 @@ CREATE TABLE fighters (
     sub_record VARCHAR(255)
 );
 
-CREATE TABLE fights (
+CREATE TABLE IF NOT EXISTS fights (
     fight_id VARCHAR(32) PRIMARY KEY,
     matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
@@ -41,9 +41,10 @@ CREATE TABLE fights (
     time VARCHAR(255)
 );
 
-CREATE TABLE striking_stats (
+CREATE TABLE IF NOT EXISTS striking_stats (
     stat_id VARCHAR(32) PRIMARY KEY,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    date VARCHAR(255),
     opponent VARCHAR(255),
     event VARCHAR(255),
     result VARCHAR(255),
@@ -61,9 +62,10 @@ CREATE TABLE striking_stats (
     percent_leg VARCHAR(255)
 );
 
-CREATE TABLE clinch_stats (
+CREATE TABLE IF NOT EXISTS clinch_stats (
     stat_id VARCHAR(32) PRIMARY KEY,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    date VARCHAR(255),
     opponent VARCHAR(255),
     event VARCHAR(255),
     result VARCHAR(255),
@@ -81,14 +83,15 @@ CREATE TABLE clinch_stats (
     tk_acc VARCHAR(255)
 );
 
-CREATE TABLE ground_stats (
+CREATE TABLE IF NOT EXISTS ground_stats (
     stat_id VARCHAR(32) PRIMARY KEY,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    date VARCHAR(255),
     opponent VARCHAR(255),
     event VARCHAR(255),
     result VARCHAR(255),
-    sgb VARCHAR(255),
-    sgb VARCHAR(255),
+    sgbl VARCHAR(255),
+    sgba VARCHAR(255),
     sghl VARCHAR(255),
     sgha VARCHAR(255),
     sgll VARCHAR(255),
