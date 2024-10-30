@@ -6,7 +6,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node", "express", "cors", "pg"]
   },
   "include": ["src/**/*"]
 }
