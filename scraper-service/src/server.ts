@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import crypto from 'crypto';
+import cors from 'cors';
 
 dotenv.config();
 
@@ -11,6 +12,10 @@ const port = process.env.PORT || 3000;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+app.use(cors({
+  methods: ['GET', 'POST'], // Specify allowed methods
+}));
 
 app.use(express.json());
 
