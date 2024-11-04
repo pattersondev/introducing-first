@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { Pool } from 'pg';
 import crypto from 'crypto';
 import cors from 'cors';
+import { setupAnalyticsRoutes } from './routes/analytics-routes';
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.use('/api/analytics', setupAnalyticsRoutes(pool));
 
 function generateId(...data: (string | object)[]): string {
   console.log('Generating ID for:', data);
