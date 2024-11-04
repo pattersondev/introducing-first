@@ -173,30 +173,44 @@ app.post('/api/events', async (req: Request, res: Response) => {
 
 app.post('/api/fighters', async (req: Request, res: Response) => {
   try {
-    console.log('Received fighter data:', typeof req.body, Array.isArray(req.body));
-    
-    const fighters = req.body;
-    if (!Array.isArray(fighters)) {
-      // If a single fighter is sent, wrap it in an array
-      if (typeof fighters === 'object' && fighters !== null) {
-        await processFighter(fighters);
-        res.json({ message: 'Single fighter data processed successfully' });
-        return;
-      }
-      throw new Error(`Invalid data format. Expected array of fighters, got ${typeof fighters}`);
+    console.log('Received request body type:', typeof req.body);
+    console.log('Request body is array:', Array.isArray(req.body));
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+    if (!req.body) {
+      throw new Error('No request body received');
     }
 
-    // Process array of fighters
+    const fighters = Array.isArray(req.body) ? req.body : [req.body];
+    
+    if (fighters.length === 0) {
+      throw new Error('Empty fighters array received');
+    }
+
+    // Validate each fighter object
+    fighters.forEach((fighter, index) => {
+      if (!fighter.FirstName || !fighter.LastName) {
+        throw new Error(`Invalid fighter data at index ${index}: missing required fields`);
+      }
+    });
+
+    // Process fighters
     for (const fighter of fighters) {
       await processFighter(fighter);
     }
-    res.json({ message: 'Fighter data processed successfully' });
+
+    res.json({ 
+      message: 'Fighter data processed successfully',
+      processedCount: fighters.length
+    });
   } catch (error) {
     console.error('Error processing fighters:', error);
     res.status(500).json({ 
       error: 'Error processing fighters',
       details: error instanceof Error ? error.message : String(error),
-      receivedData: req.body 
+      receivedData: req.body,
+      receivedType: typeof req.body,
+      isArray: Array.isArray(req.body)
     });
   }
 });
