@@ -2,7 +2,7 @@
 
 ## About
 
-UFC Fight Predictor is a cutting-edge web application designed to provide comprehensive data and insights for UFC fight enthusiasts and bettors. Our goal is to offer the most accurate and up-to-date information to help users make informed decisions about UFC fights.
+Introducing First is a cutting-edge web application designed to provide comprehensive data and insights for UFC fight enthusiasts and bettors. Our goal is to offer the most accurate and up-to-date information to help users make informed decisions about UFC fights.
 
 ## Features
 
