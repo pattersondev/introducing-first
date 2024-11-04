@@ -172,15 +172,32 @@ app.post('/api/events', async (req: Request, res: Response) => {
 });
 
 app.post('/api/fighters', async (req: Request, res: Response) => {
-  const fighters = req.body;
   try {
+    console.log('Received fighter data:', typeof req.body, Array.isArray(req.body));
+    
+    const fighters = req.body;
+    if (!Array.isArray(fighters)) {
+      // If a single fighter is sent, wrap it in an array
+      if (typeof fighters === 'object' && fighters !== null) {
+        await processFighter(fighters);
+        res.json({ message: 'Single fighter data processed successfully' });
+        return;
+      }
+      throw new Error(`Invalid data format. Expected array of fighters, got ${typeof fighters}`);
+    }
+
+    // Process array of fighters
     for (const fighter of fighters) {
       await processFighter(fighter);
     }
     res.json({ message: 'Fighter data processed successfully' });
   } catch (error) {
     console.error('Error processing fighters:', error);
-    res.status(500).json({ error: 'Error processing fighters' });
+    res.status(500).json({ 
+      error: 'Error processing fighters',
+      details: error instanceof Error ? error.message : String(error),
+      receivedData: req.body 
+    });
   }
 });
 
