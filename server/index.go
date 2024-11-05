@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,9 +10,22 @@ import (
 	"server/db"
 	"server/models"
 
+	"crypto/rand"
+	"time"
+
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// users array map to act as DB while setting functions up. Remove when standalone users DB is created
+var users = map[string]Login{}
+
+type Login struct {
+	HashedPassword string
+	SessionToken   string
+	CSRFToken      string
+}
 
 type EventList []models.Event
 
@@ -55,19 +69,33 @@ func main() {
 	http.HandleFunc("/fighters/create", addFighters)
 	http.HandleFunc("/event/create", addEvent)
 	http.HandleFunc("/events/create", addEvents)
+
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/register", registerHandler)
+	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/protected", protectedHandler)
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the Go backend!")
+func generateToken(length int) string {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		log.Fatalf("Failed to generate token: %v", err)
+	}
+	return base64.URLEncoding.EncodeToString(bytes)
 }
 
-func handleHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, World!")
+func hashPassword(password string) (string, error) {
+	//Hash the password with cost factor of 10
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	return string(bytes), err
+}
+
+func checkPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -75,6 +103,28 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
 		return
 	}
+
+	//receive username and password and do basic length check
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+	if len(username) < 8 || len(password) < 8 {
+		er := http.StatusNotAcceptable
+		http.Error(w, "Invalid Username/Password", er)
+		return
+	}
+
+	if _, ok := users[username]; ok {
+		er := http.StatusConflict
+		http.Error(w, "User already exists", er)
+		return
+	}
+
+	hp, _ := hashPassword(password)
+	users[username] = Login{
+		HashedPassword: hp,
+	}
+
+	fmt.Fprintln(w, "User registered successfully!")
 
 	//registration logic WIP
 }
@@ -85,7 +135,72 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//login logic WIP
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	user, ok := users[username]
+	if !ok || !checkPasswordHash(password, user.HashedPassword) {
+		er := http.StatusUnauthorized
+		http.Error(w, "Invalid username or password", er)
+		return
+	}
+
+	//generate session and csrf token
+	sessionToken := generateToken(32)
+	csrfToken := generateToken(32)
+
+	//set session token in cookie
+	//expires within 24 hours of generation
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+	})
+
+	//set csrf token in cookie
+	//expires within 24 hours of generation
+	http.SetCookie(w, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: false, //client needs to be able to access
+	})
+
+	//store tokens in the "database"
+	user.SessionToken = sessionToken
+	user.CSRFToken = csrfToken
+	users[username] = user
+
+	fmt.Fprintf(w, "Login Successful!")
+
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	//logout logic WIP
+}
+
+func protectedHandler(w http.ResponseWriter, r *http.Request) {
+	//test protected endpoint to see if only logged in users can access this one
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+}
+
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Welcome to the Go backend!")
+}
+
+func handleHello(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello, World!")
 }
 
 func addFighter(w http.ResponseWriter, r *http.Request) {
