@@ -15,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MMA Stats App",
-  description: "View MMA event stats and matchups",
+  title: "Introducing First",
+  description: "Advanced MMA Stats and Predictions",
 };
 
 export default function RootLayout({

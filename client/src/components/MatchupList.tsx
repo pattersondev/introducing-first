@@ -1,7 +1,6 @@
-import { Matchup } from "@/types";
+import { Matchup } from "@/types/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProbabilityBar } from "./ProbabilityBar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -41,31 +40,20 @@ export function MatchupList({
     return [fighter1Prob, fighter2Prob];
   };
 
-  const content = isLoading ? (
+  const content = (
     <div className="space-y-4 px-6">
-      {[...Array(5)].map((_, i) => (
-        <Card key={i} className="bg-gray-800 border-gray-700">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <Skeleton className="h-6 w-1/4 bg-gray-700" />
-              <Skeleton className="h-4 w-8 bg-gray-700" />
-              <Skeleton className="h-6 w-1/4 bg-gray-700" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  ) : (
-    <div className="space-y-4 px-6">
-      {matchups.map((matchup, index) => {
+      {matchups.map((matchup) => {
         const [fighter1Prob, fighter2Prob] = calculateWinProbability(
-          matchup.Fighter1,
-          matchup.Fighter2
+          matchup.fighter1_name,
+          matchup.fighter2_name
         );
-        const userVote = votes[matchup.ID];
+        const userVote = votes[matchup.matchup_id];
 
         return (
-          <Card key={index} className="bg-gray-800 border-gray-700">
+          <Card
+            key={matchup.matchup_id}
+            className="bg-gray-800 border-gray-700"
+          >
             <CardContent className="p-4">
               <div className="flex justify-between items-center">
                 <div className="flex-1">
@@ -73,22 +61,23 @@ export function MatchupList({
                     <Avatar className="h-12 w-12 border-2 border-gray-700">
                       <AvatarImage
                         src="/placeholder-fighter.png"
-                        alt={matchup.Fighter1}
+                        alt={matchup.fighter1_name}
                       />
                       <AvatarFallback className="bg-gray-800">
-                        {matchup.Fighter1.split(" ")
+                        {matchup.fighter1_name
+                          ?.split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
                     <p
                       className={`font-semibold ${
-                        matchup.Winner === matchup.Fighter1
+                        matchup.winner === matchup.fighter1_name
                           ? "text-green-400"
                           : "text-white"
                       }`}
                     >
-                      {matchup.Fighter1}
+                      {matchup.fighter1_name}
                     </p>
                   </div>
                   {isEventInFuture(eventDate) && (
@@ -101,15 +90,17 @@ export function MatchupList({
                       </div>
                       <Button
                         variant={
-                          userVote === matchup.Fighter1
+                          userVote === matchup.fighter1_name
                             ? "default"
                             : "secondary"
                         }
                         size="sm"
                         className="mt-2 w-full"
-                        onClick={() => handleVote(matchup.ID, matchup.Fighter1)}
+                        onClick={() =>
+                          handleVote(matchup.matchup_id, matchup.fighter1_name)
+                        }
                       >
-                        {userVote === matchup.Fighter1
+                        {userVote === matchup.fighter1_name
                           ? "My Pick ✓"
                           : "Pick to Win"}
                       </Button>
@@ -123,20 +114,21 @@ export function MatchupList({
                   <div className="flex items-center justify-end gap-2">
                     <p
                       className={`font-semibold ${
-                        matchup.Winner === matchup.Fighter2
+                        matchup.winner === matchup.fighter2_name
                           ? "text-green-400"
                           : "text-white"
                       }`}
                     >
-                      {matchup.Fighter2}
+                      {matchup.fighter2_name}
                     </p>
                     <Avatar className="h-12 w-12 border-2 border-gray-700">
                       <AvatarImage
                         src="/placeholder-fighter.png"
-                        alt={matchup.Fighter2}
+                        alt={matchup.fighter2_name}
                       />
                       <AvatarFallback className="bg-gray-800">
-                        {matchup.Fighter2.split(" ")
+                        {matchup.fighter2_name
+                          ?.split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
@@ -152,15 +144,17 @@ export function MatchupList({
                       </div>
                       <Button
                         variant={
-                          userVote === matchup.Fighter2
+                          userVote === matchup.fighter2_name
                             ? "default"
                             : "secondary"
                         }
                         size="sm"
                         className="mt-2 w-full"
-                        onClick={() => handleVote(matchup.ID, matchup.Fighter2)}
+                        onClick={() =>
+                          handleVote(matchup.matchup_id, matchup.fighter2_name)
+                        }
                       >
-                        {userVote === matchup.Fighter2
+                        {userVote === matchup.fighter2_name
                           ? "My Pick ✓"
                           : "Pick to Win"}
                       </Button>
@@ -168,9 +162,9 @@ export function MatchupList({
                   )}
                 </div>
               </div>
-              {!isEventInFuture(eventDate) && (
+              {!isEventInFuture(eventDate) && matchup.result && (
                 <p className="text-sm text-gray-400 mt-2">
-                  Result: {matchup.Result}
+                  Result: {matchup.result}
                 </p>
               )}
             </CardContent>
