@@ -1,7 +1,14 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, User, Calendar, Home } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  Calendar,
+  Home,
+  Trophy,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -58,10 +65,19 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
             <Link href="/event-search">
               <Button
                 variant={isActive("/event-search") ? "default" : "outline"}
-                className="w-full justify-start"
+                className="w-full justify-start mb-2"
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 Event Search
+              </Button>
+            </Link>
+            <Link href="/leaderboard">
+              <Button
+                variant={isActive("/leaderboard") ? "default" : "outline"}
+                className="w-full justify-start"
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                Leaderboard
               </Button>
             </Link>
           </div>
