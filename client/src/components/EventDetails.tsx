@@ -1,4 +1,4 @@
-import { Event } from "@/types";
+import { Event } from "@/types/api";
 import {
   Card,
   CardHeader,
@@ -20,14 +20,24 @@ export function EventDetails({
   isLoading = false,
   isSidebarCollapsed,
 }: EventDetailsProps) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-8">
       <div className="w-full lg:w-2/3 flex-grow">
         <Card className="bg-gray-900 border-gray-800 h-full">
           <CardHeader>
-            <CardTitle className="text-white">{event.Name}</CardTitle>
+            <CardTitle className="text-white">{event.name}</CardTitle>
             <CardDescription className="text-gray-400">
-              {event.Date} - {event.Location}
+              {formatDate(event.date)} - {event.location}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -35,8 +45,8 @@ export function EventDetails({
               Matchups
             </h3>
             <MatchupList
-              matchups={event.Matchups}
-              eventDate={event.Date}
+              matchups={event.matchups}
+              eventDate={event.date}
               isLoading={isLoading}
             />
           </CardContent>
@@ -48,7 +58,7 @@ export function EventDetails({
             <CardTitle className="text-white">Chat</CardTitle>
           </CardHeader>
           <CardContent>
-            <MatchupChat matchups={event.Matchups} />
+            <MatchupChat matchups={event.matchups} />
           </CardContent>
         </Card>
       </div>

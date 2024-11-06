@@ -46,17 +46,27 @@ export class EventService {
     try {
       const result = await client.query(`
         SELECT 
-          e.event_id, e.name, e.date, e.location,
-          json_agg(json_build_object(
-            'matchup_id', m.matchup_id,
-            'fighter1_id', m.fighter1_id,
-            'fighter2_id', m.fighter2_id,
-            'result', m.result,
-            'winner', m.winner
-          )) AS matchups
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          json_agg(
+            json_build_object(
+              'matchup_id', m.matchup_id,
+              'fighter1_id', m.fighter1_id,
+              'fighter2_id', m.fighter2_id,
+              'fighter1_name', CONCAT(f1.first_name, ' ', f1.last_name),
+              'fighter2_name', CONCAT(f2.first_name, ' ', f2.last_name),
+              'result', m.result,
+              'winner', m.winner
+            )
+          ) AS matchups
         FROM events e
         LEFT JOIN matchups m ON e.event_id = m.event_id
-        GROUP BY e.event_id
+        LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
+        LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
+        GROUP BY e.event_id, e.name, e.date, e.location
+        ORDER BY e.date DESC
       `);
       return result.rows;
     } finally {

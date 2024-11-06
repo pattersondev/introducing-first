@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Matchup } from "@/types";
+import { Matchup } from "@/types/api";
 import {
   Select,
   SelectContent,
@@ -27,9 +27,16 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
   const [chats, setChats] = useState<Record<string, ChatMessage[]>>({});
   const [inputMessage, setInputMessage] = useState("");
   const [availableMatchups, setAvailableMatchups] = useState<string[]>(
-    matchups.map((m) => `${m.Fighter1} vs ${m.Fighter2}`)
+    matchups.map((m) => `${m.fighter1_name} vs ${m.fighter2_name}`)
   );
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Update available matchups when matchups prop changes
+    setAvailableMatchups(
+      matchups.map((m) => `${m.fighter1_name} vs ${m.fighter2_name}`)
+    );
+  }, [matchups]);
 
   const handleChatSelect = (value: string) => {
     setActiveChat(value);
@@ -87,8 +94,11 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
             <div ref={scrollAreaRef} className="space-y-2">
               {chats[activeChat]?.map((message) => (
                 <div key={message.id} className="mb-2">
-                  <span className="font-bold">{message.user}: </span>
-                  <span>{message.message}</span>
+                  <span className="font-bold text-white">{message.user}: </span>
+                  <span className="text-gray-300">{message.message}</span>
+                  <span className="text-xs text-gray-500 ml-2">
+                    {message.timestamp.toLocaleTimeString()}
+                  </span>
                 </div>
               ))}
             </div>
