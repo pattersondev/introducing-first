@@ -4,6 +4,9 @@ import { Pool } from 'pg';
 import crypto from 'crypto';
 import cors from 'cors';
 import { setupAnalyticsRoutes } from './routes/analytics-routes';
+import { validateApiKey } from './middleware/auth';
+import { limiter } from './middleware/rateLimiter';
+import helmet from 'helmet';
 
 dotenv.config();
 
@@ -14,8 +17,20 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Add security headers
+app.use(helmet());
+
+// Add rate limiting
+// app.use(limiter);
+
+// Add API key validation to all routes
+// app.use('/api', validateApiKey);
+
+// Add CORS with specific origins
 app.use(cors({
+  //origin: ['http://localhost:3000', 'https://antiballsniffer.club'],
   methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'X-API-Key']
 }));
 
 app.use(express.json());
@@ -173,23 +188,18 @@ app.post('/api/events', async (req: Request, res: Response) => {
 
 app.post('/api/fighters', async (req: Request, res: Response) => {
   try {
-    console.log('Received request body type:', typeof req.body);
-    console.log('Request body is array:', Array.isArray(req.body));
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-
+    
     if (!req.body) {
       throw new Error('No request body received');
     }
 
     const fighters = Array.isArray(req.body) ? req.body : [req.body];
     
-    if (fighters.length === 0) {
-      throw new Error('Empty fighters array received');
-    }
-
     // Validate each fighter object
     fighters.forEach((fighter, index) => {
       if (!fighter.FirstName || !fighter.LastName) {
+        console.log('Invalid fighter:', fighter);
         throw new Error(`Invalid fighter data at index ${index}: missing required fields`);
       }
     });
@@ -208,9 +218,7 @@ app.post('/api/fighters', async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: 'Error processing fighters',
       details: error instanceof Error ? error.message : String(error),
-      receivedData: req.body,
-      receivedType: typeof req.body,
-      isArray: Array.isArray(req.body)
+      receivedData: req.body
     });
   }
 });
@@ -279,9 +287,15 @@ async function processEvent(event: any) {
 }
 
 async function processFighter(fighter: any) {
+  console.log('Processing fighter:', JSON.stringify(fighter, null, 2));
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    console.log('Fighter ID inputs:', {
+      firstName: fighter.FirstName,
+      lastName: fighter.LastName,
+      birthdate: fighter.Birthdate
+    });
     const fighterId = generateId(fighter.FirstName || '', fighter.LastName || '', fighter.Birthdate || 'unknown');
     
     // Parse height and weight with default values
