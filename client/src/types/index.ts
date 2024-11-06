@@ -1,8 +1,9 @@
 export interface Matchup {
+  ID: string;
   Fighter1: string;
   Fighter2: string;
-  Result: string;
-  Winner: string;
+  Result?: string;
+  Winner?: string;
 }
 
 export interface Event {

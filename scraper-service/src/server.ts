@@ -4,6 +4,9 @@ import { Pool } from 'pg';
 import crypto from 'crypto';
 import cors from 'cors';
 import { setupAnalyticsRoutes } from './routes/analytics-routes';
+import { validateApiKey } from './middleware/auth';
+import { limiter } from './middleware/rateLimiter';
+import helmet from 'helmet';
 
 dotenv.config();
 
@@ -14,8 +17,20 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// Add security headers
+app.use(helmet());
+
+// Add rate limiting
+// app.use(limiter);
+
+// Add API key validation to all routes
+// app.use('/api', validateApiKey);
+
+// Add CORS with specific origins
 app.use(cors({
+  //origin: ['http://localhost:3000', 'https://antiballsniffer.club'],
   methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'X-API-Key']
 }));
 
 app.use(express.json());
@@ -66,7 +81,9 @@ CREATE TABLE IF NOT EXISTS fighters (
     stance VARCHAR(255),
     win_loss_record VARCHAR(255),
     tko_record VARCHAR(255),
-    sub_record VARCHAR(255)
+    sub_record VARCHAR(255),
+    country VARCHAR(255),
+    reach VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS fights (
@@ -173,23 +190,18 @@ app.post('/api/events', async (req: Request, res: Response) => {
 
 app.post('/api/fighters', async (req: Request, res: Response) => {
   try {
-    console.log('Received request body type:', typeof req.body);
-    console.log('Request body is array:', Array.isArray(req.body));
     console.log('Request body:', JSON.stringify(req.body, null, 2));
-
+    
     if (!req.body) {
       throw new Error('No request body received');
     }
 
     const fighters = Array.isArray(req.body) ? req.body : [req.body];
     
-    if (fighters.length === 0) {
-      throw new Error('Empty fighters array received');
-    }
-
     // Validate each fighter object
     fighters.forEach((fighter, index) => {
       if (!fighter.FirstName || !fighter.LastName) {
+        console.log('Invalid fighter:', fighter);
         throw new Error(`Invalid fighter data at index ${index}: missing required fields`);
       }
     });
@@ -208,9 +220,7 @@ app.post('/api/fighters', async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: 'Error processing fighters',
       details: error instanceof Error ? error.message : String(error),
-      receivedData: req.body,
-      receivedType: typeof req.body,
-      isArray: Array.isArray(req.body)
+      receivedData: req.body
     });
   }
 });
@@ -279,10 +289,16 @@ async function processEvent(event: any) {
 }
 
 async function processFighter(fighter: any) {
+  console.log('Processing fighter:', JSON.stringify(fighter, null, 2));
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const fighterId = generateId(fighter.FirstName, fighter.LastName, fighter.Birthdate || 'unknown');
+    console.log('Fighter ID inputs:', {
+      firstName: fighter.FirstName,
+      lastName: fighter.LastName,
+      birthdate: fighter.Birthdate
+    });
+    const fighterId = generateId(fighter.FirstName || '', fighter.LastName || '', fighter.Birthdate || 'unknown');
     
     // Parse height and weight with default values
     let heightInInches = 0;
@@ -303,41 +319,49 @@ async function processFighter(fighter: any) {
       }
     }
 
-    // Calculate age from birthdate with default value
+    // Parse birthdate and calculate age
     let age = 0;
-    let birthdate = new Date();
+    let birthdate: Date | null = null;
+    
     if (fighter.Birthdate) {
       try {
         birthdate = new Date(fighter.Birthdate);
-        const today = new Date();
-        age = today.getFullYear() - birthdate.getFullYear();
-        const monthDiff = today.getMonth() - birthdate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-          age--;
+        if (!isNaN(birthdate.getTime())) {  // Check if date is valid
+          const today = new Date();
+          age = today.getFullYear() - birthdate.getFullYear();
+          const monthDiff = today.getMonth() - birthdate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+            age--;
+          }
+        } else {
+          birthdate = null;
         }
       } catch (e) {
         console.warn('Error calculating age:', e);
+        birthdate = null;
       }
     }
 
     const fighterExists = await client.query('SELECT 1 FROM fighters WHERE fighter_id = $1', [fighterId]);
     if (fighterExists.rowCount === 0) {
       await client.query(
-        'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
+        'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record, country, reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
         [
           fighterId,
           fighter.FirstName,
           fighter.LastName,
           heightInInches,
           weight,
-          birthdate,
+          birthdate,  // This will be null if invalid
           age,
           fighter.Team || '',
           fighter.Nickname || '',
           fighter.Stance || '',
           fighter.WinLossRecord || '0-0-0',
           fighter.TKORecord || '0-0',
-          fighter.SubRecord || '0-0'
+          fighter.SubRecord || '0-0',
+          fighter.Country || '',
+          fighter.Reach || ''
         ]
       );
     }
@@ -345,16 +369,46 @@ async function processFighter(fighter: any) {
     // Process fights if they exist
     if (fighter.Fights && Array.isArray(fighter.Fights)) {
       for (const fight of fighter.Fights) {
-        const fightId = generateId(fighterId, fight.Date, fight.Opponent);
-        const matchupId = generateId(fight.Event, fight.Date, `${fighter.FirstName} ${fighter.LastName}`, fight.Opponent);
-
-        // Ensure the matchup exists before inserting the fight
-        const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
-        if (matchupExists.rowCount && matchupExists.rowCount > 0) {
-          await client.query(
-            'INSERT INTO fights (fight_id, matchup_id, fighter_id, date, opponent, event, result, decision, rnd, time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (fight_id) DO UPDATE SET result = $7, decision = $8, rnd = $9, time = $10',
-            [fightId, matchupId, fighterId, fight.Date, fight.Opponent, fight.Event, fight.Result, fight.Decision, fight.Rnd, fight.Time]
+        if (fight.Date && fight.Opponent) {
+          const fightId = generateId(fighterId, fight.Date || '', fight.Opponent || '');
+          const matchupId = generateId(
+            fight.Event || '', 
+            fight.Date || '', 
+            `${fighter.FirstName || ''} ${fighter.LastName || ''}`,
+            fight.Opponent || ''
           );
+
+          // Parse fight date
+          let fightDate: Date | null = null;
+          try {
+            fightDate = new Date(fight.Date);
+            if (isNaN(fightDate.getTime())) {
+              fightDate = null;
+            }
+          } catch (e) {
+            console.warn('Error parsing fight date:', e);
+            fightDate = null;
+          }
+
+          // Ensure the matchup exists before inserting the fight
+          const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
+          if (matchupExists.rowCount && matchupExists.rowCount > 0) {
+            await client.query(
+              'INSERT INTO fights (fight_id, matchup_id, fighter_id, date, opponent, event, result, decision, rnd, time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (fight_id) DO UPDATE SET result = $7, decision = $8, rnd = $9, time = $10',
+              [
+                fightId,
+                matchupId,
+                fighterId,
+                fightDate,
+                fight.Opponent || '',
+                fight.Event || '',
+                fight.Result || '',
+                fight.Decision || '',
+                parseInt(fight.Rnd) || null,
+                fight.Time || ''
+              ]
+            );
+          }
         }
       }
     }
@@ -362,130 +416,148 @@ async function processFighter(fighter: any) {
     // Process striking stats if they exist
     if (fighter.StrikingStats && Array.isArray(fighter.StrikingStats)) {
       for (const stat of fighter.StrikingStats) {
-        const statId = generateId(fighterId, stat.Date, stat.Opponent, 'striking');
-        await client.query(
-          `INSERT INTO striking_stats (
-            striking_stat_id, fighter_id, opponent, event, result,
-            sdbl_a, sdhl_a, sdll_a, tsl, tsa, ssl, ssa,
-            tsl_tsa_perc, kd, body_perc, head_perc, leg_perc
-          ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-          ON CONFLICT (striking_stat_id) 
-          DO UPDATE SET
-            result = $5,
-            sdbl_a = $6,
-            sdhl_a = $7,
-            sdll_a = $8,
-            tsl = $9,
-            tsa = $10,
-            ssl = $11,
-            ssa = $12,
-            tsl_tsa_perc = $13,
-            kd = $14,
-            body_perc = $15,
-            head_perc = $16,
-            leg_perc = $17`,
-          [
-            statId, fighterId, stat.Opponent, stat.Event, stat.Result,
-            stat.SDblA, stat.SDhlA, stat.SDllA,
-            parseInt(stat.TSL), parseInt(stat.TSA),
-            parseInt(stat.SSL), parseInt(stat.SSA),
-            parseFloat(stat.TSL_TSA.replace('%', '')) / 100,
-            parseInt(stat.KD),
-            parseFloat(stat.PercentBody.replace('%', '')) / 100,
-            parseFloat(stat.PercentHead.replace('%', '')) / 100,
-            parseFloat(stat.PercentLeg.replace('%', '')) / 100
-          ]
-        );
+        if (stat.Date && stat.Opponent) {
+          const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'striking');
+          
+          // Parse stat date
+          let statDate: Date | null = null;
+          try {
+            statDate = new Date(stat.Date);
+            if (isNaN(statDate.getTime())) {
+              statDate = null;
+            }
+          } catch (e) {
+            console.warn('Error parsing stat date:', e);
+            statDate = null;
+          }
+
+          await client.query(
+            `INSERT INTO striking_stats (
+              striking_stat_id, fighter_id, opponent, event, result,
+              sdbl_a, sdhl_a, sdll_a, tsl, tsa, ssl, ssa,
+              tsl_tsa_perc, kd, body_perc, head_perc, leg_perc
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT (striking_stat_id) 
+            DO UPDATE SET
+              result = $5, sdbl_a = $6, sdhl_a = $7, sdll_a = $8,
+              tsl = $9, tsa = $10, ssl = $11, ssa = $12,
+              tsl_tsa_perc = $13, kd = $14, body_perc = $15,
+              head_perc = $16, leg_perc = $17`,
+            [
+              statId,
+              fighterId,
+              stat.Opponent || '',
+              stat.Event || '',
+              stat.Result || '',
+              stat.SDblA || '0/0',
+              stat.SDhlA || '0/0',
+              stat.SDllA || '0/0',
+              parseInt(stat.TSL) || 0,
+              parseInt(stat.TSA) || 0,
+              parseInt(stat.SSL) || 0,
+              parseInt(stat.SSA) || 0,
+              parseFloat((stat.TSL_TSA || '0').replace('%', '')) / 100 || 0,
+              parseInt(stat.KD) || 0,
+              parseFloat((stat.PercentBody || '0').replace('%', '')) / 100 || 0,
+              parseFloat((stat.PercentHead || '0').replace('%', '')) / 100 || 0,
+              parseFloat((stat.PercentLeg || '0').replace('%', '')) / 100 || 0
+            ]
+          );
+        }
       }
     }
 
     // Process clinch stats if they exist
     if (fighter.ClinchStats && Array.isArray(fighter.ClinchStats)) {
       for (const stat of fighter.ClinchStats) {
-        const statId = generateId(fighterId, stat.Date, stat.Opponent, 'clinch');
-        await client.query(
-          `INSERT INTO clinch_stats (
-            clinch_stat_id, fighter_id, opponent, event, result,
-            scbl, scba, schl, scha, scll, scla,
-            rv, sr, tdl, tda, tds, tk_acc_perc
-          ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-          ON CONFLICT (clinch_stat_id)
-          DO UPDATE SET
-            result = $5,
-            scbl = $6,
-            scba = $7,
-            schl = $8,
-            scha = $9,
-            scll = $10,
-            scla = $11,
-            rv = $12,
-            sr = $13,
-            tdl = $14,
-            tda = $15,
-            tds = $16,
-            tk_acc_perc = $17`,
-          [
-            statId, fighterId, stat.Opponent, stat.Event, stat.Result,
-            parseInt(stat.SCBL), parseInt(stat.SCBA),
-            parseInt(stat.SCHL), parseInt(stat.SCHA),
-            parseInt(stat.SCLL), parseInt(stat.SCLA),
-            parseInt(stat.RV), parseFloat(stat.SR),
-            parseInt(stat.TDL), parseInt(stat.TDA),
-            parseInt(stat.TDS),
-            parseFloat(stat.TK_ACC.replace('%', '')) / 100
-          ]
-        );
+        if (stat.Date && stat.Opponent) {  // Only process if we have required fields
+          const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'clinch');
+          await client.query(
+            `INSERT INTO clinch_stats (
+              clinch_stat_id, fighter_id, opponent, event, result,
+              scbl, scba, schl, scha, scll, scla,
+              rv, sr, tdl, tda, tds, tk_acc_perc
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT (clinch_stat_id)
+            DO UPDATE SET
+              result = $5,
+              scbl = $6,
+              scba = $7,
+              schl = $8,
+              scha = $9,
+              scll = $10,
+              scla = $11,
+              rv = $12,
+              sr = $13,
+              tdl = $14,
+              tda = $15,
+              tds = $16,
+              tk_acc_perc = $17`,
+            [
+              statId, fighterId, stat.Opponent, stat.Event, stat.Result,
+              parseInt(stat.SCBL), parseInt(stat.SCBA),
+              parseInt(stat.SCHL), parseInt(stat.SCHA),
+              parseInt(stat.SCLL), parseInt(stat.SCLA),
+              parseInt(stat.RV), parseFloat(stat.SR),
+              parseInt(stat.TDL), parseInt(stat.TDA),
+              parseInt(stat.TDS),
+              parseFloat(stat.TK_ACC.replace('%', '')) / 100
+            ]
+          );
+        }
       }
     }
 
     // Process ground stats if they exist
     if (fighter.GroundStats && Array.isArray(fighter.GroundStats)) {
       for (const stat of fighter.GroundStats) {
-        const statId = generateId(fighterId, stat.Date, stat.Opponent, 'ground');
-        await client.query(
-          `INSERT INTO ground_stats (
-            ground_stat_id, fighter_id, opponent, event, result, 
-            sgbl, sgba, sghl, sgha, sgll, sgla, 
-            ad, adtb, adhg, adtm, adts, sm
-          ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-          ON CONFLICT (ground_stat_id)
-          DO UPDATE SET
-            result = $5,
-            sgbl = $6,
-            sgba = $7,
-            sghl = $8,
-            sgha = $9,
-            sgll = $10,
-            sgla = $11,
-            ad = $12,
-            adtb = $13,
-            adhg = $14,
-            adtm = $15,
-            adts = $16,
-            sm = $17`,
-          [
-            statId, 
-            fighterId, 
-            stat.Opponent, 
-            stat.Event, 
-            stat.Result,
-            parseInt(stat.SGBL),
-            parseInt(stat.SGBA),
-            parseInt(stat.SGHL),
-            parseInt(stat.SGHA),
-            parseInt(stat.SGLL),
-            parseInt(stat.SGLA),
-            parseInt(stat.AD),
-            parseInt(stat.ADTB),
-            parseInt(stat.ADHG),
-            parseInt(stat.ADTM),
-            parseInt(stat.ADTS),
-            parseInt(stat.SM)
-          ]
-        );
+        if (stat.Date && stat.Opponent) {  // Only process if we have required fields
+          const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'ground');
+          await client.query(
+            `INSERT INTO ground_stats (
+              ground_stat_id, fighter_id, opponent, event, result, 
+              sgbl, sgba, sghl, sgha, sgll, sgla, 
+              ad, adtb, adhg, adtm, adts, sm
+            ) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            ON CONFLICT (ground_stat_id)
+            DO UPDATE SET
+              result = $5,
+              sgbl = $6,
+              sgba = $7,
+              sghl = $8,
+              sgha = $9,
+              sgll = $10,
+              sgla = $11,
+              ad = $12,
+              adtb = $13,
+              adhg = $14,
+              adtm = $15,
+              adts = $16,
+              sm = $17`,
+            [
+              statId, 
+              fighterId, 
+              stat.Opponent, 
+              stat.Event, 
+              stat.Result,
+              parseInt(stat.SGBL),
+              parseInt(stat.SGBA),
+              parseInt(stat.SGHL),
+              parseInt(stat.SGHA),
+              parseInt(stat.SGLL),
+              parseInt(stat.SGLA),
+              parseInt(stat.AD),
+              parseInt(stat.ADTB),
+              parseInt(stat.ADHG),
+              parseInt(stat.ADTM),
+              parseInt(stat.ADTS),
+              parseInt(stat.SM)
+            ]
+          );
+        }
       }
     }
 
