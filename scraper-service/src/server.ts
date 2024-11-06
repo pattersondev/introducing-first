@@ -319,41 +319,49 @@ async function processFighter(fighter: any) {
       }
     }
 
-    // Calculate age from birthdate with default value
+    // Parse birthdate and calculate age
     let age = 0;
-    let birthdate = new Date();
+    let birthdate: Date | null = null;
+    
     if (fighter.Birthdate) {
       try {
         birthdate = new Date(fighter.Birthdate);
-        const today = new Date();
-        age = today.getFullYear() - birthdate.getFullYear();
-        const monthDiff = today.getMonth() - birthdate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
-          age--;
+        if (!isNaN(birthdate.getTime())) {  // Check if date is valid
+          const today = new Date();
+          age = today.getFullYear() - birthdate.getFullYear();
+          const monthDiff = today.getMonth() - birthdate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthdate.getDate())) {
+            age--;
+          }
+        } else {
+          birthdate = null;
         }
       } catch (e) {
         console.warn('Error calculating age:', e);
+        birthdate = null;
       }
     }
 
     const fighterExists = await client.query('SELECT 1 FROM fighters WHERE fighter_id = $1', [fighterId]);
     if (fighterExists.rowCount === 0) {
       await client.query(
-        'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
+        'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record, country, reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
         [
           fighterId,
           fighter.FirstName,
           fighter.LastName,
           heightInInches,
           weight,
-          birthdate,
+          birthdate,  // This will be null if invalid
           age,
           fighter.Team || '',
           fighter.Nickname || '',
           fighter.Stance || '',
           fighter.WinLossRecord || '0-0-0',
           fighter.TKORecord || '0-0',
-          fighter.SubRecord || '0-0'
+          fighter.SubRecord || '0-0',
+          fighter.Country || '',
+          fighter.Reach || ''
         ]
       );
     }
@@ -361,7 +369,7 @@ async function processFighter(fighter: any) {
     // Process fights if they exist
     if (fighter.Fights && Array.isArray(fighter.Fights)) {
       for (const fight of fighter.Fights) {
-        if (fight.Date && fight.Opponent) {  // Only process if we have required fields
+        if (fight.Date && fight.Opponent) {
           const fightId = generateId(fighterId, fight.Date || '', fight.Opponent || '');
           const matchupId = generateId(
             fight.Event || '', 
@@ -369,6 +377,18 @@ async function processFighter(fighter: any) {
             `${fighter.FirstName || ''} ${fighter.LastName || ''}`,
             fight.Opponent || ''
           );
+
+          // Parse fight date
+          let fightDate: Date | null = null;
+          try {
+            fightDate = new Date(fight.Date);
+            if (isNaN(fightDate.getTime())) {
+              fightDate = null;
+            }
+          } catch (e) {
+            console.warn('Error parsing fight date:', e);
+            fightDate = null;
+          }
 
           // Ensure the matchup exists before inserting the fight
           const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
@@ -379,12 +399,12 @@ async function processFighter(fighter: any) {
                 fightId,
                 matchupId,
                 fighterId,
-                fight.Date || null,
+                fightDate,
                 fight.Opponent || '',
                 fight.Event || '',
                 fight.Result || '',
                 fight.Decision || '',
-                fight.Rnd || null,
+                parseInt(fight.Rnd) || null,
                 fight.Time || ''
               ]
             );
@@ -396,8 +416,21 @@ async function processFighter(fighter: any) {
     // Process striking stats if they exist
     if (fighter.StrikingStats && Array.isArray(fighter.StrikingStats)) {
       for (const stat of fighter.StrikingStats) {
-        if (stat.Date && stat.Opponent) {  // Only process if we have required fields
+        if (stat.Date && stat.Opponent) {
           const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'striking');
+          
+          // Parse stat date
+          let statDate: Date | null = null;
+          try {
+            statDate = new Date(stat.Date);
+            if (isNaN(statDate.getTime())) {
+              statDate = null;
+            }
+          } catch (e) {
+            console.warn('Error parsing stat date:', e);
+            statDate = null;
+          }
+
           await client.query(
             `INSERT INTO striking_stats (
               striking_stat_id, fighter_id, opponent, event, result,
@@ -407,29 +440,28 @@ async function processFighter(fighter: any) {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             ON CONFLICT (striking_stat_id) 
             DO UPDATE SET
-              result = $5,
-              sdbl_a = $6,
-              sdhl_a = $7,
-              sdll_a = $8,
-              tsl = $9,
-              tsa = $10,
-              ssl = $11,
-              ssa = $12,
-              tsl_tsa_perc = $13,
-              kd = $14,
-              body_perc = $15,
-              head_perc = $16,
-              leg_perc = $17`,
+              result = $5, sdbl_a = $6, sdhl_a = $7, sdll_a = $8,
+              tsl = $9, tsa = $10, ssl = $11, ssa = $12,
+              tsl_tsa_perc = $13, kd = $14, body_perc = $15,
+              head_perc = $16, leg_perc = $17`,
             [
-              statId, fighterId, stat.Opponent, stat.Event, stat.Result,
-              stat.SDblA, stat.SDhlA, stat.SDllA,
-              parseInt(stat.TSL), parseInt(stat.TSA),
-              parseInt(stat.SSL), parseInt(stat.SSA),
-              parseFloat(stat.TSL_TSA.replace('%', '')) / 100,
-              parseInt(stat.KD),
-              parseFloat(stat.PercentBody.replace('%', '')) / 100,
-              parseFloat(stat.PercentHead.replace('%', '')) / 100,
-              parseFloat(stat.PercentLeg.replace('%', '')) / 100
+              statId,
+              fighterId,
+              stat.Opponent || '',
+              stat.Event || '',
+              stat.Result || '',
+              stat.SDblA || '0/0',
+              stat.SDhlA || '0/0',
+              stat.SDllA || '0/0',
+              parseInt(stat.TSL) || 0,
+              parseInt(stat.TSA) || 0,
+              parseInt(stat.SSL) || 0,
+              parseInt(stat.SSA) || 0,
+              parseFloat((stat.TSL_TSA || '0').replace('%', '')) / 100 || 0,
+              parseInt(stat.KD) || 0,
+              parseFloat((stat.PercentBody || '0').replace('%', '')) / 100 || 0,
+              parseFloat((stat.PercentHead || '0').replace('%', '')) / 100 || 0,
+              parseFloat((stat.PercentLeg || '0').replace('%', '')) / 100 || 0
             ]
           );
         }
