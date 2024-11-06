@@ -81,7 +81,9 @@ CREATE TABLE IF NOT EXISTS fighters (
     stance VARCHAR(255),
     win_loss_record VARCHAR(255),
     tko_record VARCHAR(255),
-    sub_record VARCHAR(255)
+    sub_record VARCHAR(255),
+    country VARCHAR(255),
+    reach VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS fights (
