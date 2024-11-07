@@ -21,5 +21,9 @@ export const FighterService = {
     return apiClient<SearchResponse>(
       `${API_ENDPOINTS.FIGHTERS}/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`
     );
+  },
+
+  async getPopularFighters(limit: number = 10): Promise<ApiResponse<Fighter[]>> {
+    return apiClient<Fighter[]>(`${API_ENDPOINTS.FIGHTERS}/popular?limit=${limit}`);
   }
 }; 
