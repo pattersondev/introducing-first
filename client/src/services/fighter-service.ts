@@ -2,6 +2,10 @@ import { apiClient } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { Fighter, DetailedFighter, ApiResponse } from '@/types/api';
 
+interface PopularFighter extends Fighter {
+  search_count: number;
+}
+
 interface SearchResponse {
   fighters: Fighter[];
   pagination: {
@@ -23,7 +27,7 @@ export const FighterService = {
     );
   },
 
-  async getPopularFighters(limit: number = 10): Promise<ApiResponse<Fighter[]>> {
-    return apiClient<Fighter[]>(`${API_ENDPOINTS.FIGHTERS}/popular?limit=${limit}`);
+  async getPopularFighters(limit: number = 10): Promise<ApiResponse<PopularFighter[]>> {
+    return apiClient<PopularFighter[]>(`${API_ENDPOINTS.FIGHTERS}/popular?limit=${limit}`);
   }
 }; 
