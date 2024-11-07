@@ -20,25 +20,18 @@ export class EventService {
 
       for (const matchup of event.Matchups) {
         const matchupId = generateId(eventId, matchup.Fighter1, matchup.Fighter2);
-        const fighter1Id = generateId(
-          matchup.Fighter1.split(' ')[0] || '',
-          matchup.Fighter1.split(' ').slice(1).join(' ') || '',
-          'unknown'
-        );
-        const fighter2Id = generateId(
-          matchup.Fighter2.split(' ')[0] || '',
-          matchup.Fighter2.split(' ').slice(1).join(' ') || '',
-          'unknown'
-        );
 
         const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
         if (matchupExists.rowCount === 0) {
           await client.query(
-            'INSERT INTO matchups (matchup_id, event_id, fighter1_id, fighter2_id, result, winner) VALUES ($1, $2, $3, $4, $5, $6)',
-            [matchupId, eventId, fighter1Id, fighter2Id, matchup.Result, matchup.Winner]
+            'INSERT INTO matchups (matchup_id, event_id, fighter1_name, fighter2_name, result, winner) VALUES ($1, $2, $3, $4, $5, $6)',
+            [matchupId, eventId, matchup.Fighter1, matchup.Fighter2, matchup.Result, matchup.Winner]
           );
         }
       }
+
+      // Link fighters to matchups after processing the event
+      await this.linkFightersToMatchups(client);
 
       await client.query('COMMIT');
     } catch (e) {
@@ -46,6 +39,42 @@ export class EventService {
       throw e;
     } finally {
       client.release();
+    }
+  }
+
+  async linkFightersToMatchups(client?: any) {
+    const shouldReleaseClient = !client;
+    client = client || await this.pool.connect();
+    
+    try {
+      if (shouldReleaseClient) await client.query('BEGIN');
+
+      // Update fighter1_id
+      await client.query(`
+        UPDATE matchups m
+        SET fighter1_id = f.fighter_id
+        FROM fighters f
+        WHERE 
+          CONCAT(f.first_name, ' ', f.last_name) = m.fighter1_name
+          AND m.fighter1_id IS NULL
+      `);
+
+      // Update fighter2_id
+      await client.query(`
+        UPDATE matchups m
+        SET fighter2_id = f.fighter_id
+        FROM fighters f
+        WHERE 
+          CONCAT(f.first_name, ' ', f.last_name) = m.fighter2_name
+          AND m.fighter2_id IS NULL
+      `);
+
+      if (shouldReleaseClient) await client.query('COMMIT');
+    } catch (e) {
+      if (shouldReleaseClient) await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      if (shouldReleaseClient) client.release();
     }
   }
 
@@ -63,16 +92,14 @@ export class EventService {
               'matchup_id', m.matchup_id,
               'fighter1_id', m.fighter1_id,
               'fighter2_id', m.fighter2_id,
-              'fighter1_name', CONCAT(f1.first_name, ' ', f1.last_name),
-              'fighter2_name', CONCAT(f2.first_name, ' ', f2.last_name),
+              'fighter1_name', m.fighter1_name,
+              'fighter2_name', m.fighter2_name,
               'result', m.result,
               'winner', m.winner
             )
           ) AS matchups
         FROM events e
         LEFT JOIN matchups m ON e.event_id = m.event_id
-        LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
-        LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
         WHERE m.matchup_id IS NOT NULL
         GROUP BY e.event_id, e.name, e.date, e.location
         ORDER BY e.date DESC

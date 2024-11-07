@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS matchups (
     matchup_id VARCHAR(32) PRIMARY KEY,
     event_id VARCHAR(32) REFERENCES events(event_id),
-    fighter1_id VARCHAR(32),
-    fighter2_id VARCHAR(32),
+    fighter1_id VARCHAR(32) NULL,
+    fighter2_id VARCHAR(32) NULL,
+    fighter1_name VARCHAR(255) NOT NULL,
+    fighter2_name VARCHAR(255) NOT NULL,
     result TEXT,
     winner VARCHAR(255)
 );
