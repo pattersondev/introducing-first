@@ -20,6 +20,7 @@ export interface Matchup {
   fighter2_name: string;
   result: string;
   winner: string;
+  display_order: number;
 }
 
 export interface Fighter {
