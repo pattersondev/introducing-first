@@ -40,7 +40,9 @@ export class FighterService {
       
       if (fighter.Birthdate) {
         try {
-          birthdate = new Date(fighter.Birthdate);
+          // Remove age in parentheses if present
+          const birthdateStr = fighter.Birthdate.split('(')[0].trim();
+          birthdate = new Date(birthdateStr);
           if (!isNaN(birthdate.getTime())) {
             const today = new Date();
             age = today.getFullYear() - birthdate.getFullYear();
@@ -79,6 +81,43 @@ export class FighterService {
             fighter.Reach || ''
           ]
         );
+      }
+
+      // Process fights if they exist
+      if (fighter.Fights && Array.isArray(fighter.Fights)) {
+        for (const fight of fighter.Fights) {
+          if (fight.Date && fight.Opponent) {
+            const fightId = generateId(fighterId, fight.Date || '', fight.Opponent || '');
+            
+            // Parse fight date
+            let fightDate: Date | null = null;
+            try {
+              fightDate = new Date(fight.Date);
+              if (isNaN(fightDate.getTime())) {
+                fightDate = null;
+              }
+            } catch (e) {
+              console.warn('Error parsing fight date:', e);
+              fightDate = null;
+            }
+
+            // Insert fight without matchup_id reference
+            await client.query(
+              'INSERT INTO fights (fight_id, fighter_id, date, opponent, event, result, decision, rnd, time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (fight_id) DO UPDATE SET result = $6, decision = $7, rnd = $8, time = $9',
+              [
+                fightId,
+                fighterId,
+                fightDate,
+                fight.Opponent || '',
+                fight.Event || '',
+                fight.Result || '',
+                fight.Decision || '',
+                parseInt(fight.Rnd) || null,
+                fight.Time || ''
+              ]
+            );
+          }
+        }
       }
 
       await this.processFighterStats(client, fighter, fighterId);
@@ -266,5 +305,50 @@ export class FighterService {
         parseInt(stat.SM) || 0
       ]
     );
+  }
+
+  async linkFightsToMatchups() {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Find fights without matchup_id
+      const unlinkedFights = await client.query(`
+        SELECT f.fight_id, f.fighter_id, f.opponent, f.event, f.date
+        FROM fights f
+        WHERE f.matchup_id IS NULL
+      `);
+
+      for (const fight of unlinkedFights.rows) {
+        // Try to find matching matchup
+        const matchup = await client.query(`
+          SELECT m.matchup_id
+          FROM matchups m
+          JOIN events e ON m.event_id = e.event_id
+          WHERE 
+            (
+              (m.fighter1_id = $1 OR m.fighter2_id = $1)
+              AND e.name = $2
+              AND e.date = $3
+            )
+        `, [fight.fighter_id, fight.event, fight.date]);
+
+        if (matchup.rows.length > 0) {
+          // Link the fight to the matchup
+          await client.query(`
+            UPDATE fights
+            SET matchup_id = $1
+            WHERE fight_id = $2
+          `, [matchup.rows[0].matchup_id, fight.fight_id]);
+        }
+      }
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 } 
