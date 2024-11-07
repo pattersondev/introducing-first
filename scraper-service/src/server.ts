@@ -10,6 +10,7 @@ import { setupFighterRoutes } from './routes/fighter-routes';
 import { setupAnalyticsRoutes } from './routes/analytics-routes';
 import { validateApiKey } from './middleware/auth';
 import { limiter } from './middleware/rateLimiter';
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -59,6 +60,17 @@ app.use(express.json());
 app.use('/api/events', setupEventRoutes(eventService));
 app.use('/api/fighters', setupFighterRoutes(fighterService));
 app.use('/api/analytics', setupAnalyticsRoutes(dbService.getPool()));
+
+// Run cleanup at 3 AM every day
+cron.schedule('0 3 * * *', async () => {
+  try {
+    console.log('Running scheduled search history cleanup...');
+    await fighterService.cleanupSearches();
+    console.log('Scheduled cleanup completed successfully');
+  } catch (error) {
+    console.error('Error during scheduled cleanup:', error);
+  }
+});
 
 app.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);

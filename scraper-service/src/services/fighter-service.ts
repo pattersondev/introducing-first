@@ -461,4 +461,78 @@ export class FighterService {
       client.release();
     }
   }
+
+  async trackSearch(fighterId: string) {
+    const client = await this.pool.connect();
+    try {
+      await client.query(`
+        INSERT INTO fighter_searches (fighter_id, search_count, last_searched)
+        VALUES ($1, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (fighter_id) 
+        DO UPDATE SET 
+          search_count = fighter_searches.search_count + 1,
+          last_searched = CURRENT_TIMESTAMP
+      `, [fighterId]);
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPopularFighters(limit: number = 10) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          f.fighter_id,
+          f.first_name,
+          f.last_name,
+          f.nickname,
+          f.team,
+          f.win_loss_record,
+          f.weight,
+          f.height,
+          fs.search_count
+        FROM fighters f
+        JOIN fighter_searches fs ON f.fighter_id = fs.fighter_id
+        ORDER BY fs.search_count DESC, fs.last_searched DESC
+        LIMIT $1
+      `, [limit]);
+
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  async cleanupSearches() {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Delete old searches that haven't been searched in the last 30 days
+      await client.query(`
+        DELETE FROM fighter_searches
+        WHERE last_searched < NOW() - INTERVAL '30 days'
+        AND search_count < 5
+      `);
+
+      // Keep only top 1000 most searched fighters
+      await client.query(`
+        DELETE FROM fighter_searches
+        WHERE fighter_id IN (
+          SELECT fighter_id
+          FROM fighter_searches
+          ORDER BY search_count DESC, last_searched DESC
+          OFFSET 50
+        )
+      `);
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
 } 

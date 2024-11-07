@@ -105,4 +105,12 @@ CREATE TABLE IF NOT EXISTS ground_stats (
     adts INT,
     sm INT
 );
+
+CREATE TABLE IF NOT EXISTS fighter_searches (
+    search_id SERIAL PRIMARY KEY,
+    fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    search_count INT DEFAULT 1,
+    last_searched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(fighter_id)
+);
 `; 

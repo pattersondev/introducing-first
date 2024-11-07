@@ -32,6 +32,10 @@ interface SearchResponse {
   };
 }
 
+interface PopularFighter extends Fighter {
+  search_count: number;
+}
+
 export function FighterSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -40,6 +44,7 @@ export function FighterSearchPage() {
     null
   );
   const [currentPage, setCurrentPage] = useState(1);
+  const [popularFighters, setPopularFighters] = useState<PopularFighter[]>([]);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -68,6 +73,21 @@ export function FighterSearchPage() {
     setCurrentPage(1);
     searchFighters(debouncedSearch, 1);
   }, [debouncedSearch, searchFighters]);
+
+  useEffect(() => {
+    async function loadPopularFighters() {
+      try {
+        const response = await FighterService.getPopularFighters();
+        if (response.data) {
+          setPopularFighters(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading popular fighters:", error);
+      }
+    }
+
+    loadPopularFighters();
+  }, []);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -102,7 +122,7 @@ export function FighterSearchPage() {
                         <Skeleton key={i} className="h-24 w-full bg-gray-700" />
                       ))}
                     </div>
-                  ) : (
+                  ) : searchTerm ? (
                     <div className="space-y-4">
                       {searchResults?.fighters.map((fighter) => (
                         <Link
@@ -134,6 +154,51 @@ export function FighterSearchPage() {
                                       {fighter.weight}lbs
                                     </p>
                                   )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <h2 className="text-xl font-semibold text-white mb-4">
+                        Popular Fighters
+                      </h2>
+                      {popularFighters.map((fighter) => (
+                        <Link
+                          href={`/fighters/${fighter.fighter_id}`}
+                          key={fighter.fighter_id}
+                        >
+                          <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-white">
+                                    {fighter.first_name} {fighter.last_name}
+                                  </h3>
+                                  {fighter.nickname && (
+                                    <p className="text-sm text-gray-400">
+                                      "{fighter.nickname}"
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-gray-400">
+                                    {fighter.team}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-400">
+                                    Record: {fighter.win_loss_record}
+                                  </p>
+                                  {fighter.weight && (
+                                    <p className="text-sm text-gray-400">
+                                      {fighter.weight}lbs
+                                    </p>
+                                  )}
+                                  <p className="text-xs text-gray-500">
+                                    Searched {fighter.search_count} times
+                                  </p>
                                 </div>
                               </div>
                             </CardContent>
