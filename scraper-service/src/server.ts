@@ -28,11 +28,31 @@ dbService.initialize();
 app.use(helmet());
 // app.use(limiter);
 // app.use('/api', validateApiKey);
+
+// Configure CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://www.antiballsniffer.club',
+  'https://antiballsniffer.club',
+  'https://introducing-first.onrender.com'
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://www.antiballsniffer.club/', 'https://introducing-first.onrender.com'],
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'X-API-Key']
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-API-Key', 'Authorization'],
+  credentials: true
 }));
+
 app.use(express.json());
 
 // Routes
