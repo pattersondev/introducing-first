@@ -351,4 +351,51 @@ export class FighterService {
       client.release();
     }
   }
+
+  async searchFighters(query: string, page: number = 1, limit: number = 10) {
+    const client = await this.pool.connect();
+    try {
+      const offset = (page - 1) * limit;
+      
+      // Get total count for pagination
+      const countResult = await client.query(
+        `SELECT COUNT(*) 
+         FROM fighters 
+         WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)`,
+        [`%${query}%`]
+      );
+      
+      const totalCount = parseInt(countResult.rows[0].count);
+
+      // Get paginated results
+      const result = await client.query(
+        `SELECT 
+          fighter_id,
+          first_name,
+          last_name,
+          nickname,
+          team,
+          win_loss_record,
+          weight,
+          height
+         FROM fighters 
+         WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)
+         ORDER BY last_name, first_name
+         LIMIT $2 OFFSET $3`,
+        [`%${query}%`, limit, offset]
+      );
+
+      return {
+        fighters: result.rows,
+        pagination: {
+          total: totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit)
+        }
+      };
+    } finally {
+      client.release();
+    }
+  }
 } 
