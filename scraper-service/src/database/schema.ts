@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS matchups (
     matchup_id VARCHAR(32) PRIMARY KEY,
     event_id VARCHAR(32) REFERENCES events(event_id),
-    fighter1_id VARCHAR(32) NULL,
-    fighter2_id VARCHAR(32) NULL,
+    fighter1_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
+    fighter2_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
     fighter1_name VARCHAR(255) NOT NULL,
     fighter2_name VARCHAR(255) NOT NULL,
     result TEXT,
@@ -115,4 +115,11 @@ CREATE TABLE IF NOT EXISTS fighter_searches (
     last_searched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(fighter_id)
 );
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_fighters_first_name ON fighters(first_name);
+CREATE INDEX IF NOT EXISTS idx_fighters_last_name ON fighters(last_name);
+CREATE INDEX IF NOT EXISTS idx_matchups_fighter1_name ON matchups(fighter1_name);
+CREATE INDEX IF NOT EXISTS idx_matchups_fighter2_name ON matchups(fighter2_name);
+CREATE INDEX IF NOT EXISTS idx_matchups_fighter_ids ON matchups(fighter1_id, fighter2_id);
 `; 
