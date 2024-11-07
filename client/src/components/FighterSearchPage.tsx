@@ -98,6 +98,14 @@ export function FighterSearchPage() {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
+  const handleFighterClick = async (fighterId: string) => {
+    try {
+      await FighterService.trackFighterClick(fighterId);
+    } catch (error) {
+      console.error("Error tracking fighter click:", error);
+    }
+  };
+
   return (
     <div className="flex">
       <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
@@ -128,6 +136,7 @@ export function FighterSearchPage() {
                         <Link
                           href={`/fighters/${fighter.fighter_id}`}
                           key={fighter.fighter_id}
+                          onClick={() => handleFighterClick(fighter.fighter_id)}
                         >
                           <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
                             <CardContent className="p-4">
@@ -170,6 +179,7 @@ export function FighterSearchPage() {
                         <Link
                           href={`/fighters/${fighter.fighter_id}`}
                           key={fighter.fighter_id}
+                          onClick={() => handleFighterClick(fighter.fighter_id)}
                         >
                           <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
                             <CardContent className="p-4">

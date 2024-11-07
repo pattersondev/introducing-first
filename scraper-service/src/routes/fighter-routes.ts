@@ -58,14 +58,20 @@ export function setupFighterRoutes(fighterService: FighterService) {
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const fighter = await fighterService.getFighterById(req.params.id);
-
-      // Track the search
-      await fighterService.trackSearch(req.params.id);
-      
       res.json(fighter);
     } catch (error) {
       console.error('Error fetching fighter:', error);
       res.status(500).json({ error: 'Error fetching fighter details' });
+    }
+  });
+
+  router.post('/:id/track', async (req: Request, res: Response) => {
+    try {
+      await fighterService.trackSearch(req.params.id);
+      res.json({ message: 'Search tracked successfully' });
+    } catch (error) {
+      console.error('Error tracking search:', error);
+      res.status(500).json({ error: 'Error tracking search' });
     }
   });
 

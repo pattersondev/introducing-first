@@ -29,5 +29,11 @@ export const FighterService = {
 
   async getPopularFighters(limit: number = 10): Promise<ApiResponse<PopularFighter[]>> {
     return apiClient<PopularFighter[]>(`${API_ENDPOINTS.FIGHTERS}/popular?limit=${limit}`);
+  },
+
+  async trackFighterClick(fighterId: string): Promise<ApiResponse<void>> {
+    return apiClient<void>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}/track`, {
+      method: 'POST'
+    });
   }
 }; 
