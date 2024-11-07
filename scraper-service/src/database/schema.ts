@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS fighters (
 
 CREATE TABLE IF NOT EXISTS fights (
     fight_id VARCHAR(32) PRIMARY KEY,
-    matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
+    matchup_id VARCHAR(32) REFERENCES matchups(matchup_id) NULL,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
     date DATE,
     opponent VARCHAR(255),
