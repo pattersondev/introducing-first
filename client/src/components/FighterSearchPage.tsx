@@ -9,6 +9,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { FighterService } from "@/services/fighter-service";
 
 interface Fighter {
   fighter_id: string;
@@ -50,13 +51,12 @@ export function FighterSearchPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/fighters/search?q=${encodeURIComponent(
-          query
-        )}&page=${page}&limit=10`
-      );
-      const data = await response.json();
-      setSearchResults(data);
+      const response = await FighterService.searchFighters(query, page);
+      if (response.error) {
+        console.error("Error searching fighters:", response.error);
+      } else if (response.data) {
+        setSearchResults(response.data);
+      }
     } catch (error) {
       console.error("Error searching fighters:", error);
     } finally {
