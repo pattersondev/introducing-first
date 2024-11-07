@@ -60,3 +60,80 @@ export interface FightingStyle {
 }
 
 // ... other analytics interfaces 
+
+export interface Fight {
+  fight_id: string;
+  matchup_id: string | null;
+  date: string;
+  opponent: string;
+  opponent_name: string;
+  event: string;
+  result: string;
+  decision: string;
+  rnd: number;
+  time: string;
+}
+
+export interface StrikingStat {
+  striking_stat_id: string;
+  opponent: string;
+  event: string;
+  result: string;
+  sdbl_a: string;
+  sdhl_a: string;
+  sdll_a: string;
+  tsl: number;
+  tsa: number;
+  ssl: number;
+  ssa: number;
+  tsl_tsa_perc: number;
+  kd: number;
+  body_perc: number;
+  head_perc: number;
+  leg_perc: number;
+}
+
+export interface ClinchStat {
+  clinch_stat_id: string;
+  opponent: string;
+  event: string;
+  result: string;
+  scbl: number;
+  scba: number;
+  schl: number;
+  scha: number;
+  scll: number;
+  scla: number;
+  rv: number;
+  sr: number;
+  tdl: number;
+  tda: number;
+  tds: number;
+  tk_acc_perc: number;
+}
+
+export interface GroundStat {
+  ground_stat_id: string;
+  opponent: string;
+  event: string;
+  result: string;
+  sgbl: number;
+  sgba: number;
+  sghl: number;
+  sgha: number;
+  sgll: number;
+  sgla: number;
+  ad: number;
+  adtb: number;
+  adhg: number;
+  adtm: number;
+  adts: number;
+  sm: number;
+}
+
+export interface DetailedFighter extends Fighter {
+  fights: Fight[];
+  striking_stats: StrikingStat[];
+  clinch_stats: ClinchStat[];
+  ground_stats: GroundStat[];
+}

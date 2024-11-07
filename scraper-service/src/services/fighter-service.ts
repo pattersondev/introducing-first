@@ -398,4 +398,67 @@ export class FighterService {
       client.release();
     }
   }
+
+  async getFighterById(fighterId: string) {
+    const client = await this.pool.connect();
+    try {
+      // Get fighter basic info
+      const fighterResult = await client.query(
+        `SELECT * FROM fighters WHERE fighter_id = $1`,
+        [fighterId]
+      );
+
+      if (fighterResult.rowCount === 0) {
+        return null;
+      }
+
+      const fighter = fighterResult.rows[0];
+
+      // Get fighter's fights
+      const fightsResult = await client.query(
+        `SELECT 
+          f.*,
+          CONCAT(opp.first_name, ' ', opp.last_name) as opponent_name
+         FROM fights f
+         LEFT JOIN fighters opp ON f.opponent = CONCAT(opp.first_name, ' ', opp.last_name)
+         WHERE f.fighter_id = $1
+         ORDER BY f.date DESC`,
+        [fighterId]
+      );
+
+      // Get striking stats
+      const strikingResult = await client.query(
+        `SELECT * FROM striking_stats 
+         WHERE fighter_id = $1 
+         ORDER BY event DESC`,
+        [fighterId]
+      );
+
+      // Get clinch stats
+      const clinchResult = await client.query(
+        `SELECT * FROM clinch_stats 
+         WHERE fighter_id = $1 
+         ORDER BY event DESC`,
+        [fighterId]
+      );
+
+      // Get ground stats
+      const groundResult = await client.query(
+        `SELECT * FROM ground_stats 
+         WHERE fighter_id = $1 
+         ORDER BY event DESC`,
+        [fighterId]
+      );
+
+      return {
+        ...fighter,
+        fights: fightsResult.rows,
+        striking_stats: strikingResult.rows,
+        clinch_stats: clinchResult.rows,
+        ground_stats: groundResult.rows
+      };
+    } finally {
+      client.release();
+    }
+  }
 } 

@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
-import { Fighter, ApiResponse } from '@/types/api';
+import { Fighter, DetailedFighter, ApiResponse } from '@/types/api';
 
 interface SearchResponse {
   fighters: Fighter[];
@@ -13,8 +13,8 @@ interface SearchResponse {
 }
 
 export const FighterService = {
-  async getFighter(fighterId: string): Promise<ApiResponse<Fighter>> {
-    return apiClient<Fighter>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}`);
+  async getFighter(fighterId: string): Promise<ApiResponse<DetailedFighter>> {
+    return apiClient<DetailedFighter>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}`);
   },
 
   async searchFighters(query: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResponse>> {

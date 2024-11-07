@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { FighterService } from '../services/fighter-service';
 
 export function setupFighterRoutes(fighterService: FighterService) {
   const router = Router();
 
-  router.post('/', async (req, res) => {
+  router.post('/', async (req: Request, res: Response) => {
     try {
       console.log('Request body:', JSON.stringify(req.body, null, 2));
       
@@ -41,7 +41,7 @@ export function setupFighterRoutes(fighterService: FighterService) {
     }
   });
 
-  router.get('/search', async (req, res) => {
+  router.get('/search', async (req: Request, res: Response) => {
     try {
       const query = req.query.q as string || '';
       const page = parseInt(req.query.page as string) || 1;
@@ -52,6 +52,16 @@ export function setupFighterRoutes(fighterService: FighterService) {
     } catch (error) {
       console.error('Error searching fighters:', error);
       res.status(500).json({ error: 'Error searching fighters' });
+    }
+  });
+
+  router.get('/:id', async (req: Request, res: Response) => {
+    try {
+      const fighter = await fighterService.getFighterById(req.params.id);
+      res.json(fighter);
+    } catch (error) {
+      console.error('Error fetching fighter:', error);
+      res.status(500).json({ error: 'Error fetching fighter details' });
     }
   });
 
