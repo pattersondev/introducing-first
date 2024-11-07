@@ -5,11 +5,41 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
+import {
+  parseResult,
+  getResultIcon,
+  getResultColor,
+} from "@/utils/fight-utils";
+import { cn } from "@/lib/utils";
 
 interface MatchupListProps {
   matchups: Matchup[];
   eventDate: string;
   isLoading?: boolean;
+}
+
+function ResultDisplay({ result }: { result: string }) {
+  const parsedResult = parseResult(result);
+  const IconComponent = parsedResult.method
+    ? getResultIcon(parsedResult.method)
+    : null;
+  const colorClass = getResultColor(parsedResult.method);
+
+  return (
+    <div className="flex items-center gap-2 mt-4 justify-center border-t border-gray-700 pt-4">
+      {IconComponent && (
+        <div className={cn("flex items-center gap-2", colorClass)}>
+          <IconComponent className="w-5 h-5" />
+          <span className="font-medium">{parsedResult.details}</span>
+          {parsedResult.round && (
+            <span className="text-gray-400 text-sm">
+              (R{parsedResult.round}, {parsedResult.time})
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MatchupList({
@@ -163,9 +193,7 @@ export function MatchupList({
                 </div>
               </div>
               {!isEventInFuture(eventDate) && matchup.result && (
-                <p className="text-sm text-gray-400 mt-2">
-                  Result: {matchup.result}
-                </p>
+                <ResultDisplay result={matchup.result} />
               )}
             </CardContent>
           </Card>
