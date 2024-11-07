@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS matchups (
     fighter1_name VARCHAR(255) NOT NULL,
     fighter2_name VARCHAR(255) NOT NULL,
     result TEXT,
-    winner VARCHAR(255)
+    winner VARCHAR(255),
+    display_order INT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS fighters (

@@ -49,6 +49,10 @@ export function MatchupList({
 }: MatchupListProps) {
   const [votes, setVotes] = useState<Record<string, string>>({});
 
+  const sortedMatchups = [...matchups].sort(
+    (a, b) => a.display_order - b.display_order
+  );
+
   const isEventInFuture = (date: string) => {
     return new Date(date) > new Date();
   };
@@ -72,7 +76,7 @@ export function MatchupList({
 
   const content = (
     <div className="space-y-4 px-6">
-      {matchups.map((matchup) => {
+      {sortedMatchups.map((matchup) => {
         const [fighter1Prob, fighter2Prob] = calculateWinProbability(
           matchup.fighter1_name,
           matchup.fighter2_name

@@ -24,8 +24,8 @@ export class EventService {
         const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
         if (matchupExists.rowCount === 0) {
           await client.query(
-            'INSERT INTO matchups (matchup_id, event_id, fighter1_name, fighter2_name, result, winner) VALUES ($1, $2, $3, $4, $5, $6)',
-            [matchupId, eventId, matchup.Fighter1, matchup.Fighter2, matchup.Result, matchup.Winner]
+            'INSERT INTO matchups (matchup_id, event_id, fighter1_name, fighter2_name, result, winner, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [matchupId, eventId, matchup.Fighter1, matchup.Fighter2, matchup.Result, matchup.Winner, matchup.Order]
           );
         }
       }
@@ -95,8 +95,9 @@ export class EventService {
               'fighter1_name', m.fighter1_name,
               'fighter2_name', m.fighter2_name,
               'result', m.result,
-              'winner', m.winner
-            )
+              'winner', m.winner,
+              'display_order', m.display_order
+            ) ORDER BY m.display_order
           ) AS matchups
         FROM events e
         LEFT JOIN matchups m ON e.event_id = m.event_id
