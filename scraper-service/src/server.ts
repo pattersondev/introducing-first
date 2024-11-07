@@ -29,6 +29,7 @@ app.use(helmet());
 // app.use(limiter);
 // app.use('/api', validateApiKey);
 app.use(cors({
+  origin: ['http://localhost:3000', 'https://www.antiballsniffer.club/', 'https://introducing-first.onrender.com'],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'X-API-Key']
 }));
