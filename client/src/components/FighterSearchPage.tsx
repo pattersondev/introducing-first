@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sidebar } from "@/components/Sidebar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import Link from "next/link";
 import { FighterService } from "@/services/fighter-service";
 
@@ -140,19 +141,31 @@ export function FighterSearchPage() {
                         >
                           <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
                             <CardContent className="p-4">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <h3 className="text-lg font-semibold text-white">
-                                    {fighter.first_name} {fighter.last_name}
-                                  </h3>
-                                  {fighter.nickname && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                  <Avatar className="h-12 w-12 border-2 border-gray-600">
+                                    <AvatarImage
+                                      src="/placeholder-fighter.png"
+                                      alt={`${fighter.first_name} ${fighter.last_name}`}
+                                    />
+                                    <AvatarFallback className="bg-gray-800">
+                                      {fighter.first_name[0]}
+                                      {fighter.last_name[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-white">
+                                      {fighter.first_name} {fighter.last_name}
+                                    </h3>
+                                    {fighter.nickname && (
+                                      <p className="text-sm text-gray-400">
+                                        "{fighter.nickname}"
+                                      </p>
+                                    )}
                                     <p className="text-sm text-gray-400">
-                                      "{fighter.nickname}"
+                                      {fighter.team}
                                     </p>
-                                  )}
-                                  <p className="text-sm text-gray-400">
-                                    {fighter.team}
-                                  </p>
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm text-gray-400">
@@ -183,19 +196,31 @@ export function FighterSearchPage() {
                         >
                           <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
                             <CardContent className="p-4">
-                              <div className="flex justify-between items-center">
-                                <div>
-                                  <h3 className="text-lg font-semibold text-white">
-                                    {fighter.first_name} {fighter.last_name}
-                                  </h3>
-                                  {fighter.nickname && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-4">
+                                  <Avatar className="h-12 w-12 border-2 border-gray-600">
+                                    <AvatarImage
+                                      src="/placeholder-fighter.png"
+                                      alt={`${fighter.first_name} ${fighter.last_name}`}
+                                    />
+                                    <AvatarFallback className="bg-gray-800">
+                                      {fighter.first_name[0]}
+                                      {fighter.last_name[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <h3 className="text-lg font-semibold text-white">
+                                      {fighter.first_name} {fighter.last_name}
+                                    </h3>
+                                    {fighter.nickname && (
+                                      <p className="text-sm text-gray-400">
+                                        "{fighter.nickname}"
+                                      </p>
+                                    )}
                                     <p className="text-sm text-gray-400">
-                                      "{fighter.nickname}"
+                                      {fighter.team}
                                     </p>
-                                  )}
-                                  <p className="text-sm text-gray-400">
-                                    {fighter.team}
-                                  </p>
+                                  </div>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm text-gray-400">
