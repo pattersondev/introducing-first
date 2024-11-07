@@ -20,8 +20,16 @@ export class EventService {
 
       for (const matchup of event.Matchups) {
         const matchupId = generateId(eventId, matchup.Fighter1, matchup.Fighter2);
-        const fighter1Id = generateId(matchup.Fighter1);
-        const fighter2Id = generateId(matchup.Fighter2);
+        const fighter1Id = generateId(
+          matchup.Fighter1.split(' ')[0] || '',
+          matchup.Fighter1.split(' ').slice(1).join(' ') || '',
+          'unknown'
+        );
+        const fighter2Id = generateId(
+          matchup.Fighter2.split(' ')[0] || '',
+          matchup.Fighter2.split(' ').slice(1).join(' ') || '',
+          'unknown'
+        );
 
         const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
         if (matchupExists.rowCount === 0) {
@@ -65,6 +73,7 @@ export class EventService {
         LEFT JOIN matchups m ON e.event_id = m.event_id
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
+        WHERE m.matchup_id IS NOT NULL
         GROUP BY e.event_id, e.name, e.date, e.location
         ORDER BY e.date DESC
       `);
