@@ -55,13 +55,14 @@ export function setupFighterRoutes(fighterService: FighterService) {
     }
   });
 
-  router.get('/:id', async (req: Request, res: Response) => {
+  router.get('/popular', async (req: Request, res: Response) => {
     try {
-      const fighter = await fighterService.getFighterById(req.params.id);
-      res.json(fighter);
+      const limit = parseInt(req.query.limit as string) || 10;
+      const popularFighters = await fighterService.getPopularFighters(limit);
+      res.json(popularFighters);
     } catch (error) {
-      console.error('Error fetching fighter:', error);
-      res.status(500).json({ error: 'Error fetching fighter details' });
+      console.error('Error fetching popular fighters:', error);
+      res.status(500).json({ error: 'Error fetching popular fighters' });
     }
   });
 
@@ -75,14 +76,13 @@ export function setupFighterRoutes(fighterService: FighterService) {
     }
   });
 
-  router.get('/popular', async (req: Request, res: Response) => {
+  router.get('/:id', async (req: Request, res: Response) => {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const popularFighters = await fighterService.getPopularFighters(limit);
-      res.json(popularFighters);
+      const fighter = await fighterService.getFighterById(req.params.id);
+      res.json(fighter);
     } catch (error) {
-      console.error('Error fetching popular fighters:', error);
-      res.status(500).json({ error: 'Error fetching popular fighters' });
+      console.error('Error fetching fighter:', error);
+      res.status(500).json({ error: 'Error fetching fighter details' });
     }
   });
 
