@@ -1,53 +1,77 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sidebar } from "@/components/Sidebar";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
-// Mock fighter data - replace this with actual data from your DB
-const mockFighters = [
-  { name: "Francis Ngannou", league: "PFL" },
-  { name: "Cris Cyborg", league: "Bellator" },
-  { name: "Johnny Eblen", league: "Bellator" },
-  { name: "AJ McKee", league: "PFL" },
-  { name: "Raufeon Stots", league: "Bellator" },
-  { name: "Leah McCourt", league: "Bellator" },
-  { name: "Sara Collins", league: "Bellator" },
-  { name: "Simeon Powell", league: "Bellator" },
-  { name: "Rafael Xavier", league: "Bellator" },
-  { name: "Luke Trainer", league: "Bellator" },
-  { name: "Tim Wilde", league: "Bellator" },
-  { name: "Marc Diakiese", league: "Bellator" },
-  { name: "Jon Jones", league: "UFC" },
-  { name: "Israel Adesanya", league: "UFC" },
-  { name: "Alexander Volkanovski", league: "UFC" },
-];
+interface Fighter {
+  fighter_id: string;
+  first_name: string;
+  last_name: string;
+  nickname: string;
+  team: string;
+  win_loss_record: string;
+  weight: number;
+  height: number;
+}
 
-const leagues = ["All", "UFC", "Bellator", "PFL"];
+interface SearchResponse {
+  fighters: Fighter[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 export function FighterSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLeague, setSelectedLeague] = useState<string>("All");
-  const [searchResults, setSearchResults] = useState<typeof mockFighters>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(
+    null
+  );
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const handleSearch = () => {
-    const results = mockFighters.filter((fighter) => {
-      const nameMatch = fighter.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const leagueMatch =
-        selectedLeague === "All" || fighter.league === selectedLeague;
-      return nameMatch && leagueMatch;
-    });
-    setSearchResults(results);
-  };
+  const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const handleLeagueSelect = (league: string) => {
-    setSelectedLeague(league);
+  const searchFighters = useCallback(async (query: string, page: number) => {
+    if (!query) {
+      setSearchResults(null);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/fighters/search?q=${encodeURIComponent(
+          query
+        )}&page=${page}&limit=10`
+      );
+      const data = await response.json();
+      setSearchResults(data);
+    } catch (error) {
+      console.error("Error searching fighters:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    searchFighters(debouncedSearch, 1);
+  }, [debouncedSearch, searchFighters]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    searchFighters(searchTerm, newPage);
   };
 
   const toggleSidebar = () => {
@@ -63,43 +87,87 @@ export function FighterSearchPage() {
           <Card className="bg-gray-800 border-gray-700">
             <CardContent className="p-6">
               <div className="space-y-4">
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {leagues.map((league) => (
-                    <Button
-                      key={league}
-                      variant={
-                        selectedLeague === league ? "default" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => handleLeagueSelect(league)}
-                    >
-                      {league}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex">
-                  <Input
-                    type="text"
-                    placeholder="Search fighters..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="mr-2 bg-gray-700 border-gray-600 text-white"
-                  />
-                  <Button onClick={handleSearch}>Search</Button>
-                </div>
-                <ScrollArea className="h-[400px]">
-                  {searchResults.map((fighter, index) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-gray-700 mb-2 rounded flex justify-between items-center"
-                    >
-                      <span className="text-white">{fighter.name}</span>
-                      <span className="text-sm text-gray-400">
-                        {fighter.league}
-                      </span>
+                <Input
+                  type="text"
+                  placeholder="Search fighters..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-gray-700 border-gray-600 text-white"
+                />
+
+                <ScrollArea className="h-[600px]">
+                  {isLoading ? (
+                    <div className="space-y-4">
+                      {[...Array(5)].map((_, i) => (
+                        <Skeleton key={i} className="h-24 w-full bg-gray-700" />
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-4">
+                      {searchResults?.fighters.map((fighter) => (
+                        <Link
+                          href={`/fighters/${fighter.fighter_id}`}
+                          key={fighter.fighter_id}
+                        >
+                          <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
+                            <CardContent className="p-4">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <h3 className="text-lg font-semibold text-white">
+                                    {fighter.first_name} {fighter.last_name}
+                                  </h3>
+                                  {fighter.nickname && (
+                                    <p className="text-sm text-gray-400">
+                                      "{fighter.nickname}"
+                                    </p>
+                                  )}
+                                  <p className="text-sm text-gray-400">
+                                    {fighter.team}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-gray-400">
+                                    Record: {fighter.win_loss_record}
+                                  </p>
+                                  {fighter.weight && (
+                                    <p className="text-sm text-gray-400">
+                                      {fighter.weight}lbs
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </ScrollArea>
+
+                {searchResults && searchResults.pagination.totalPages > 1 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span className="flex items-center px-4 text-white">
+                      Page {currentPage} of{" "}
+                      {searchResults.pagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      disabled={
+                        currentPage === searchResults.pagination.totalPages
+                      }
+                      onClick={() => handlePageChange(currentPage + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

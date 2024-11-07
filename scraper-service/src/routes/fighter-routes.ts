@@ -41,5 +41,19 @@ export function setupFighterRoutes(fighterService: FighterService) {
     }
   });
 
+  router.get('/search', async (req, res) => {
+    try {
+      const query = req.query.q as string || '';
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const results = await fighterService.searchFighters(query, page, limit);
+      res.json(results);
+    } catch (error) {
+      console.error('Error searching fighters:', error);
+      res.status(500).json({ error: 'Error searching fighters' });
+    }
+  });
+
   return router;
 } 
