@@ -8,6 +8,7 @@ import {
   Calendar,
   Home,
   Trophy,
+  Medal,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -69,6 +70,15 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
               >
                 <Calendar className="mr-2 h-4 w-4" />
                 Event Search
+              </Button>
+            </Link>
+            <Link href="/rankings">
+              <Button
+                variant={isActive("/rankings") ? "default" : "outline"}
+                className="w-full justify-start mb-2"
+              >
+                <Medal className="mr-2 h-4 w-4" />
+                Fighter Rankings
               </Button>
             </Link>
             <Link href="/leaderboard">

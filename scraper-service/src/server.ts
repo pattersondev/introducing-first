@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { DatabaseService } from './services/database-service';
 import { EventService } from './services/event-service';
 import { FighterService } from './services/fighter-service';
+import { RankingsService } from './services/rankings-service';
 import { setupEventRoutes } from './routes/event-routes';
 import { setupFighterRoutes } from './routes/fighter-routes';
 import { setupAnalyticsRoutes } from './routes/analytics-routes';
@@ -21,6 +22,7 @@ const port = process.env.PORT || 5555;
 const dbService = new DatabaseService(process.env.DATABASE_URL!);
 const eventService = new EventService(dbService.getPool());
 const fighterService = new FighterService(dbService.getPool());
+const rankingsService = new RankingsService(dbService.getPool());
 
 // Initialize database
 dbService.initialize();
@@ -69,6 +71,23 @@ cron.schedule('0 3 * * *', async () => {
     console.log('Scheduled cleanup completed successfully');
   } catch (error) {
     console.error('Error during scheduled cleanup:', error);
+  }
+});
+
+// Add new cron job for rankings update (Sundays at 3 AM)
+cron.schedule('0 3 * * 0', async () => {
+  try {
+    console.log('Running weekly rankings update...');
+    const weightClasses = await rankingsService.getWeightClasses();
+    
+    for (const weightClass of weightClasses) {
+      console.log(`Updating rankings for ${weightClass.division} ${weightClass.name}...`);
+      await rankingsService.updateRankings(weightClass.weight_class_id);
+    }
+    
+    console.log('Weekly rankings update completed successfully');
+  } catch (error) {
+    console.error('Error during rankings update:', error);
   }
 });
 

@@ -5,4 +5,5 @@ export const API_ENDPOINTS = {
   EVENTS: '/events',
   FIGHTERS: '/fighters',
   ANALYTICS: '/analytics',
+  RANKINGS: '/rankings'
 } as const; 
