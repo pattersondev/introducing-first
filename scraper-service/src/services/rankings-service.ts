@@ -182,7 +182,7 @@ export class RankingsService {
         SELECT 
           ar.rank,
           ar.previous_rank,
-          ar.points,
+          CAST(ar.points AS FLOAT) as points,
           f.fighter_id,
           f.first_name,
           f.last_name,
@@ -194,6 +194,7 @@ export class RankingsService {
         JOIN fighters f ON ar.fighter_id = f.fighter_id
         JOIN weight_classes wc ON ar.weight_class_id = wc.weight_class_id
         WHERE ar.weight_class_id = $1
+          AND ar.rank <= 25  -- Only get top 25
         ORDER BY ar.rank
       `, [weightClassId]);
       
