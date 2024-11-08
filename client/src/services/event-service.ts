@@ -10,7 +10,8 @@ export const EventService = {
   },
 
   async getEvent(eventId: string): Promise<ApiResponse<Event>> {
-    return apiClient<Event>(`${API_ENDPOINTS.EVENTS}/${eventId}`);
+    const cleanEventId = eventId.split('?')[0];
+    return apiClient<Event>(`${API_ENDPOINTS.EVENTS}/${cleanEventId}`);
   },
 
   async searchEvents(searchTerm: string = '', promotion: Promotion = 'ALL'): Promise<ApiResponse<Event[]>> {
