@@ -164,4 +164,72 @@ export class EventService {
       client.release();
     }
   }
+
+  async getEvent(eventId: string) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          json_agg(
+            json_build_object(
+              'matchup_id', m.matchup_id,
+              'fighter1_id', m.fighter1_id,
+              'fighter2_id', m.fighter2_id,
+              'fighter1_name', m.fighter1_name,
+              'fighter2_name', m.fighter2_name,
+              'result', m.result,
+              'winner', m.winner,
+              'display_order', m.display_order
+            ) ORDER BY m.display_order
+          ) AS matchups
+        FROM events e
+        LEFT JOIN matchups m ON e.event_id = m.event_id
+        WHERE e.event_id = $1
+        GROUP BY e.event_id, e.name, e.date, e.location
+      `, [eventId]);
+
+      return result.rows[0] || null;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getUpcomingEvents(limit: number = 7) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          json_agg(
+            json_build_object(
+              'matchup_id', m.matchup_id,
+              'fighter1_id', m.fighter1_id,
+              'fighter2_id', m.fighter2_id,
+              'fighter1_name', m.fighter1_name,
+              'fighter2_name', m.fighter2_name,
+              'result', m.result,
+              'winner', m.winner,
+              'display_order', m.display_order
+            ) ORDER BY m.display_order
+          ) AS matchups
+        FROM events e
+        LEFT JOIN matchups m ON e.event_id = m.event_id
+        WHERE m.matchup_id IS NOT NULL
+        AND e.date >= CURRENT_DATE
+        GROUP BY e.event_id, e.name, e.date, e.location
+        ORDER BY ABS(EXTRACT(EPOCH FROM (e.date - CURRENT_DATE)))
+        LIMIT $1
+      `, [limit]);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
 } 

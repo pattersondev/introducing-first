@@ -19,5 +19,9 @@ export const EventService = {
     if (promotion !== 'ALL') params.append('promotion', promotion);
 
     return apiClient<Event[]>(`${API_ENDPOINTS.EVENTS}/search?${params.toString()}`);
+  },
+
+  async getUpcomingEvents(limit: number = 7): Promise<ApiResponse<Event[]>> {
+    return apiClient<Event[]>(`${API_ENDPOINTS.EVENTS}/upcoming?limit=${limit}`);
   }
 }; 

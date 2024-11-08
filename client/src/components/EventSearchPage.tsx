@@ -24,24 +24,30 @@ export function EventSearchPage() {
   const promotions: Promotion[] = ["ALL", "UFC", "BELLATOR", "PFL"];
 
   useEffect(() => {
-    async function searchEvents() {
+    const fetchEvents = async () => {
       setLoading(true);
       try {
-        const response = await EventService.searchEvents(
-          debouncedSearch,
-          selectedPromotion
-        );
+        let response;
+        if (!debouncedSearch && selectedPromotion === "ALL") {
+          response = await EventService.getUpcomingEvents();
+        } else {
+          response = await EventService.searchEvents(
+            debouncedSearch,
+            selectedPromotion
+          );
+        }
+
         if (response.data) {
           setEvents(response.data);
         }
       } catch (error) {
-        console.error("Error searching events:", error);
+        console.error("Error fetching events:", error);
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    searchEvents();
+    fetchEvents();
   }, [debouncedSearch, selectedPromotion]);
 
   const toggleSidebar = () => {
