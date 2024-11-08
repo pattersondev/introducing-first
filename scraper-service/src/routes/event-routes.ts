@@ -64,9 +64,6 @@ export function setupEventRoutes(eventService: EventService) {
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const event = await eventService.getEvent(req.params.id);
-      if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
-      }
       res.json(event);
     } catch (error) {
       console.error('Error fetching event:', error);
