@@ -11,6 +11,7 @@ import {
   getResultColor,
 } from "@/utils/fight-utils";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface MatchupListProps {
   matchups: Matchup[];
@@ -104,15 +105,16 @@ export function MatchupList({
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
-                    <p
-                      className={`font-semibold ${
+                    <Link
+                      href={`/fighters/${matchup.fighter1_id}`}
+                      className={`font-semibold hover:text-blue-400 ${
                         matchup.winner === matchup.fighter1_name
                           ? "text-green-400"
                           : "text-white"
                       }`}
                     >
                       {matchup.fighter1_name}
-                    </p>
+                    </Link>
                   </div>
                   {isEventInFuture(eventDate) && (
                     <>
@@ -146,15 +148,16 @@ export function MatchupList({
                 </div>
                 <div className="flex-1 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <p
-                      className={`font-semibold ${
+                    <Link
+                      href={`/fighters/${matchup.fighter2_id}`}
+                      className={`font-semibold hover:text-blue-400 ${
                         matchup.winner === matchup.fighter2_name
                           ? "text-green-400"
                           : "text-white"
                       }`}
                     >
                       {matchup.fighter2_name}
-                    </p>
+                    </Link>
                     <Avatar className="h-12 w-12 border-2 border-gray-700">
                       <AvatarImage
                         src="/placeholder-fighter.png"
