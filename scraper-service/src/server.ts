@@ -9,6 +9,7 @@ import { RankingsService } from './services/rankings-service';
 import { setupEventRoutes } from './routes/event-routes';
 import { setupFighterRoutes } from './routes/fighter-routes';
 import { setupAnalyticsRoutes } from './routes/analytics-routes';
+import { setupRankingsRoutes } from './routes/rankings-routes';
 import { validateApiKey } from './middleware/auth';
 import { limiter } from './middleware/rateLimiter';
 import cron from 'node-cron';
@@ -62,6 +63,7 @@ app.use(express.json());
 app.use('/api/events', setupEventRoutes(eventService));
 app.use('/api/fighters', setupFighterRoutes(fighterService));
 app.use('/api/analytics', setupAnalyticsRoutes(dbService.getPool()));
+app.use('/api/rankings', setupRankingsRoutes(rankingsService));
 
 // Run cleanup at 3 AM every day
 cron.schedule('0 3 * * *', async () => {
