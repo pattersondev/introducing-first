@@ -13,18 +13,20 @@ import (
 	"crypto/rand"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // users array map to act as DB while setting functions up. Remove when standalone users DB is created
-var users = map[string]Login{}
+var users = map[string]User{}
 
-type Login struct {
-	HashedPassword string
-	SessionToken   string
-	CSRFToken      string
+type User struct {
+	HashedPassword      string
+	TokenExpirationDate string
+	// SessionToken   string
+	// CSRFToken      string
 }
 
 type EventList []models.Event
@@ -77,6 +79,22 @@ func main() {
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
+}
+
+func generateJWT(username string) (string, error) {
+	//token expire time
+	expirationTime := time.Now().Add(24 * time.Hour)
+
+	//define claims for token (username and expiration date for now)
+	claims := &jwt.RegisteredClaims{
+		Subject:   username,
+		ExpiresAt: jwt.NewNumericDate(expirationTime),
+	}
+
+	//create the jwt token with claims defined above
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
 }
 
 func generateToken(length int) string {
@@ -120,7 +138,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hp, _ := hashPassword(password)
-	users[username] = Login{
+	users[username] = User{
 		HashedPassword: hp,
 	}
 
@@ -145,35 +163,75 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//generate jwt token
+	token, err := generateJWT(username)
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
+
+	//set token as cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true, //set as http-only
+	})
+
 	//generate session and csrf token
-	sessionToken := generateToken(32)
-	csrfToken := generateToken(32)
+	// sessionToken := generateToken(32)
+	// csrfToken := generateToken(32)
 
-	//set session token in cookie
-	//expires within 24 hours of generation
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session_token",
-		Value:    sessionToken,
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true,
-	})
+	// //set session token in cookie
+	// //expires within 24 hours of generation
+	// http.SetCookie(w, &http.Cookie{
+	// 	Name:     "session_token",
+	// 	Value:    sessionToken,
+	// 	Expires:  time.Now().Add(24 * time.Hour),
+	// 	HttpOnly: true,
+	// })
 
-	//set csrf token in cookie
-	//expires within 24 hours of generation
-	http.SetCookie(w, &http.Cookie{
-		Name:     "csrf_token",
-		Value:    csrfToken,
-		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: false, //client needs to be able to access
-	})
+	// //set csrf token in cookie
+	// //expires within 24 hours of generation
+	// http.SetCookie(w, &http.Cookie{
+	// 	Name:     "csrf_token",
+	// 	Value:    csrfToken,
+	// 	Expires:  time.Now().Add(24 * time.Hour),
+	// 	HttpOnly: false, //client needs to be able to access
+	// })
 
 	//store tokens in the "database"
-	user.SessionToken = sessionToken
-	user.CSRFToken = csrfToken
+	// user.SessionToken = sessionToken
+	// user.CSRFToken = csrfToken
 	users[username] = user
 
 	fmt.Fprintf(w, "Login Successful!")
 
+}
+
+func authenticate(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//get jwt cookies
+		cookie, err := r.Cookie("token")
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		//parsing jwt
+		claims := &jwt.RegisteredClaims{}
+		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+
+		if err != nil || !token.Valid {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		//next handler
+		next(w, r)
+	}
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
