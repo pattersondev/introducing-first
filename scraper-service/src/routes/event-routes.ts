@@ -27,6 +27,16 @@ export function setupEventRoutes(eventService: EventService) {
     }
   });
 
+  router.get('/', async (req: Request, res: Response) => {
+    try {
+      const events = await eventService.getAllEvents();
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching all events:', error);
+      res.status(500).json({ error: 'Error fetching all events' });
+    }
+  });
+
   router.get('/upcoming', async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 7;
