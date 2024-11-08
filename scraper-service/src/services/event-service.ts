@@ -110,4 +110,58 @@ export class EventService {
       client.release();
     }
   }
+
+  async searchEvents(searchTerm: string = '', promotion: string = 'ALL') {
+    const client = await this.pool.connect();
+    try {
+      let query = `
+        SELECT 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          json_agg(
+            json_build_object(
+              'matchup_id', m.matchup_id,
+              'fighter1_id', m.fighter1_id,
+              'fighter2_id', m.fighter2_id,
+              'fighter1_name', m.fighter1_name,
+              'fighter2_name', m.fighter2_name,
+              'result', m.result,
+              'winner', m.winner,
+              'display_order', m.display_order
+            ) ORDER BY m.display_order
+          ) AS matchups
+        FROM events e
+        LEFT JOIN matchups m ON e.event_id = m.event_id
+        WHERE m.matchup_id IS NOT NULL
+      `;
+
+      const params: any[] = [];
+      let paramCount = 1;
+
+      // Add search term filter if provided
+      if (searchTerm) {
+        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
+        params.push(`%${searchTerm.toLowerCase()}%`);
+        paramCount++;
+      }
+
+      // Add promotion filter if provided
+      if (promotion !== 'ALL') {
+        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
+        params.push(`%${promotion.toLowerCase()}%`);
+      }
+
+      query += `
+        GROUP BY e.event_id, e.name, e.date, e.location
+        ORDER BY e.date DESC
+      `;
+
+      const result = await client.query(query, params);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
 } 
