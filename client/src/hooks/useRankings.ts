@@ -16,6 +16,16 @@ export function useRankings(weightClassId: number | null) {
           setError(response.error);
         } else if (response.data) {
           setWeightClasses(response.data);
+          // If no weight class is selected, select Lightweight by default
+          if (!weightClassId) {
+            const lightweightClass = response.data.find(
+              wc => wc.division === "Men's" && wc.name === "Lightweight"
+            );
+            if (lightweightClass) {
+              // You might need to add a callback prop to handle this
+              // onWeightClassSelect(lightweightClass.weight_class_id);
+            }
+          }
         }
       } catch (err) {
         setError('Failed to fetch weight classes');
@@ -35,6 +45,7 @@ export function useRankings(weightClassId: number | null) {
 
       setLoading(true);
       try {
+        console.log('Fetching rankings for weight class:', weightClassId);
         const response = await RankingsService.getAnalyticsRankings(weightClassId);
         if (response.error) {
           setError(response.error);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -28,6 +28,18 @@ export function FighterRankings() {
   const { weightClasses, rankings, loading, error } = useRankings(
     selectedWeightClassId
   );
+
+  // Set default weight class when weight classes are loaded
+  useEffect(() => {
+    if (weightClasses.length > 0 && !selectedWeightClassId) {
+      const lightweightClass = weightClasses.find(
+        (wc) => wc.division === "Men's" && wc.name === "Lightweight"
+      );
+      if (lightweightClass) {
+        setSelectedWeightClassId(lightweightClass.weight_class_id);
+      }
+    }
+  }, [weightClasses, selectedWeightClassId]);
 
   const divisions = Array.from(new Set(weightClasses.map((wc) => wc.division)));
   const filteredWeightClasses = weightClasses.filter(
@@ -102,7 +114,9 @@ export function FighterRankings() {
                       <div className="text-right">
                         <div className="text-sm font-medium">Rating</div>
                         <div className="text-lg font-bold text-blue-400">
-                          {fighter.points.toFixed(0)}
+                          {typeof fighter.points === "number"
+                            ? fighter.points.toFixed(0)
+                            : parseFloat(fighter.points).toFixed(0)}
                         </div>
                       </div>
                     </div>
