@@ -14,6 +14,7 @@ interface DBFight {
   fight_id: string;
   fighter_id: string;
   matchup_id?: string;
+  is_title_fight: boolean;
 }
 
 export function setupFighterRoutes(fighterService: FighterService) {
@@ -106,7 +107,8 @@ export function setupFighterRoutes(fighterService: FighterService) {
           result: fight.result,
           decision: fight.decision,
           rnd: fight.rnd,
-          time: fight.time
+          time: fight.time,
+          is_title_fight: fight.is_title_fight
         }))
       };
 
