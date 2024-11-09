@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
@@ -204,57 +205,62 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fighter.fights?.map((fight, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      {fight.date ? formatDate(fight.date) : "Unknown"}
-                    </TableCell>
-                    <TableCell>
-                      {fight.opponent_id ? (
-                        <Link
-                          href={`/fighters/${fight.opponent_id}`}
-                          className="text-blue-400 hover:text-blue-300 hover:underline"
-                        >
-                          {fight.opponent}
-                        </Link>
-                      ) : (
-                        fight.opponent
-                      )}
-                    </TableCell>
-                    <TableCell>{fight.event}</TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "px-2 py-1 rounded-full text-sm font-medium",
-                          {
-                            "bg-green-500/20 text-green-400":
-                              fight.result?.toLowerCase() === "w",
-                            "bg-red-500/20 text-red-400":
-                              fight.result?.toLowerCase() === "l",
-                            "bg-yellow-500/20 text-yellow-400":
-                              fight.result?.toLowerCase() === "d" ||
-                              fight.decision
-                                ?.toLowerCase()
-                                .includes("no contest"),
-                          }
+                {fighter.fights
+                  ?.sort(
+                    (a, b) =>
+                      new Date(b.date).getTime() - new Date(a.date).getTime()
+                  )
+                  .map((fight, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        {fight.date ? formatDate(fight.date) : "Unknown"}
+                      </TableCell>
+                      <TableCell>
+                        {fight.opponent_id ? (
+                          <Link
+                            href={`/fighters/${fight.opponent_id}`}
+                            className="text-blue-400 hover:text-blue-300 hover:underline"
+                          >
+                            {fight.opponent}
+                          </Link>
+                        ) : (
+                          fight.opponent
                         )}
-                      >
-                        {fight.result}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getMethodIcon(fight.decision)}
-                        <span>{fight.decision}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {fight.rnd && fight.time
-                        ? `R${fight.rnd} ${fight.time}`
-                        : "N/A"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>{fight.event}</TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "px-2 py-1 rounded-full text-sm font-medium",
+                            {
+                              "bg-green-500/20 text-green-400":
+                                fight.result?.toLowerCase() === "w",
+                              "bg-red-500/20 text-red-400":
+                                fight.result?.toLowerCase() === "l",
+                              "bg-yellow-500/20 text-yellow-400":
+                                fight.result?.toLowerCase() === "d" ||
+                                fight.decision
+                                  ?.toLowerCase()
+                                  .includes("no contest"),
+                            }
+                          )}
+                        >
+                          {fight.result}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getMethodIcon(fight.decision)}
+                          <span>{fight.decision}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fight.rnd && fight.time
+                          ? `R${fight.rnd} ${fight.time}`
+                          : "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </ScrollArea>
