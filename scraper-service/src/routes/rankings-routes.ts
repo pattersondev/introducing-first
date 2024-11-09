@@ -36,5 +36,7 @@ export function setupRankingsRoutes(rankingsService: RankingsService) {
     }
   });
 
+  
+
   return router;
 } 
