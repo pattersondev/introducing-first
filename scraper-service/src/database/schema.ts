@@ -46,7 +46,8 @@ CREATE TABLE IF NOT EXISTS fights (
     result TEXT,
     decision VARCHAR(255),
     rnd INT,
-    time VARCHAR(255)
+    time VARCHAR(255),
+    is_title_fight BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS striking_stats (

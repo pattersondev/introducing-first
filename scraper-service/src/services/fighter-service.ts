@@ -120,7 +120,7 @@ export class FighterService {
 
             // Insert fight without matchup_id reference
             await client.query(
-              'INSERT INTO fights (fight_id, fighter_id, date, opponent, event, result, decision, rnd, time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (fight_id) DO UPDATE SET result = $6, decision = $7, rnd = $8, time = $9',
+              'INSERT INTO fights (fight_id, fighter_id, date, opponent, event, result, decision, rnd, time, is_title_fight) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT (fight_id) DO UPDATE SET result = $6, decision = $7, rnd = $8, time = $9, is_title_fight = $10',
               [
                 fightId,
                 fighterId,
@@ -130,7 +130,8 @@ export class FighterService {
                 fight.Result || '',
                 fight.Decision || '',
                 parseInt(fight.Rnd) || null,
-                fight.Time || ''
+                fight.Time || '',
+                fight.isTitleFight || false
               ]
             );
           }
