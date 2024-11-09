@@ -27,13 +27,13 @@ export function setupEventRoutes(eventService: EventService) {
     }
   });
 
-  router.get('/', async (req: Request, res: Response) => {
+  router.get('/recent-and-upcoming', async (req: Request, res: Response) => {
     try {
-      const events = await eventService.getAllEvents();
+      const events = await eventService.getRecentAndUpcomingEvents();
       res.json(events);
     } catch (error) {
-      console.error('Error fetching all events:', error);
-      res.status(500).json({ error: 'Error fetching all events' });
+      console.error('Error fetching recent and upcoming events:', error);
+      res.status(500).json({ error: 'Error fetching recent and upcoming events' });
     }
   });
 
@@ -61,6 +61,16 @@ export function setupEventRoutes(eventService: EventService) {
     }
   });
 
+  router.get('/', async (req: Request, res: Response) => {
+    try {
+      const events = await eventService.getAllEvents();
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching all events:', error);
+      res.status(500).json({ error: 'Error fetching all events' });
+    }
+  });
+
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const event = await eventService.getEvent(req.params.id);
@@ -68,16 +78,6 @@ export function setupEventRoutes(eventService: EventService) {
     } catch (error) {
       console.error('Error fetching event:', error);
       res.status(500).json({ error: 'Error fetching event' });
-    }
-  });
-
-  router.get('/recent-and-upcoming', async (req: Request, res: Response) => {
-    try {
-      const events = await eventService.getRecentAndUpcomingEvents();
-      res.json(events);
-    } catch (error) {
-      console.error('Error fetching recent and upcoming events:', error);
-      res.status(500).json({ error: 'Error fetching recent and upcoming events' });
     }
   });
 
