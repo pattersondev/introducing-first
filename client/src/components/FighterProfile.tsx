@@ -1,4 +1,4 @@
-import { Fighter } from "@/types/api";
+import { DetailedFighter } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   User,
@@ -9,10 +9,25 @@ import {
   Flag,
   Swords,
   Trophy,
+  Handshake,
+  Ban,
+  Timer,
+  AlertCircle,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import Link from "next/link";
 
 interface FighterProfileProps {
-  fighter: Fighter;
+  fighter: DetailedFighter;
 }
 
 export function FighterProfile({ fighter }: FighterProfileProps) {
@@ -76,6 +91,26 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
       icon: Weight,
     },
   ];
+
+  const getMethodIcon = (decision: string) => {
+    const methodLower = decision?.toLowerCase() || "";
+    if (methodLower.includes("ko") || methodLower.includes("tko")) {
+      return <Swords className="w-4 h-4 text-red-400" />;
+    }
+    if (methodLower.includes("submission") || methodLower.includes("sub")) {
+      return <Award className="w-4 h-4 text-blue-400" />;
+    }
+    if (methodLower.includes("decision")) {
+      return <Timer className="w-4 h-4 text-gray-400" />;
+    }
+    if (methodLower.includes("draw")) {
+      return <Handshake className="w-4 h-4 text-yellow-400" />;
+    }
+    if (methodLower.includes("no contest")) {
+      return <Ban className="w-4 h-4 text-yellow-400" />;
+    }
+    return <AlertCircle className="w-4 h-4 text-gray-400" />;
+  };
 
   return (
     <div className="space-y-8">
@@ -149,9 +184,82 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
             </div>
           </CardContent>
         </Card>
-
-        {/* Add more sections for fight history, statistics, etc. */}
       </div>
+
+      <Card className="bg-gray-800 border-gray-700 col-span-2">
+        <CardHeader>
+          <CardTitle>Fight History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-[400px]">
+            <Table>
+              <TableHeader className="sticky top-0 bg-gray-900 z-10">
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Opponent</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Result</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead className="text-right">Round/Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fighter.fights?.map((fight, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      {fight.date ? formatDate(fight.date) : "Unknown"}
+                    </TableCell>
+                    <TableCell>
+                      {fight.opponent_id ? (
+                        <Link
+                          href={`/fighters/${fight.opponent_id}`}
+                          className="text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          {fight.opponent}
+                        </Link>
+                      ) : (
+                        fight.opponent
+                      )}
+                    </TableCell>
+                    <TableCell>{fight.event}</TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          "px-2 py-1 rounded-full text-sm font-medium",
+                          {
+                            "bg-green-500/20 text-green-400":
+                              fight.result?.toLowerCase() === "w",
+                            "bg-red-500/20 text-red-400":
+                              fight.result?.toLowerCase() === "l",
+                            "bg-yellow-500/20 text-yellow-400":
+                              fight.result?.toLowerCase() === "d" ||
+                              fight.decision
+                                ?.toLowerCase()
+                                .includes("no contest"),
+                          }
+                        )}
+                      >
+                        {fight.result}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getMethodIcon(fight.decision)}
+                        <span>{fight.decision}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {fight.rnd && fight.time
+                        ? `R${fight.rnd} ${fight.time}`
+                        : "N/A"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </CardContent>
+      </Card>
     </div>
   );
 }
