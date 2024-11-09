@@ -6,6 +6,7 @@ interface DBFight {
   opponent: string;
   opponent_id?: string;
   event: string;
+  event_id?: string;
   result: string;
   decision: string;
   rnd: number;
@@ -93,7 +94,7 @@ export function setupFighterRoutes(fighterService: FighterService) {
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const fighter = await fighterService.getFighterById(req.params.id);
-      // Format the response to match the DetailedFighter type
+      
       const formattedFighter = {
         ...fighter,
         fights: fighter.fights.map((fight: DBFight) => ({
@@ -101,6 +102,7 @@ export function setupFighterRoutes(fighterService: FighterService) {
           opponent: fight.opponent,
           opponent_id: fight.opponent_id,
           event: fight.event,
+          event_id: fight.event_id,
           result: fight.result,
           decision: fight.decision,
           rnd: fight.rnd,
