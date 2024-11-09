@@ -6,12 +6,12 @@ import { EventSelector } from "@/components/EventSelector";
 import { EventDetails } from "@/components/EventDetails";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sidebar } from "@/components/Sidebar";
-import { useEvents } from "@/hooks/useEvents";
+import { useRecentAndUpcomingEvents } from "@/hooks/useRecentAndUpcomingEvents";
 
 export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-  const { events, loading: isLoading, error } = useEvents();
+  const { events, loading: isLoading, error } = useRecentAndUpcomingEvents();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
