@@ -1,6 +1,20 @@
 import { Router, Request, Response } from 'express';
 import { FighterService } from '../services/fighter-service';
 
+interface DBFight {
+  date: string;
+  opponent: string;
+  opponent_id?: string;
+  event: string;
+  result: string;
+  decision: string;
+  rnd: number;
+  time: string;
+  fight_id: string;
+  fighter_id: string;
+  matchup_id?: string;
+}
+
 export function setupFighterRoutes(fighterService: FighterService) {
   const router = Router();
 
@@ -79,7 +93,22 @@ export function setupFighterRoutes(fighterService: FighterService) {
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const fighter = await fighterService.getFighterById(req.params.id);
-      res.json(fighter);
+      // Format the response to match the DetailedFighter type
+      const formattedFighter = {
+        ...fighter,
+        fights: fighter.fights.map((fight: DBFight) => ({
+          date: fight.date,
+          opponent: fight.opponent,
+          opponent_id: fight.opponent_id,
+          event: fight.event,
+          result: fight.result,
+          decision: fight.decision,
+          rnd: fight.rnd,
+          time: fight.time
+        }))
+      };
+
+      res.json(formattedFighter);
     } catch (error) {
       console.error('Error fetching fighter:', error);
       res.status(500).json({ error: 'Error fetching fighter details' });

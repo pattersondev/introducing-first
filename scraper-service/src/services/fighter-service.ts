@@ -1,6 +1,23 @@
 import { Pool } from 'pg';
 import { generateId } from '../utils/helpers';
 
+interface DBFight {
+  date: string;
+  opponent: string;
+  event: string;
+  result: string;
+  decision: string;
+  rnd: number;
+  time: string;
+  fight_id: string;
+  fighter_id: string;
+  matchup_id?: string;
+}
+
+interface FightWithOpponentId extends DBFight {
+  opponent_id?: string;
+}
+
 export class FighterService {
   constructor(private pool: Pool) {}
 
@@ -414,48 +431,26 @@ export class FighterService {
 
       const fighter = fighterResult.rows[0];
 
-      // Get fighter's fights
+      // Get fighter's fights and try to find opponent IDs
       const fightsResult = await client.query(
-        `SELECT 
-          f.*,
-          CONCAT(opp.first_name, ' ', opp.last_name) as opponent_name
-         FROM fights f
-         LEFT JOIN fighters opp ON f.opponent = CONCAT(opp.first_name, ' ', opp.last_name)
-         WHERE f.fighter_id = $1
-         ORDER BY f.date DESC`,
-        [fighterId]
-      );
-
-      // Get striking stats
-      const strikingResult = await client.query(
-        `SELECT * FROM striking_stats 
-         WHERE fighter_id = $1 
-         ORDER BY event DESC`,
-        [fighterId]
-      );
-
-      // Get clinch stats
-      const clinchResult = await client.query(
-        `SELECT * FROM clinch_stats 
-         WHERE fighter_id = $1 
-         ORDER BY event DESC`,
-        [fighterId]
-      );
-
-      // Get ground stats
-      const groundResult = await client.query(
-        `SELECT * FROM ground_stats 
-         WHERE fighter_id = $1 
-         ORDER BY event DESC`,
+        `WITH fight_data AS (
+          SELECT f.*
+          FROM fights f
+          WHERE f.fighter_id = $1
+          ORDER BY f.date DESC
+        )
+        SELECT 
+          fd.*,
+          opp.fighter_id as opponent_id
+        FROM fight_data fd
+        LEFT JOIN fighters opp ON 
+          CONCAT(opp.first_name, ' ', opp.last_name) = fd.opponent`,
         [fighterId]
       );
 
       return {
         ...fighter,
         fights: fightsResult.rows,
-        striking_stats: strikingResult.rows,
-        clinch_stats: clinchResult.rows,
-        ground_stats: groundResult.rows
       };
     } finally {
       client.release();
