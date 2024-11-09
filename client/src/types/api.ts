@@ -67,6 +67,7 @@ export interface Fight {
   opponent: string;
   opponent_id?: string;
   event: string;
+  event_id?: string;
   result: string;
   decision: string;
   rnd: number;

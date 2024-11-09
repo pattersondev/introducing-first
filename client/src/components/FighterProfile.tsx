@@ -227,7 +227,18 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                           fight.opponent
                         )}
                       </TableCell>
-                      <TableCell>{fight.event}</TableCell>
+                      <TableCell>
+                        {fight.event_id ? (
+                          <Link
+                            href={`/events/${fight.event_id}`}
+                            className="text-blue-400 hover:text-blue-300 hover:underline"
+                          >
+                            {fight.event}
+                          </Link>
+                        ) : (
+                          fight.event
+                        )}
+                      </TableCell>
                       <TableCell>
                         <span
                           className={cn(

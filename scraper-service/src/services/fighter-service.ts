@@ -431,7 +431,7 @@ export class FighterService {
 
       const fighter = fighterResult.rows[0];
 
-      // Get fighter's fights and try to find opponent IDs
+      // Get fighter's fights with opponent IDs and event IDs
       const fightsResult = await client.query(
         `WITH fight_data AS (
           SELECT f.*
@@ -441,10 +441,13 @@ export class FighterService {
         )
         SELECT 
           fd.*,
-          opp.fighter_id as opponent_id
+          opp.fighter_id as opponent_id,
+          e.event_id
         FROM fight_data fd
         LEFT JOIN fighters opp ON 
-          CONCAT(opp.first_name, ' ', opp.last_name) = fd.opponent`,
+          CONCAT(opp.first_name, ' ', opp.last_name) = fd.opponent
+        LEFT JOIN events e ON
+          e.name = fd.event`,
         [fighterId]
       );
 
