@@ -6,8 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEvents } from "@/hooks/useEvents";
 import { useEffect, useState } from "react";
+import { EventService } from "@/services/event-service";
 
 interface EventSelectorProps {
   onEventSelect: (event: Event) => void;
@@ -28,30 +28,37 @@ function findClosestEvent(events: Event[]): Event | null {
   }, null as Event | null);
 }
 
-function sortEventsByDate(events: Event[]): Event[] {
-  return [...events].sort((a, b) => {
-    const dateA = new Date(a.date);
-    const dateB = new Date(b.date);
-    return dateB.getTime() - dateA.getTime(); // Sort in descending order (newest first)
-  });
-}
-
 export function EventSelector({ onEventSelect }: EventSelectorProps) {
-  const { events, loading, error } = useEvents();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>();
-  const sortedEvents = sortEventsByDate(events);
 
   useEffect(() => {
-    if (events.length > 0) {
-      const closestEvent = findClosestEvent(events);
-      if (closestEvent) {
-        setSelectedEventId(closestEvent.event_id);
-        onEventSelect(closestEvent);
-      }
-    }
-  }, [events, onEventSelect]);
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const response = await EventService.getRecentAndUpcomingEvents();
+        if (response.error) {
+          throw new Error(response.error);
+        }
+        setEvents(response.data || []);
 
-  if (error) return <div>Error loading events: {error}</div>;
+        // Find and select the closest event
+        const closestEvent = findClosestEvent(response.data || []);
+        if (closestEvent) {
+          setSelectedEventId(closestEvent.event_id);
+          onEventSelect(closestEvent);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch events");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [onEventSelect]);
 
   return (
     <Select
@@ -68,7 +75,7 @@ export function EventSelector({ onEventSelect }: EventSelectorProps) {
         <SelectValue placeholder="Select an event" />
       </SelectTrigger>
       <SelectContent className="bg-gray-800 border-gray-700">
-        {sortedEvents.map((event) => (
+        {events.map((event) => (
           <SelectItem key={event.event_id} value={event.event_id}>
             {event.name}
           </SelectItem>

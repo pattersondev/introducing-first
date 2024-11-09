@@ -71,5 +71,15 @@ export function setupEventRoutes(eventService: EventService) {
     }
   });
 
+  router.get('/recent-and-upcoming', async (req: Request, res: Response) => {
+    try {
+      const events = await eventService.getRecentAndUpcomingEvents();
+      res.json(events);
+    } catch (error) {
+      console.error('Error fetching recent and upcoming events:', error);
+      res.status(500).json({ error: 'Error fetching recent and upcoming events' });
+    }
+  });
+
   return router;
 } 
