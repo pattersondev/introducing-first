@@ -246,4 +246,62 @@ export class EventService {
       client.release();
     }
   }
+
+  async getRecentAndUpcomingEvents() {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        WITH RecentPastEvents AS (
+          SELECT 
+            e.event_id, 
+            e.name, 
+            e.date, 
+            e.location
+          FROM events e
+          WHERE e.date < CURRENT_DATE
+          ORDER BY e.date DESC
+          LIMIT 10
+        ),
+        UpcomingEvents AS (
+          SELECT 
+            e.event_id, 
+            e.name, 
+            e.date, 
+            e.location
+          FROM events e
+          WHERE e.date >= CURRENT_DATE
+          ORDER BY e.date ASC
+        )
+        SELECT 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          json_agg(
+            json_build_object(
+              'matchup_id', m.matchup_id,
+              'fighter1_id', m.fighter1_id,
+              'fighter2_id', m.fighter2_id,
+              'fighter1_name', m.fighter1_name,
+              'fighter2_name', m.fighter2_name,
+              'result', m.result,
+              'winner', m.winner,
+              'display_order', m.display_order
+            ) ORDER BY m.display_order
+          ) AS matchups
+        FROM (
+          SELECT * FROM RecentPastEvents
+          UNION ALL
+          SELECT * FROM UpcomingEvents
+        ) e
+        LEFT JOIN matchups m ON e.event_id = m.event_id
+        WHERE m.matchup_id IS NOT NULL
+        GROUP BY e.event_id, e.name, e.date, e.location
+        ORDER BY e.date DESC
+      `);
+      return result.rows;
+    } finally {
+      client.release();
+    }
+  }
 } 

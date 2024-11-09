@@ -24,5 +24,9 @@ export const EventService = {
 
   async getUpcomingEvents(limit: number = 7): Promise<ApiResponse<Event[]>> {
     return apiClient<Event[]>(`${API_ENDPOINTS.EVENTS}/upcoming?limit=${limit}`);
+  },
+
+  async getRecentAndUpcomingEvents(): Promise<ApiResponse<Event[]>> {
+    return apiClient<Event[]>(`${API_ENDPOINTS.EVENTS}/recent-and-upcoming`);
   }
 }; 
