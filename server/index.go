@@ -143,18 +143,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	email := r.FormValue("email")
 
+	//username and password must be atleast 8 characters long and email must be valid
 	if len(username) < 8 || len(password) < 8 || !isValidEmail(email) {
 		er := http.StatusNotAcceptable
 		http.Error(w, "Invalid Username/Password/Email", er)
 		return
 	}
-
-	// user already exists old logic
-	// if _, ok := users[username]; ok {
-	// 	er := http.StatusConflict
-	// 	http.Error(w, "User already exists", er)
-	// 	return
-	// }
 
 	//check if user exists
 	usernameExists, emailExists, err := db.CheckUserExists(username, email)
