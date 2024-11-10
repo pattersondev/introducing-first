@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"server/db"
 	"server/models"
@@ -33,6 +34,8 @@ type EventList []models.Event
 
 type FighterList []models.Fighter
 
+var jwtKey []byte
+
 func main() {
 
 	err := godotenv.Load()
@@ -40,6 +43,11 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
+	//set the jwt key on init
+	jwtKey = []byte(os.Getenv("JWT_SECRET"))
+	if len(jwtKey) == 0 {
+		log.Fatal("JWT_SECRET not set in .env")
+	}
 	//manually creating a test fighter
 	// testfighter := models.Fighter{
 	// 	Name:          "Rhabib Nurmagomedov",
@@ -75,7 +83,7 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/register", registerHandler)
 	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/protected", protectedHandler)
+	http.HandleFunc("/protected", authenticate(protectedHandler))
 
 	fmt.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -240,7 +248,13 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//logout logic WIP
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		HttpOnly: true,
+	})
+	fmt.Fprintf(w, "Logged out successfully!")
 }
 
 func protectedHandler(w http.ResponseWriter, r *http.Request) {
@@ -250,6 +264,8 @@ func protectedHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
 		return
 	}
+
+	fmt.Fprintf(w, "Access to protected resource granted!")
 
 }
 
