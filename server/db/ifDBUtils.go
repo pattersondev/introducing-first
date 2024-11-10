@@ -1,3 +1,4 @@
+// ifDBUtils is collection of functions for interacting with main IF DB (fighters, events, etc.)
 package db
 
 import (

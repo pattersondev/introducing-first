@@ -1,3 +1,4 @@
+// usersDBUtils is collection of functions for interacting with main IF DB (fighters, events, etc.)
 package db
 
 import (
@@ -30,6 +31,7 @@ func StartUsersDbConnection() *sql.DB {
 	return usersDb
 }
 
+// insert new user into DB
 func InsertUser(username string, hashed_password string, email string) error {
 	sqlStatement := "INSERT INTO users (username, password_hash, email) VALUES ($1, $2, $3);"
 	_, err := usersDb.ExecContext(context.Background(), sqlStatement, username, hashed_password, email)
@@ -51,6 +53,7 @@ func SelectHP(username string) (string, error) {
 	return storedHashedPassword, nil
 }
 
+// checks if user exists (if username or email are already in DB)
 func CheckUserExists(username, email string) (bool, bool, error) {
 	var existingUsername, existingEmail string
 
