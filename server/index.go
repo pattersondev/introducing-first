@@ -149,13 +149,26 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//user already exists old logic
+	// user already exists old logic
 	// if _, ok := users[username]; ok {
 	// 	er := http.StatusConflict
 	// 	http.Error(w, "User already exists", er)
 	// 	return
 	// }
 
+	//check if user exists
+	usernameExists, emailExists, err := db.CheckUserExists(username, email)
+	if err != nil {
+		http.Error(w, "Error checking for existing user", http.StatusInternalServerError)
+		return
+	}
+
+	if usernameExists || emailExists {
+		http.Error(w, "A user already exists with the provided Username or Email.", http.StatusConflict)
+		return
+	}
+
+	//hash password
 	hp, err := hashPassword(password)
 	if err != nil {
 		http.Error(w, "Error hashing password", http.StatusInternalServerError)

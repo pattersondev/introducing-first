@@ -50,3 +50,24 @@ func SelectHP(username string) (string, error) {
 	}
 	return storedHashedPassword, nil
 }
+
+func CheckUserExists(username, email string) (bool, bool, error) {
+	var existingUsername, existingEmail string
+
+	//checking if username already exists
+	usernameQuery := "SELECT username FROM users WHERE username = $1;"
+	err := usersDb.QueryRow(usernameQuery, username).Scan(&existingUsername)
+	if err != nil && err != sql.ErrNoRows {
+		return false, false, fmt.Errorf("error checking username: %w", err)
+	}
+
+	//checking if email already exists
+	emailQuery := "SELECT email FROM users WHERE email = $1;"
+	err = usersDb.QueryRow(emailQuery, email).Scan(&existingEmail)
+	if err != nil && err != sql.ErrNoRows {
+		return false, false, fmt.Errorf("error checking email: %w", err)
+	}
+
+	//returns true if username or email exists
+	return existingUsername != "", existingEmail != "", nil
+}
