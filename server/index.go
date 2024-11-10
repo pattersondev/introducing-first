@@ -14,6 +14,8 @@ import (
 	"crypto/rand"
 	"time"
 
+	"net/mail"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -70,6 +72,7 @@ func main() {
 	// }
 
 	db.StartDbConnection()
+	db.StartUsersDbConnection()
 
 	//db.InsertFighter(testfighter)
 
@@ -124,6 +127,11 @@ func checkPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
+func isValidEmail(email string) bool {
+	_, err := mail.ParseAddress(email)
+	return err == nil
+}
+
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
@@ -133,21 +141,31 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	//receive username and password and do basic length check
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	if len(username) < 8 || len(password) < 8 {
+	email := r.FormValue("email")
+
+	if len(username) < 8 || len(password) < 8 || !isValidEmail(email) {
 		er := http.StatusNotAcceptable
-		http.Error(w, "Invalid Username/Password", er)
+		http.Error(w, "Invalid Username/Password/Email", er)
 		return
 	}
 
-	if _, ok := users[username]; ok {
-		er := http.StatusConflict
-		http.Error(w, "User already exists", er)
+	//user already exists old logic
+	// if _, ok := users[username]; ok {
+	// 	er := http.StatusConflict
+	// 	http.Error(w, "User already exists", er)
+	// 	return
+	// }
+
+	hp, err := hashPassword(password)
+	if err != nil {
+		http.Error(w, "Error hashing password", http.StatusInternalServerError)
 		return
 	}
 
-	hp, _ := hashPassword(password)
-	users[username] = User{
-		HashedPassword: hp,
+	err = db.InsertUser(username, hp, email)
+	if err != nil {
+		http.Error(w, "Error registering user", http.StatusInternalServerError)
+		return
 	}
 
 	fmt.Fprintln(w, "User registered successfully!")
@@ -164,10 +182,15 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	user, ok := users[username]
-	if !ok || !checkPasswordHash(password, user.HashedPassword) {
-		er := http.StatusUnauthorized
-		http.Error(w, "Invalid username or password", er)
+	storedHashedPassword, err := db.SelectHP(username) // Adjusted function call
+	if err != nil {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	//verify pw
+	if !checkPasswordHash(password, storedHashedPassword) {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
@@ -211,7 +234,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	//store tokens in the "database"
 	// user.SessionToken = sessionToken
 	// user.CSRFToken = csrfToken
-	users[username] = user
+	//users[username] = user
 
 	fmt.Fprintf(w, "Login Successful!")
 
