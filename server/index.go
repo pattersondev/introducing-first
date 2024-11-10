@@ -126,6 +126,15 @@ func isValidUsername(username string) bool {
 	return true
 }
 
+// check to see if phone number is valid
+func isValidPhoneNumber(number string) bool {
+	//reg expression for phone number format 123-456-7890
+	re := regexp.MustCompile(`^\d{3}-\d{3}-\d{4}$`)
+
+	//check that phonenumber that it matches the exact format
+	return re.MatchString(number)
+}
+
 // handle registration
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -137,11 +146,12 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	email := r.FormValue("email")
+	phone := r.FormValue("phone")
 
 	//username and password must be atleast 8 characters long and email must be valid
-	if !isValidUsername(username) || !isValidPassword(password) || !isValidEmail(email) {
+	if !isValidUsername(username) || !isValidPassword(password) || !isValidEmail(email) || !isValidPhoneNumber(phone) {
 		er := http.StatusNotAcceptable
-		http.Error(w, "Invalid Username/Password/Email", er)
+		http.Error(w, "Invalid Username/Password/Email/Phone", er)
 		return
 	}
 
@@ -164,7 +174,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.InsertUser(username, hp, email)
+	err = db.InsertUser(username, hp, email, phone)
 	if err != nil {
 		http.Error(w, "Error registering user", http.StatusInternalServerError)
 		return

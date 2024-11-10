@@ -32,9 +32,9 @@ func StartUsersDbConnection() *sql.DB {
 }
 
 // insert new user into DB
-func InsertUser(username string, hashed_password string, email string) error {
-	sqlStatement := "INSERT INTO users (username, password_hash, email) VALUES ($1, $2, $3);"
-	_, err := usersDb.ExecContext(context.Background(), sqlStatement, username, hashed_password, email)
+func InsertUser(username string, hashed_password string, email string, phone string) error {
+	sqlStatement := "INSERT INTO users (username, password_hash, email, phone_number) VALUES ($1, $2, $3, $4);"
+	_, err := usersDb.ExecContext(context.Background(), sqlStatement, username, hashed_password, email, phone)
 	if err != nil {
 		return fmt.Errorf("unable to insert user with username %s: %w", username, err)
 	}
