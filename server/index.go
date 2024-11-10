@@ -12,6 +12,8 @@ import (
 
 	"net/mail"
 
+	"regexp"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -86,6 +88,44 @@ func isValidEmail(email string) bool {
 	return err == nil
 }
 
+// check to see if password is valid
+func isValidPassword(password string) bool {
+	// isValidPassword checks if the password meets the criteria:
+	// - At least 8 characters
+	// - Less than 50 characters
+	// - Contains at least one special character
+	// - Contains at least one uppercase letter
+	// - Contains at least one lowercase letter
+
+	//at least 8 and less than 50 characters?
+	if len(password) < 8 || len(password) > 50 {
+		return false
+	}
+
+	//at least one uppercase letter?
+	hasUppercase := regexp.MustCompile(`[A-Z]`).MatchString(password)
+
+	//at least one lowercase letter?
+	hasLowercase := regexp.MustCompile(`[a-z]`).MatchString(password)
+
+	//at least one special character?
+	hasSpecialChar := regexp.MustCompile(`[^\w\d\s]`).MatchString(password) // non-alphanumeric and non-space characters
+
+	//if all conditions met, return true
+	return hasUppercase && hasLowercase && hasSpecialChar
+}
+
+// check to see if password is valid
+func isValidUsername(username string) bool {
+	//checks password is at least 3 characters and less than 50 characters
+
+	if len(username) < 3 || len(username) > 50 {
+		return false
+	}
+
+	return true
+}
+
 // handle registration
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -99,7 +139,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 
 	//username and password must be atleast 8 characters long and email must be valid
-	if len(username) < 8 || len(password) < 8 || !isValidEmail(email) {
+	if !isValidUsername(username) || !isValidPassword(password) || !isValidEmail(email) {
 		er := http.StatusNotAcceptable
 		http.Error(w, "Invalid Username/Password/Email", er)
 		return
