@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"server/db"
 
@@ -173,6 +174,9 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error hashing password", http.StatusInternalServerError)
 		return
 	}
+
+	//convert username to lowercase
+	username = strings.ToLower(username)
 
 	err = db.InsertUser(username, hp, email, phone)
 	if err != nil {
