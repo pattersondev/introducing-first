@@ -12,13 +12,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.689.0",
+    "axios": "^1.7.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "express-rate-limit": "^7.4.1",
     "helmet": "^8.0.0",
     "node-cron": "^3.0.3",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "sharp": "^0.33.5",
+    "uuid": "^11.0.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
