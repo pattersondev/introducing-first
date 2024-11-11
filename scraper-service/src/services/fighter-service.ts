@@ -28,10 +28,14 @@ export class FighterService {
 
   private async processAndUploadFighterImage(fighterProfileId: string): Promise<string | null> {
     try {
+      // Construct the image URL with the correct format
       const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
-      return await this.s3Service.uploadFighterImage(imageUrl);
+      
+      // Upload the image using S3Service
+      const imageS3Url = await this.s3Service.uploadFighterImage(imageUrl);
+      return imageS3Url;
     } catch (error) {
-      console.error('Error processing fighter image:', error);
+      console.error('Error processing and uploading fighter image:', error);
       return null;
     }
   }
