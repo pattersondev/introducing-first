@@ -16,9 +16,8 @@ Introducing First is a cutting-edge web application designed to provide comprehe
 ## Technology Stack
 
 - Frontend: Next.js with TypeScript
-- Backend: Golang
+- Backend: Golang and Typescript
 - Database: PostgreSQL
-- APIs: shhh
 
 ## Getting Started
 
