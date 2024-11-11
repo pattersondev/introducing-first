@@ -16,13 +16,25 @@ export class S3Service {
       }
     });
     this.bucket = process.env.AWS_S3_BUCKET || '';
+
+    // Log S3 configuration (without sensitive data)
+    console.log('S3 Configuration:', {
+      region: process.env.AWS_REGION,
+      bucket: this.bucket,
+      hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
+      hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY
+    });
   }
 
   private async checkImageExists(url: string): Promise<boolean> {
     try {
       console.log('Checking if image exists at:', url);
-      const response = await axios.head(url);
-      console.log('Head request status:', response.status);
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+      console.log('Image check status:', response.status);
       return response.status === 200;
     } catch (error) {
       console.error('Error checking image existence:', error);
@@ -39,56 +51,63 @@ export class S3Service {
         return null;
       }
 
-      console.log('Attempting to download image from:', imageUrl);
+      console.log('Downloading image from:', imageUrl);
       // Download image
       const response = await axios.get(imageUrl, { 
         responseType: 'arraybuffer',
-        validateStatus: function (status) {
-          return status === 200;
-        },
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
       });
 
-      // Validate that we received an image
-      const contentType = response.headers['content-type'];
-      if (!contentType || !contentType.startsWith('image/')) {
-        console.log(`Invalid content type received: ${contentType}`);
-        return null;
-      }
+      console.log('Image download successful, content type:', response.headers['content-type']);
 
       const buffer = Buffer.from(response.data);
-
-      // Validate buffer is not empty
-      if (!buffer || buffer.length === 0) {
-        console.log('Received empty buffer from image URL');
-        return null;
-      }
+      console.log('Buffer size:', buffer.length);
 
       try {
         // Process image with sharp
+        console.log('Processing image with Sharp');
         const processedImage = await sharp(buffer)
           .resize(350, 254, { fit: 'cover' })
           .jpeg({ quality: 80 })
           .toBuffer();
+        
+        console.log('Image processed successfully, size:', processedImage.length);
 
         // Generate unique filename
         const filename = `fighters/${uuidv4()}.jpg`;
+        console.log('Generated filename:', filename);
 
         // Upload to S3
-        await this.s3Client.send(new PutObjectCommand({
+        console.log('Uploading to S3...');
+        const uploadCommand = new PutObjectCommand({
           Bucket: this.bucket,
           Key: filename,
           Body: processedImage,
           ContentType: 'image/jpeg',
-          ACL: 'public-read' // Make sure the image is publicly accessible
-        }));
+          ACL: 'public-read'
+        });
+
+        console.log('S3 upload command created:', {
+          bucket: this.bucket,
+          key: filename,
+          contentType: 'image/jpeg'
+        });
+
+        const uploadResult = await this.s3Client.send(uploadCommand);
+        console.log('S3 upload successful:', uploadResult);
 
         // Return the S3 URL
-        return `https://${this.bucket}.s3.amazonaws.com/${filename}`;
+        const s3Url = `https://${this.bucket}.s3.amazonaws.com/${filename}`;
+        console.log('Generated S3 URL:', s3Url);
+        return s3Url;
+
       } catch (sharpError) {
-        console.error('Error processing image with Sharp:', sharpError);
+        console.error('Error processing image with Sharp:', {
+          error: sharpError,
+          stack: sharpError instanceof Error ? sharpError.stack : undefined
+        });
         return null;
       }
     } catch (error) {
@@ -96,10 +115,14 @@ export class S3Service {
         console.error('Axios error uploading fighter image:', {
           status: error.response?.status,
           url: imageUrl,
-          message: error.message
+          message: error.message,
+          response: error.response?.data
         });
       } else {
-        console.error('Error uploading fighter image:', error);
+        console.error('Error uploading fighter image:', {
+          error,
+          stack: error instanceof Error ? error.stack : undefined
+        });
       }
       return null;
     }
