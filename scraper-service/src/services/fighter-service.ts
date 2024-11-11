@@ -1,5 +1,6 @@
 import { Pool } from 'pg';
 import { generateId } from '../utils/helpers';
+import { S3Service } from './s3-service';
 
 interface DBFight {
   date: string;
@@ -19,7 +20,21 @@ interface FightWithOpponentId extends DBFight {
 }
 
 export class FighterService {
-  constructor(private pool: Pool) {}
+  private s3Service: S3Service;
+
+  constructor(private pool: Pool) {
+    this.s3Service = new S3Service();
+  }
+
+  private async processAndUploadFighterImage(fighterProfileId: string): Promise<string | null> {
+    try {
+      const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
+      return await this.s3Service.uploadFighterImage(imageUrl);
+    } catch (error) {
+      console.error('Error processing fighter image:', error);
+      return null;
+    }
+  }
 
   async processFighter(fighter: any) {
     const client = await this.pool.connect();
@@ -31,6 +46,15 @@ export class FighterService {
         fighter.LastName || '', 
         fighter.Birthdate || 'unknown'
       );
+
+      // Extract fighter profile ID from URL
+      const fighterProfileId = fighter.Url ? fighter.Url.split('/').pop() : null;
+      
+      // Process fighter image if profile ID exists
+      let imageUrl = null;
+      if (fighterProfileId) {
+        imageUrl = await this.processAndUploadFighterImage(fighterProfileId);
+      }
 
       // Parse height and weight
       let heightInInches = 0;
@@ -78,7 +102,7 @@ export class FighterService {
       const fighterExists = await client.query('SELECT 1 FROM fighters WHERE fighter_id = $1', [fighterId]);
       if (fighterExists.rowCount === 0) {
         await client.query(
-          'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record, country, reach) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)',
+          'INSERT INTO fighters (fighter_id, first_name, last_name, height, weight, birthdate, age, team, nickname, stance, win_loss_record, tko_record, sub_record, country, reach, image_url) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) ON CONFLICT (fighter_id) DO UPDATE SET image_url = $16',
           [
             fighterId,
             fighter.FirstName,
@@ -94,7 +118,8 @@ export class FighterService {
             fighter.TKORecord || '0-0',
             fighter.SubRecord || '0-0',
             fighter.Country || '',
-            fighter.Reach || ''
+            fighter.Reach || '',
+            imageUrl
           ]
         );
       } else {
@@ -125,6 +150,7 @@ export class FighterService {
         if (fighter.SubRecord) addUpdate('sub_record', fighter.SubRecord);
         if (fighter.Country) addUpdate('country', fighter.Country);
         if (fighter.Reach) addUpdate('reach', fighter.Reach);
+        if (imageUrl) addUpdate('image_url', imageUrl);
 
         // Only proceed with update if there are fields to update
         if (updates.length > 0) {

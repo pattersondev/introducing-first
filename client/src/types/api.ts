@@ -39,6 +39,7 @@ export interface Fighter {
   sub_record: string;
   country: string;
   reach: string;
+  image_url?: string;
 }
 
 // export interface FighterAnalytics {
