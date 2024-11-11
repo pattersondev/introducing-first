@@ -20,11 +20,9 @@ interface FightWithOpponentId extends DBFight {
 }
 
 export class FighterService {
-  private pool: Pool;
   private s3Service: S3Service;
 
   constructor(private pool: Pool) {
-    this.pool = pool;
     this.s3Service = new S3Service();
   }
 
