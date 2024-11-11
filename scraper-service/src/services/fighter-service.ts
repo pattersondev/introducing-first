@@ -57,7 +57,6 @@ export class FighterService {
       
       if (fighter.Birthdate) {
         try {
-          // Remove age in parentheses if present
           const birthdateStr = fighter.Birthdate.split('(')[0].trim();
           birthdate = new Date(birthdateStr);
           if (!isNaN(birthdate.getTime())) {
@@ -99,39 +98,43 @@ export class FighterService {
           ]
         );
       } else {
-        // Add UPDATE statement for existing fighters
-        await client.query(
-          `UPDATE fighters 
-          SET 
-              height = $2,
-              weight = $3,
-              birthdate = $4,
-              age = $5,
-              team = $6,
-              nickname = $7,
-              stance = $8,
-              win_loss_record = $9,
-              tko_record = $10,
-              sub_record = $11,
-              country = $12,
-              reach = $13
-          WHERE fighter_id = $1`,
-          [
-            fighterId,
-            heightInInches,
-            weight,
-            birthdate,
-            age,
-            fighter.Team || '',
-            fighter.Nickname || '',
-            fighter.Stance || '',
-            fighter.WinLossRecord || '0-0-0',
-            fighter.TKORecord || '0-0',
-            fighter.SubRecord || '0-0',
-            fighter.Country || '',
-            fighter.Reach || ''
-          ]
-        );
+        // Build dynamic UPDATE query based on non-empty values
+        const updates: string[] = [];
+        const values: any[] = [fighterId]; // Start with fighterId
+        let paramIndex = 2; // Start from $2 since $1 is fighterId
+
+        // Helper function to add update if value exists
+        const addUpdate = (field: string, value: any) => {
+          if (value !== null && value !== '') {
+            updates.push(`${field} = $${paramIndex}`);
+            values.push(value);
+            paramIndex++;
+          }
+        };
+
+        // Only add fields that have valid values
+        if (heightInInches > 0) addUpdate('height', heightInInches);
+        if (weight > 0) addUpdate('weight', weight);
+        if (birthdate) addUpdate('birthdate', birthdate);
+        if (age > 0) addUpdate('age', age);
+        if (fighter.Team) addUpdate('team', fighter.Team);
+        if (fighter.Nickname) addUpdate('nickname', fighter.Nickname);
+        if (fighter.Stance) addUpdate('stance', fighter.Stance);
+        if (fighter.WinLossRecord) addUpdate('win_loss_record', fighter.WinLossRecord);
+        if (fighter.TKORecord) addUpdate('tko_record', fighter.TKORecord);
+        if (fighter.SubRecord) addUpdate('sub_record', fighter.SubRecord);
+        if (fighter.Country) addUpdate('country', fighter.Country);
+        if (fighter.Reach) addUpdate('reach', fighter.Reach);
+
+        // Only proceed with update if there are fields to update
+        if (updates.length > 0) {
+          const updateQuery = `
+            UPDATE fighters 
+            SET ${updates.join(', ')}
+            WHERE fighter_id = $1
+          `;
+          await client.query(updateQuery, values);
+        }
       }
 
       // Process fights if they exist
