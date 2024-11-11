@@ -16,14 +16,6 @@ export class S3Service {
       }
     });
     this.bucket = process.env.AWS_S3_BUCKET || '';
-
-    // Log S3 configuration (without sensitive data)
-    console.log('S3 Configuration:', {
-      region: process.env.AWS_REGION,
-      bucket: this.bucket,
-      hasAccessKey: !!process.env.AWS_ACCESS_KEY_ID,
-      hasSecretKey: !!process.env.AWS_SECRET_ACCESS_KEY
-    });
   }
 
   private async checkImageExists(url: string): Promise<boolean> {
@@ -79,14 +71,12 @@ export class S3Service {
         const filename = `fighters/${uuidv4()}.jpg`;
         console.log('Generated filename:', filename);
 
-        // Upload to S3
         console.log('Uploading to S3...');
         const uploadCommand = new PutObjectCommand({
           Bucket: this.bucket,
           Key: filename,
           Body: processedImage,
-          ContentType: 'image/jpeg',
-          ACL: 'public-read'
+          ContentType: 'image/jpeg'
         });
 
         console.log('S3 upload command created:', {
