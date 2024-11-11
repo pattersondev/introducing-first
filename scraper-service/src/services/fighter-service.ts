@@ -186,40 +186,158 @@ export class FighterService {
   }
 
   private async processFighterStats(client: any, fighter: any, fighterId: string) {
-    // Process fights
-    if (fighter.Fights && Array.isArray(fighter.Fights)) {
-      for (const fight of fighter.Fights) {
-        if (fight.Date && fight.Opponent) {
-          await this.processFight(client, fight, fighterId);
-        }
-      }
-    }
-
     // Process striking stats
     if (fighter.StrikingStats && Array.isArray(fighter.StrikingStats)) {
-      for (const stat of fighter.StrikingStats) {
-        if (stat.Date && stat.Opponent) {
-          await this.processStrikingStat(client, stat, fighterId);
+        for (const stat of fighter.StrikingStats) {
+            const statId = generateId(fighterId, stat.date || '', stat.opponent || '', 'striking');
+            
+            // Parse numeric values
+            const tsl = parseInt(stat.tsl) || 0;
+            const tsa = parseInt(stat.tsa) || 0;
+            const ssl = parseInt(stat.ssl) || 0;
+            const ssa = parseInt(stat.ssa) || 0;
+            const kd = parseInt(stat.kd) || 0;
+            const bodyPerc = parseFloat((stat.percent_body || '0').replace('%', '')) / 100;
+            const headPerc = parseFloat((stat.percent_head || '0').replace('%', '')) / 100;
+            const legPerc = parseFloat((stat.percent_leg || '0').replace('%', '')) / 100;
+            const tslTsaPerc = parseFloat((stat.tsl_tsa || '0').replace('%', '')) / 100;
+
+            await client.query(
+                `INSERT INTO striking_stats (
+                    striking_stat_id, fighter_id, opponent, event, result,
+                    sdbl_a, sdhl_a, sdll_a, tsl, tsa, ssl, ssa,
+                    tsl_tsa_perc, kd, body_perc, head_perc, leg_perc
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                ON CONFLICT (striking_stat_id) DO UPDATE SET
+                    sdbl_a = $6, sdhl_a = $7, sdll_a = $8,
+                    tsl = $9, tsa = $10, ssl = $11, ssa = $12,
+                    tsl_tsa_perc = $13, kd = $14, body_perc = $15,
+                    head_perc = $16, leg_perc = $17`,
+                [
+                    statId,
+                    fighterId,
+                    stat.opponent || '',
+                    stat.event || '',
+                    stat.result || '',
+                    stat.sdbl_a || '0/0',
+                    stat.sdhl_a || '0/0',
+                    stat.sdll_a || '0/0',
+                    tsl,
+                    tsa,
+                    ssl,
+                    ssa,
+                    tslTsaPerc,
+                    kd,
+                    bodyPerc,
+                    headPerc,
+                    legPerc
+                ]
+            );
         }
-      }
     }
 
     // Process clinch stats
     if (fighter.ClinchStats && Array.isArray(fighter.ClinchStats)) {
-      for (const stat of fighter.ClinchStats) {
-        if (stat.Date && stat.Opponent) {
-          await this.processClinchStat(client, stat, fighterId);
+        for (const stat of fighter.ClinchStats) {
+            const statId = generateId(fighterId, stat.date || '', stat.opponent || '', 'clinch');
+            
+            // Parse numeric values
+            const scbl = parseInt(stat.scbl) || 0;
+            const scba = parseInt(stat.scba) || 0;
+            const schl = parseInt(stat.schl) || 0;
+            const scha = parseInt(stat.scha) || 0;
+            const scll = parseInt(stat.scll) || 0;
+            const scla = parseInt(stat.scla) || 0;
+            const rv = parseInt(stat.rv) || 0;
+            const sr = parseFloat(stat.sr) || 0;
+            const tdl = parseInt(stat.tdl) || 0;
+            const tda = parseInt(stat.tda) || 0;
+            const tds = parseInt(stat.tds) || 0;
+            const tkAcc = parseFloat((stat.tk_acc || '0').replace('%', '')) / 100;
+
+            await client.query(
+                `INSERT INTO clinch_stats (
+                    clinch_stat_id, fighter_id, opponent, event, result,
+                    scbl, scba, schl, scha, scll, scla,
+                    rv, sr, tdl, tda, tds, tk_acc_perc
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                ON CONFLICT (clinch_stat_id) DO UPDATE SET
+                    scbl = $6, scba = $7, schl = $8, scha = $9,
+                    scll = $10, scla = $11, rv = $12, sr = $13,
+                    tdl = $14, tda = $15, tds = $16, tk_acc_perc = $17`,
+                [
+                    statId,
+                    fighterId,
+                    stat.opponent || '',
+                    stat.event || '',
+                    stat.result || '',
+                    scbl,
+                    scba,
+                    schl,
+                    scha,
+                    scll,
+                    scla,
+                    rv,
+                    sr,
+                    tdl,
+                    tda,
+                    tds,
+                    tkAcc
+                ]
+            );
         }
-      }
     }
 
     // Process ground stats
     if (fighter.GroundStats && Array.isArray(fighter.GroundStats)) {
-      for (const stat of fighter.GroundStats) {
-        if (stat.Date && stat.Opponent) {
-          await this.processGroundStat(client, stat, fighterId);
+        for (const stat of fighter.GroundStats) {
+            const statId = generateId(fighterId, stat.date || '', stat.opponent || '', 'ground');
+            
+            // Parse numeric values
+            const sgbl = parseInt(stat.sgbl) || 0;
+            const sgba = parseInt(stat.sgba) || 0;
+            const sghl = parseInt(stat.sghl) || 0;
+            const sgha = parseInt(stat.sgha) || 0;
+            const sgll = parseInt(stat.sgll) || 0;
+            const sgla = parseInt(stat.sgla) || 0;
+            const ad = parseInt(stat.ad) || 0;
+            const adtb = parseInt(stat.adtb) || 0;
+            const adhg = parseInt(stat.adhg) || 0;
+            const adtm = parseInt(stat.adtm) || 0;
+            const adts = parseInt(stat.adts) || 0;
+            const sm = parseInt(stat.sm) || 0;
+
+            await client.query(
+                `INSERT INTO ground_stats (
+                    ground_stat_id, fighter_id, opponent, event, result,
+                    sgbl, sgba, sghl, sgha, sgll, sgla,
+                    ad, adtb, adhg, adtm, adts, sm
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                ON CONFLICT (ground_stat_id) DO UPDATE SET
+                    sgbl = $6, sgba = $7, sghl = $8, sgha = $9,
+                    sgll = $10, sgla = $11, ad = $12, adtb = $13,
+                    adhg = $14, adtm = $15, adts = $16, sm = $17`,
+                [
+                    statId,
+                    fighterId,
+                    stat.opponent || '',
+                    stat.event || '',
+                    stat.result || '',
+                    sgbl,
+                    sgba,
+                    sghl,
+                    sgha,
+                    sgll,
+                    sgla,
+                    ad,
+                    adtb,
+                    adhg,
+                    adtm,
+                    adts,
+                    sm
+                ]
+            );
         }
-      }
     }
   }
 
@@ -255,109 +373,6 @@ export class FighterService {
         fight.Decision || '',
         parseInt(fight.Rnd) || null,
         fight.Time || ''
-      ]
-    );
-  }
-
-  private async processStrikingStat(client: any, stat: any, fighterId: string) {
-    const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'striking');
-    await client.query(
-      `INSERT INTO striking_stats (
-        striking_stat_id, fighter_id, opponent, event, result,
-        sdbl_a, sdhl_a, sdll_a, tsl, tsa, ssl, ssa,
-        tsl_tsa_perc, kd, body_perc, head_perc, leg_perc
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      ON CONFLICT (striking_stat_id) DO UPDATE SET
-        result = $5, sdbl_a = $6, sdhl_a = $7, sdll_a = $8,
-        tsl = $9, tsa = $10, ssl = $11, ssa = $12,
-        tsl_tsa_perc = $13, kd = $14, body_perc = $15,
-        head_perc = $16, leg_perc = $17`,
-      [
-        statId,
-        fighterId,
-        stat.Opponent || '',
-        stat.Event || '',
-        stat.Result || '',
-        stat.SDblA || '0/0',
-        stat.SDhlA || '0/0',
-        stat.SDllA || '0/0',
-        parseInt(stat.TSL) || 0,
-        parseInt(stat.TSA) || 0,
-        parseInt(stat.SSL) || 0,
-        parseInt(stat.SSA) || 0,
-        parseFloat((stat.TSL_TSA || '0').replace('%', '')) / 100 || 0,
-        parseInt(stat.KD) || 0,
-        parseFloat((stat.PercentBody || '0').replace('%', '')) / 100 || 0,
-        parseFloat((stat.PercentHead || '0').replace('%', '')) / 100 || 0,
-        parseFloat((stat.PercentLeg || '0').replace('%', '')) / 100 || 0
-      ]
-    );
-  }
-
-  private async processClinchStat(client: any, stat: any, fighterId: string) {
-    const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'clinch');
-    await client.query(
-      `INSERT INTO clinch_stats (
-        clinch_stat_id, fighter_id, opponent, event, result,
-        scbl, scba, schl, scha, scll, scla,
-        rv, sr, tdl, tda, tds, tk_acc_perc
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      ON CONFLICT (clinch_stat_id) DO UPDATE SET
-        result = $5, scbl = $6, scba = $7, schl = $8, scha = $9,
-        scll = $10, scla = $11, rv = $12, sr = $13,
-        tdl = $14, tda = $15, tds = $16, tk_acc_perc = $17`,
-      [
-        statId,
-        fighterId,
-        stat.Opponent || '',
-        stat.Event || '',
-        stat.Result || '',
-        parseInt(stat.SCBL) || 0,
-        parseInt(stat.SCBA) || 0,
-        parseInt(stat.SCHL) || 0,
-        parseInt(stat.SCHA) || 0,
-        parseInt(stat.SCLL) || 0,
-        parseInt(stat.SCLA) || 0,
-        parseInt(stat.RV) || 0,
-        parseFloat(stat.SR) || 0,
-        parseInt(stat.TDL) || 0,
-        parseInt(stat.TDA) || 0,
-        parseInt(stat.TDS) || 0,
-        parseFloat((stat.TK_ACC || '0').replace('%', '')) / 100 || 0
-      ]
-    );
-  }
-
-  private async processGroundStat(client: any, stat: any, fighterId: string) {
-    const statId = generateId(fighterId, stat.Date || '', stat.Opponent || '', 'ground');
-    await client.query(
-      `INSERT INTO ground_stats (
-        ground_stat_id, fighter_id, opponent, event, result,
-        sgbl, sgba, sghl, sgha, sgll, sgla,
-        ad, adtb, adhg, adtm, adts, sm
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      ON CONFLICT (ground_stat_id) DO UPDATE SET
-        result = $5, sgbl = $6, sgba = $7, sghl = $8, sgha = $9,
-        sgll = $10, sgla = $11, ad = $12, adtb = $13,
-        adhg = $14, adtm = $15, adts = $16, sm = $17`,
-      [
-        statId,
-        fighterId,
-        stat.Opponent || '',
-        stat.Event || '',
-        stat.Result || '',
-        parseInt(stat.SGBL) || 0,
-        parseInt(stat.SGBA) || 0,
-        parseInt(stat.SGHL) || 0,
-        parseInt(stat.SGHA) || 0,
-        parseInt(stat.SGLL) || 0,
-        parseInt(stat.SGLA) || 0,
-        parseInt(stat.AD) || 0,
-        parseInt(stat.ADTB) || 0,
-        parseInt(stat.ADHG) || 0,
-        parseInt(stat.ADTM) || 0,
-        parseInt(stat.ADTS) || 0,
-        parseInt(stat.SM) || 0
       ]
     );
   }
