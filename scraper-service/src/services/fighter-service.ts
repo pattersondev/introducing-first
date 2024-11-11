@@ -98,6 +98,40 @@ export class FighterService {
             fighter.Reach || ''
           ]
         );
+      } else {
+        // Add UPDATE statement for existing fighters
+        await client.query(
+          `UPDATE fighters 
+          SET 
+              height = $2,
+              weight = $3,
+              birthdate = $4,
+              age = $5,
+              team = $6,
+              nickname = $7,
+              stance = $8,
+              win_loss_record = $9,
+              tko_record = $10,
+              sub_record = $11,
+              country = $12,
+              reach = $13
+          WHERE fighter_id = $1`,
+          [
+            fighterId,
+            heightInInches,
+            weight,
+            birthdate,
+            age,
+            fighter.Team || '',
+            fighter.Nickname || '',
+            fighter.Stance || '',
+            fighter.WinLossRecord || '0-0-0',
+            fighter.TKORecord || '0-0',
+            fighter.SubRecord || '0-0',
+            fighter.Country || '',
+            fighter.Reach || ''
+          ]
+        );
       }
 
       // Process fights if they exist
