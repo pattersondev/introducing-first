@@ -28,26 +28,31 @@ export class FighterService {
 
   private async processAndUploadFighterImage(fighterProfileId: string): Promise<string | null> {
     try {
-      // Construct the image URL with the correct format
-      const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
-      
-      // Upload the image using S3Service
-      const imageS3Url = await this.s3Service.uploadFighterImage(imageUrl);
-      return imageS3Url;
+        // Construct the ESPN image URL with the correct format
+        const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
+        console.log('Attempting to fetch image from:', imageUrl);
+        
+        // Upload the image using S3Service
+        const imageS3Url = await this.s3Service.uploadFighterImage(imageUrl);
+        console.log('S3 upload result:', imageS3Url);
+        return imageS3Url;
     } catch (error) {
-      console.error('Error processing and uploading fighter image:', error);
-      return null;
+        console.error('Error processing and uploading fighter image:', error);
+        return null;
     }
   }
 
   private extractFighterProfileId(url: string): string | null {
     try {
-      // Look for '/id/' in the URL and get the number that follows
-      const match = url.match(/\/id\/(\d+)/);
-      return match ? match[1] : null;
+        console.log('Extracting profile ID from URL:', url);
+        // Look for '/id/' in the URL and get the number that follows
+        const match = url.match(/\/id\/(\d+)/);
+        const profileId = match ? match[1] : null;
+        console.log('Extracted profile ID:', profileId);
+        return profileId;
     } catch (error) {
-      console.error('Error extracting fighter profile ID:', error);
-      return null;
+        console.error('Error extracting fighter profile ID:', error);
+        return null;
     }
   }
 

@@ -20,9 +20,12 @@ export class S3Service {
 
   private async checkImageExists(url: string): Promise<boolean> {
     try {
+      console.log('Checking if image exists at:', url);
       const response = await axios.head(url);
+      console.log('Head request status:', response.status);
       return response.status === 200;
     } catch (error) {
+      console.error('Error checking image existence:', error);
       return false;
     }
   }
@@ -36,11 +39,15 @@ export class S3Service {
         return null;
       }
 
+      console.log('Attempting to download image from:', imageUrl);
       // Download image
       const response = await axios.get(imageUrl, { 
         responseType: 'arraybuffer',
         validateStatus: function (status) {
-          return status === 200; // Only accept 200 status code
+          return status === 200;
+        },
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
       });
 
