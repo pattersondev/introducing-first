@@ -36,6 +36,17 @@ export class FighterService {
     }
   }
 
+  private extractFighterProfileId(url: string): string | null {
+    try {
+      // Look for '/id/' in the URL and get the number that follows
+      const match = url.match(/\/id\/(\d+)/);
+      return match ? match[1] : null;
+    } catch (error) {
+      console.error('Error extracting fighter profile ID:', error);
+      return null;
+    }
+  }
+
   async processFighter(fighter: any) {
     const client = await this.pool.connect();
     try {
@@ -47,8 +58,8 @@ export class FighterService {
         fighter.Birthdate || 'unknown'
       );
 
-      // Extract fighter profile ID from URL
-      const fighterProfileId = fighter.Url ? fighter.Url.split('/').pop() : null;
+      // Extract fighter profile ID from URL using the new method
+      const fighterProfileId = fighter.Url ? this.extractFighterProfileId(fighter.Url) : null;
       
       // Process fighter image if profile ID exists
       let imageUrl = null;
