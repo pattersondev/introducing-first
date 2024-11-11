@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
@@ -118,8 +119,21 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
       <div className="flex flex-col md:flex-row gap-8">
         <Card className="bg-gray-800 border-gray-700 w-full md:w-64">
           <CardContent className="p-6">
-            <div className="aspect-square rounded-lg bg-gray-700 flex items-center justify-center">
-              <User className="w-24 h-24 text-gray-400" />
+            <div className="aspect-square rounded-lg bg-gray-700 overflow-hidden">
+              {fighter.image_url ? (
+                <Image
+                  src={fighter.image_url}
+                  alt={`${fighter.first_name} ${fighter.last_name}`}
+                  width={350}
+                  height={254}
+                  className="w-full h-full object-cover"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="w-24 h-24 text-gray-400" />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
