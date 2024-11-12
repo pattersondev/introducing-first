@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 export class S3Service {
   private s3Client: S3Client;
@@ -16,6 +16,10 @@ export class S3Service {
       }
     });
     this.bucket = process.env.AWS_S3_BUCKET || '';
+  }
+
+  private hashProfileId(profileId: string): string {
+    return crypto.createHash('sha256').update(profileId).digest('hex');
   }
 
   private async checkImageExists(url: string): Promise<boolean> {
@@ -47,14 +51,13 @@ export class S3Service {
       return true;
     } catch (error) {
       console.error('Error deleting existing image:', error);
-      // Return false to indicate deletion failed
       return false;
     }
   }
 
-  private async checkS3ImageExists(profileId: string): Promise<string | null> {
+  private async checkS3ImageExists(hashedId: string): Promise<string | null> {
     try {
-      const key = `fighters/${profileId}.jpg`;
+      const key = `fighters/${hashedId}.jpg`;
       await this.s3Client.send(
         new HeadObjectCommand({
           Bucket: this.bucket,
@@ -69,6 +72,9 @@ export class S3Service {
 
   async uploadFighterImage(imageUrl: string, profileId: string): Promise<string | null> {
     try {
+      const hashedId = this.hashProfileId(profileId);
+      console.log('Hashed profile ID:', hashedId);
+
       // Check if source image exists
       const imageExists = await this.checkImageExists(imageUrl);
       if (!imageExists) {
@@ -77,13 +83,12 @@ export class S3Service {
       }
 
       // Check if we already have an image for this fighter
-      const existingImageKey = await this.checkS3ImageExists(profileId);
+      const existingImageKey = await this.checkS3ImageExists(hashedId);
       if (existingImageKey) {
         console.log('Found existing image, attempting to delete:', existingImageKey);
         const deleteSuccess = await this.deleteExistingImage(existingImageKey);
         if (!deleteSuccess) {
           console.error('Failed to delete existing image, skipping update');
-          // Return the existing image URL since we couldn't delete the old one
           return `https://${this.bucket}.s3.amazonaws.com/${existingImageKey}`;
         }
       }
@@ -112,8 +117,8 @@ export class S3Service {
           })
           .toBuffer();
         
-        // Use profileId in the filename for consistency
-        const filename = `fighters/${profileId}.jpg`;
+        // Use hashed profileId in the filename
+        const filename = `fighters/${hashedId}.jpg`;
         console.log('Generated filename:', filename);
 
         const uploadCommand = new PutObjectCommand({
