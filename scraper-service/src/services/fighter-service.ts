@@ -482,7 +482,7 @@ export class FighterService {
       
       const totalCount = parseInt(countResult.rows[0].count);
 
-      // Get paginated results
+      // Get paginated results with image_url
       const result = await client.query(
         `SELECT 
           fighter_id,
@@ -492,7 +492,8 @@ export class FighterService {
           team,
           win_loss_record,
           weight,
-          height
+          height,
+          image_url
          FROM fighters 
          WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)
          ORDER BY last_name, first_name
@@ -587,6 +588,7 @@ export class FighterService {
           f.win_loss_record,
           f.weight,
           f.height,
+          f.image_url,
           fs.search_count
         FROM fighters f
         JOIN fighter_searches fs ON f.fighter_id = fs.fighter_id

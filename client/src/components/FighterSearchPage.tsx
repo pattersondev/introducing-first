@@ -21,6 +21,7 @@ interface Fighter {
   win_loss_record: string;
   weight: number;
   height: number;
+  image_url?: string;
 }
 
 interface SearchResponse {
@@ -144,14 +145,18 @@ export function FighterSearchPage() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                   <Avatar className="h-12 w-12 border-2 border-gray-600">
-                                    <AvatarImage
-                                      src="/placeholder-fighter.png"
-                                      alt={`${fighter.first_name} ${fighter.last_name}`}
-                                    />
-                                    <AvatarFallback className="bg-gray-800">
-                                      {fighter.first_name[0]}
-                                      {fighter.last_name[0]}
-                                    </AvatarFallback>
+                                    {fighter.image_url ? (
+                                      <AvatarImage
+                                        src={fighter.image_url}
+                                        alt={`${fighter.first_name} ${fighter.last_name}`}
+                                        className="object-cover object-top"
+                                      />
+                                    ) : (
+                                      <AvatarFallback className="bg-gray-800">
+                                        {fighter.first_name[0]}
+                                        {fighter.last_name[0]}
+                                      </AvatarFallback>
+                                    )}
                                   </Avatar>
                                   <div>
                                     <h3 className="text-lg font-semibold text-white">
@@ -199,14 +204,18 @@ export function FighterSearchPage() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
                                   <Avatar className="h-12 w-12 border-2 border-gray-600">
-                                    <AvatarImage
-                                      src="/placeholder-fighter.png"
-                                      alt={`${fighter.first_name} ${fighter.last_name}`}
-                                    />
-                                    <AvatarFallback className="bg-gray-800">
-                                      {fighter.first_name[0]}
-                                      {fighter.last_name[0]}
-                                    </AvatarFallback>
+                                    {fighter.image_url ? (
+                                      <AvatarImage
+                                        src={fighter.image_url}
+                                        alt={`${fighter.first_name} ${fighter.last_name}`}
+                                        className="object-cover object-top"
+                                      />
+                                    ) : (
+                                      <AvatarFallback className="bg-gray-800">
+                                        {fighter.first_name[0]}
+                                        {fighter.last_name[0]}
+                                      </AvatarFallback>
+                                    )}
                                   </Avatar>
                                   <div>
                                     <h3 className="text-lg font-semibold text-white">
