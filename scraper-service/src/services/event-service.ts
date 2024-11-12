@@ -185,6 +185,8 @@ export class EventService {
                   'fighter2_id', m.fighter2_id,
                   'fighter1_name', m.fighter1_name,
                   'fighter2_name', m.fighter2_name,
+                  'fighter1_image', f1.image_url,
+                  'fighter2_image', f2.image_url,
                   'result', m.result,
                   'winner', m.winner,
                   'display_order', m.display_order
@@ -196,6 +198,8 @@ export class EventService {
           ) AS matchups
         FROM events e
         LEFT JOIN matchups m ON e.event_id = m.event_id
+        LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
+        LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
         WHERE e.event_id = $1
         GROUP BY e.event_id, e.name, e.date, e.location
       `, [cleanEventId]);
