@@ -94,16 +94,19 @@ export function MatchupList({
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Avatar className="h-12 w-12 border-2 border-gray-700">
-                      <AvatarImage
-                        src="/placeholder-fighter.png"
-                        alt={matchup.fighter1_name}
-                      />
-                      <AvatarFallback className="bg-gray-800">
-                        {matchup.fighter1_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
+                      {matchup.fighter1_image ? (
+                        <AvatarImage
+                          src={matchup.fighter1_image}
+                          alt={matchup.fighter1_name}
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-gray-800">
+                          {matchup.fighter1_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
                     <Link
                       href={`/fighters/${matchup.fighter1_id}`}
@@ -159,16 +162,19 @@ export function MatchupList({
                       {matchup.fighter2_name}
                     </Link>
                     <Avatar className="h-12 w-12 border-2 border-gray-700">
-                      <AvatarImage
-                        src="/placeholder-fighter.png"
-                        alt={matchup.fighter2_name}
-                      />
-                      <AvatarFallback className="bg-gray-800">
-                        {matchup.fighter2_name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
+                      {matchup.fighter2_image ? (
+                        <AvatarImage
+                          src={matchup.fighter2_image}
+                          alt={matchup.fighter2_name}
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-gray-800">
+                          {matchup.fighter2_name
+                            ?.split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </AvatarFallback>
+                      )}
                     </Avatar>
                   </div>
                   {isEventInFuture(eventDate) && (

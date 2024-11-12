@@ -18,6 +18,8 @@ export interface Matchup {
   fighter2_id: string;
   fighter1_name: string;
   fighter2_name: string;
+  fighter1_image?: string;
+  fighter2_image?: string;
   result: string;
   winner: string;
   display_order: number;
