@@ -28,12 +28,11 @@ export class FighterService {
 
   private async processAndUploadFighterImage(fighterProfileId: string): Promise<string | null> {
     try {
-        // Construct the ESPN image URL with the correct format
         const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
         console.log('Attempting to fetch image from:', imageUrl);
         
-        // Upload the image using S3Service
-        const imageS3Url = await this.s3Service.uploadFighterImage(imageUrl);
+        // Pass the profileId to the upload function
+        const imageS3Url = await this.s3Service.uploadFighterImage(imageUrl, fighterProfileId);
         console.log('S3 upload result:', imageS3Url);
         return imageS3Url;
     } catch (error) {

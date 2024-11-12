@@ -93,11 +93,12 @@ export function MatchupList({
               <div className="flex justify-between items-center">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-12 w-12 border-2 border-gray-700">
+                    <Avatar className="h-16 w-16 border-2 border-gray-700">
                       {matchup.fighter1_image ? (
                         <AvatarImage
                           src={matchup.fighter1_image}
                           alt={matchup.fighter1_name}
+                          className="object-cover object-center"
                         />
                       ) : (
                         <AvatarFallback className="bg-gray-800">
@@ -161,11 +162,12 @@ export function MatchupList({
                     >
                       {matchup.fighter2_name}
                     </Link>
-                    <Avatar className="h-12 w-12 border-2 border-gray-700">
+                    <Avatar className="h-16 w-16 border-2 border-gray-700">
                       {matchup.fighter2_image ? (
                         <AvatarImage
                           src={matchup.fighter2_image}
                           alt={matchup.fighter2_name}
+                          className="object-cover object-center"
                         />
                       ) : (
                         <AvatarFallback className="bg-gray-800">
