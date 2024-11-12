@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,17 +34,61 @@ export class S3Service {
     }
   }
 
-  async uploadFighterImage(imageUrl: string): Promise<string | null> {
+  private async deleteExistingImage(key: string): Promise<boolean> {
     try {
-      // Check if image exists before attempting download
+      console.log('Deleting existing image:', key);
+      await this.s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: key
+        })
+      );
+      console.log('Successfully deleted existing image');
+      return true;
+    } catch (error) {
+      console.error('Error deleting existing image:', error);
+      // Return false to indicate deletion failed
+      return false;
+    }
+  }
+
+  private async checkS3ImageExists(profileId: string): Promise<string | null> {
+    try {
+      const key = `fighters/${profileId}.jpg`;
+      await this.s3Client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key
+        })
+      );
+      return key;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async uploadFighterImage(imageUrl: string, profileId: string): Promise<string | null> {
+    try {
+      // Check if source image exists
       const imageExists = await this.checkImageExists(imageUrl);
       if (!imageExists) {
         console.log(`Image not found at URL: ${imageUrl}`);
         return null;
       }
 
-      console.log('Downloading image from:', imageUrl);
-      // Download image
+      // Check if we already have an image for this fighter
+      const existingImageKey = await this.checkS3ImageExists(profileId);
+      if (existingImageKey) {
+        console.log('Found existing image, attempting to delete:', existingImageKey);
+        const deleteSuccess = await this.deleteExistingImage(existingImageKey);
+        if (!deleteSuccess) {
+          console.error('Failed to delete existing image, skipping update');
+          // Return the existing image URL since we couldn't delete the old one
+          return `https://${this.bucket}.s3.amazonaws.com/${existingImageKey}`;
+        }
+      }
+
+      console.log('Downloading new image from:', imageUrl);
       const response = await axios.get(imageUrl, { 
         responseType: 'arraybuffer',
         headers: {
@@ -52,26 +96,26 @@ export class S3Service {
         }
       });
 
-      console.log('Image download successful, content type:', response.headers['content-type']);
-
       const buffer = Buffer.from(response.data);
-      console.log('Buffer size:', buffer.length);
 
       try {
-        // Process image with sharp
         console.log('Processing image with Sharp');
         const processedImage = await sharp(buffer)
-          .resize(350, 254, { fit: 'cover' })
-          .jpeg({ quality: 80 })
+          .resize(500, 500, {
+            fit: 'cover',
+            position: 'top',
+            withoutEnlargement: true
+          })
+          .jpeg({ 
+            quality: 100,
+            progressive: true
+          })
           .toBuffer();
         
-        console.log('Image processed successfully, size:', processedImage.length);
-
-        // Generate unique filename
-        const filename = `fighters/${uuidv4()}.jpg`;
+        // Use profileId in the filename for consistency
+        const filename = `fighters/${profileId}.jpg`;
         console.log('Generated filename:', filename);
 
-        console.log('Uploading to S3...');
         const uploadCommand = new PutObjectCommand({
           Bucket: this.bucket,
           Key: filename,
@@ -79,16 +123,9 @@ export class S3Service {
           ContentType: 'image/jpeg'
         });
 
-        console.log('S3 upload command created:', {
-          bucket: this.bucket,
-          key: filename,
-          contentType: 'image/jpeg'
-        });
+        await this.s3Client.send(uploadCommand);
+        console.log('S3 upload successful');
 
-        const uploadResult = await this.s3Client.send(uploadCommand);
-        console.log('S3 upload successful:', uploadResult);
-
-        // Return the S3 URL
         const s3Url = `https://${this.bucket}.s3.amazonaws.com/${filename}`;
         console.log('Generated S3 URL:', s3Url);
         return s3Url;
