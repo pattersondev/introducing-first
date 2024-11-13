@@ -25,15 +25,11 @@ var jwtKey []byte
 
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
-	}
-
-	//set the jwt key on init
-	jwtKey = []byte(os.Getenv("JWT_SECRET"))
+	_ = godotenv.Load()
+	fmt.Printf("Environment variables present: JWT_SECRET=%v\n", os.Getenv("JWT_SECRET") != "")
+	jwtKey = []byte(getEnvWithFallback("JWT_SECRET", "your-default-secret-key"))
 	if len(jwtKey) == 0 {
-		log.Fatal("JWT_SECRET not set in .env")
+		log.Fatal("JWT_SECRET not set in environment")
 	}
 
 	db.StartDbConnection()
@@ -49,8 +45,9 @@ func main() {
 	//test endpoint. hidden behind authentication. Delete later
 	http.HandleFunc("/protected", authenticate(protectedHandler))
 
-	fmt.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	port := getEnvWithFallback("PORT", "8080")
+	fmt.Printf("Server starting on :%s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 
 }
 
@@ -291,4 +288,12 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 func handleHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello, World!")
+}
+
+func getEnvWithFallback(key, fallback string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	return value
 }
