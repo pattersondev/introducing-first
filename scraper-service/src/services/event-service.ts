@@ -326,10 +326,13 @@ export class EventService {
     try {
       const result = await client.query(`
         WITH RankedFights AS (
-          SELECT *,
-            ROW_NUMBER() OVER (PARTITION BY fighter_id ORDER BY date DESC) as fight_rank
-          FROM fights
-          WHERE fighter_id IN (
+          SELECT f.*,
+            ROW_NUMBER() OVER (PARTITION BY fighter_id ORDER BY date DESC) as fight_rank,
+            opp.fighter_id as opponent_id
+          FROM fights f
+          LEFT JOIN fighters opp ON 
+            CONCAT(opp.first_name, ' ', opp.last_name) = f.opponent
+          WHERE f.fighter_id IN (
             SELECT fighter1_id FROM matchups WHERE matchup_id = $1
             UNION
             SELECT fighter2_id FROM matchups WHERE matchup_id = $1
@@ -342,6 +345,7 @@ export class EventService {
               json_build_object(
                 'date', date,
                 'opponent', opponent,
+                'opponent_id', opponent_id,
                 'result', result,
                 'decision', decision,
                 'round', rnd

@@ -33,8 +33,8 @@ export interface Matchup {
   fighter2_age?: number;
   fighter1_country?: string;
   fighter2_country?: string;
-  fighter1_recent_fights?: RecentFight[];
-  fighter2_recent_fights?: RecentFight[];
+  fighter1_recent_fights?: Fight[];
+  fighter2_recent_fights?: Fight[];
 }
 
 export interface DetailedMatchup extends Matchup {
@@ -95,13 +95,13 @@ export interface Fight {
   date: string;
   opponent: string;
   opponent_id?: string;
-  event: string;
+  event?: string;
   event_id?: string;
   result: string;
   decision: string;
-  rnd: number;
-  time: string;
-  is_title_fight: boolean;
+  round: number;
+  rnd?: number;
+  time?: string;
 }
 
 export interface DetailedFighter extends Fighter {

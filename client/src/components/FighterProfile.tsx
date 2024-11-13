@@ -27,6 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { getCountryCode } from "@/utils/country-codes";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
@@ -66,6 +67,24 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
       value: fighter.country || "Unknown",
       icon: Flag,
       color: "text-green-400",
+      render: (value: string) => {
+        const countryCode = getCountryCode(value);
+        return (
+          <div className="flex items-center gap-2">
+            <span>{value}</span>
+            {countryCode && (
+              <img
+                src={`https://flagcdn.com/16x12/${countryCode}.png`}
+                alt={value}
+                className="w-4 h-3"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -156,7 +175,11 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                     <stat.icon className={`w-5 h-5 ${stat.color}`} />
                     <span className="text-sm text-gray-400">{stat.label}</span>
                   </div>
-                  <p className="text-lg font-semibold">{stat.value}</p>
+                  {stat.render ? (
+                    stat.render(stat.value)
+                  ) : (
+                    <p className="text-lg font-semibold">{stat.value}</p>
+                  )}
                 </CardContent>
               </Card>
             ))}

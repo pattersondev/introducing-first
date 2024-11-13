@@ -10,9 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProbabilityBar } from "./ProbabilityBar";
 import { RecentFights } from "./RecentFights";
+import { getCountryCode } from "@/utils/country-codes";
+import Link from "next/link";
 
 interface FighterStatsProps {
   name: string;
+  fighter_id: string;
   country?: string;
   record?: string;
   reach?: string;
@@ -22,6 +25,7 @@ interface FighterStatsProps {
 
 function FighterStats({
   name,
+  fighter_id,
   country,
   record,
   reach,
@@ -31,12 +35,20 @@ function FighterStats({
   return (
     <div className="w-full space-y-2 mt-4">
       <div className="flex items-center justify-center gap-2 mb-4">
-        <h3 className="font-semibold text-lg">{name}</h3>
+        <Link
+          href={`/fighters/${fighter_id}`}
+          className="font-semibold text-lg hover:text-blue-300 hover:underline"
+        >
+          {name}
+        </Link>
         {country && (
           <img
-            src={`https://flagcdn.com/w20/${country.toLowerCase()}.png`}
+            src={`https://flagcdn.com/16x12/${getCountryCode(country)}.png`}
             alt={country}
-            className="w-5 h-auto"
+            className="w-4 h-3"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
           />
         )}
       </div>
@@ -117,6 +129,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                     </Avatar>
                     <FighterStats
                       name={matchup.fighter1_name}
+                      fighter_id={matchup.fighter1_id}
                       country={detailedMatchup?.fighter1_country}
                       record={detailedMatchup?.fighter1_record}
                       reach={detailedMatchup?.fighter1_reach}
@@ -150,6 +163,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                     </Avatar>
                     <FighterStats
                       name={matchup.fighter2_name}
+                      fighter_id={matchup.fighter2_id}
                       country={detailedMatchup?.fighter2_country}
                       record={detailedMatchup?.fighter2_record}
                       reach={detailedMatchup?.fighter2_reach}
