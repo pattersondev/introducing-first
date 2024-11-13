@@ -335,9 +335,14 @@ export class EventService {
                 'result', result,
                 'decision', decision,
                 'round', rnd
-              ) ORDER BY date DESC LIMIT 3
+              )
             ) as recent_fights
-          FROM fights
+          FROM (
+            SELECT *
+            FROM fights
+            ORDER BY date DESC
+            LIMIT 3
+          ) recent
           GROUP BY fighter_id
         )
         SELECT 
