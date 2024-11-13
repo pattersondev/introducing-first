@@ -13,21 +13,6 @@ export function useMatchupDetails(matchup: Matchup | null) {
       return;
     }
 
-    // Check if we already have all the necessary data
-    if (
-      matchup.fighter1_record &&
-      matchup.fighter1_reach &&
-      matchup.fighter1_stance &&
-      matchup.fighter1_age &&
-      matchup.fighter2_record &&
-      matchup.fighter2_reach &&
-      matchup.fighter2_stance &&
-      matchup.fighter2_age
-    ) {
-      setDetailedMatchup(matchup as DetailedMatchup);
-      return;
-    }
-
     const fetchMatchupDetails = async () => {
       setIsLoading(true);
       setError(null);
@@ -37,6 +22,8 @@ export function useMatchupDetails(matchup: Matchup | null) {
           `/events/matchups/${matchup.matchup_id}/details`
         );
         
+        console.log('useMatchupDetails - API response:', response);
+
         if (response.error) {
           throw new Error(response.error);
         }
@@ -45,6 +32,7 @@ export function useMatchupDetails(matchup: Matchup | null) {
           setDetailedMatchup(response.data);
         }
       } catch (err) {
+        console.error('useMatchupDetails - Error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch matchup details');
       } finally {
         setIsLoading(false);

@@ -83,6 +83,8 @@ interface MatchupModalProps {
 export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
   const { detailedMatchup, isLoading, error } = useMatchupDetails(matchup);
 
+  console.log("MatchupModal - detailedMatchup:", detailedMatchup);
+
   if (!matchup) return null;
 
   return (
@@ -139,6 +141,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                     <ProbabilityBar probability={0.5} />
                     <RecentFights
                       fights={detailedMatchup?.fighter1_recent_fights}
+                      key={`fighter1-${detailedMatchup?.fighter1_id}`}
                     />
                   </div>
                 </div>
@@ -173,6 +176,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                     <ProbabilityBar probability={0.5} />
                     <RecentFights
                       fights={detailedMatchup?.fighter2_recent_fights}
+                      key={`fighter2-${detailedMatchup?.fighter2_id}`}
                     />
                   </div>
                 </div>
