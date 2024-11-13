@@ -88,14 +88,17 @@ export function FighterRankings() {
                         )}
                       </div>
                       <Avatar className="h-12 w-12 border-2 border-gray-700">
-                        <AvatarImage
-                          src="/placeholder-fighter.png"
-                          alt={`${fighter.first_name} ${fighter.last_name}`}
-                        />
-                        <AvatarFallback className="bg-gray-800">
-                          {fighter.first_name[0]}
-                          {fighter.last_name[0]}
-                        </AvatarFallback>
+                        {fighter.image_url ? (
+                          <AvatarImage
+                            src={fighter.image_url}
+                            alt={`${fighter.first_name} ${fighter.last_name}`}
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-gray-800">
+                            {fighter.first_name[0]}
+                            {fighter.last_name[0]}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold">

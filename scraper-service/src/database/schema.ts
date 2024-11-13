@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS fighters (
     tko_record VARCHAR(255),
     sub_record VARCHAR(255),
     country VARCHAR(255),
-    reach VARCHAR(255)
+    reach VARCHAR(255),
+    image_url VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS fights (

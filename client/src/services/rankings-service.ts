@@ -21,6 +21,7 @@ export interface RankedFighter {
   points: number;
   weight_class: string;
   division: string;
+  image_url: string | null;
 }
 
 export const RankingsService = {

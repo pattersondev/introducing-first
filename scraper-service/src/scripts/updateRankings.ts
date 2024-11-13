@@ -1,12 +1,37 @@
 import dotenv from 'dotenv';
+import { Pool } from 'pg';
 import { DatabaseService } from '../services/database-service';
 import { RankingsService } from '../services/rankings-service';
 
+// Load environment variables before anything else
 dotenv.config();
 
 async function updateAllRankings() {
-  const dbService = new DatabaseService(process.env.DATABASE_URL!);
-  const rankingsService = new RankingsService(dbService.getPool());
+  // Verify DATABASE_URL exists
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL environment variable is not set');
+    process.exit(1);
+  }
+
+  // Create database pool with explicit configuration
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false // Add this if using Heroku or similar services
+    }
+  });
+
+  // Test database connection before proceeding
+  try {
+    const client = await pool.connect();
+    client.release();
+    console.log('Successfully connected to database');
+  } catch (err) {
+    console.error('Failed to connect to database:', err);
+    process.exit(1);
+  }
+
+  const rankingsService = new RankingsService(pool);
 
   try {
     console.log('Starting rankings update...');
@@ -24,6 +49,7 @@ async function updateAllRankings() {
   } catch (error) {
     console.error('Error during rankings update:', error);
   } finally {
+    await pool.end(); // Properly close the pool
     process.exit();
   }
 }
