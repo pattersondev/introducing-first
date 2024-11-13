@@ -325,42 +325,48 @@ export class EventService {
           FROM events e
           WHERE e.date >= CURRENT_DATE
           ORDER BY e.date ASC
+        ),
+        LatestPredictions AS (
+          SELECT DISTINCT ON (matchup_id)
+            matchup_id,
+            fighter1_win_probability,
+            fighter2_win_probability,
+            fighter1_ko_tko_probability,
+            fighter1_submission_probability,
+            fighter1_decision_probability,
+            fighter2_ko_tko_probability,
+            fighter2_submission_probability,
+            fighter2_decision_probability,
+            confidence_score
+          FROM fight_predictions
+          ORDER BY matchup_id, created_at DESC
         )
         SELECT 
           e.event_id, 
           e.name, 
           e.date, 
           e.location,
-          json_agg(
-            json_build_object(
-              'matchup_id', m.matchup_id,
-              'fighter1_id', m.fighter1_id,
-              'fighter2_id', m.fighter2_id,
-              'fighter1_name', m.fighter1_name,
-              'fighter2_name', m.fighter2_name,
-              'fighter1_image', f1.image_url,
-              'fighter2_image', f2.image_url,
-              'result', m.result,
-              'winner', m.winner,
-              'display_order', m.display_order,
-              'prediction', (
-                SELECT json_build_object(
-                  'fighter1_win_probability', fp.fighter1_win_probability,
-                  'fighter2_win_probability', fp.fighter2_win_probability,
-                  'fighter1_ko_tko_probability', fp.fighter1_ko_tko_probability,
-                  'fighter1_submission_probability', fp.fighter1_submission_probability,
-                  'fighter1_decision_probability', fp.fighter1_decision_probability,
-                  'fighter2_ko_tko_probability', fp.fighter2_ko_tko_probability,
-                  'fighter2_submission_probability', fp.fighter2_submission_probability,
-                  'fighter2_decision_probability', fp.fighter2_decision_probability,
-                  'confidence_score', fp.confidence_score
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'matchup_id', m.matchup_id,
+                'fighter1_id', m.fighter1_id,
+                'fighter2_id', m.fighter2_id,
+                'fighter1_name', m.fighter1_name,
+                'fighter2_name', m.fighter2_name,
+                'fighter1_image', f1.image_url,
+                'fighter2_image', f2.image_url,
+                'result', m.result,
+                'winner', m.winner,
+                'display_order', m.display_order,
+                'prediction', (
+                  SELECT row_to_json(p.*)
+                  FROM LatestPredictions p
+                  WHERE p.matchup_id = m.matchup_id
                 )
-                FROM fight_predictions fp
-                WHERE fp.matchup_id = m.matchup_id
-                ORDER BY fp.created_at DESC
-                LIMIT 1
-              )
-            ) ORDER BY m.display_order
+              ) ORDER BY m.display_order
+            ) FILTER (WHERE m.matchup_id IS NOT NULL),
+            '[]'
           ) AS matchups
         FROM (
           SELECT * FROM RecentPastEvents
@@ -370,10 +376,10 @@ export class EventService {
         LEFT JOIN matchups m ON e.event_id = m.event_id
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
-        WHERE m.matchup_id IS NOT NULL
         GROUP BY e.event_id, e.name, e.date, e.location
         ORDER BY e.date DESC
       `);
+
       return result.rows;
     } finally {
       client.release();

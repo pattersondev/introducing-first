@@ -40,6 +40,7 @@ export function useRecentAndUpcomingEvents() {
             }
           }
         } else {
+          console.log('Fetching new events');
           // Make a new request and cache it
           const newPromise = EventService.getRecentAndUpcomingEvents();
           requestCache = {
