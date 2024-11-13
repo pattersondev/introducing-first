@@ -10,24 +10,61 @@ export class EventService {
       await client.query('BEGIN');
       const eventId = generateId(event.Name, event.Date);
       
-      const eventExists = await client.query('SELECT 1 FROM events WHERE event_id = $1', [eventId]);
-      if (eventExists.rowCount === 0) {
+      // Update or insert event
+      await client.query(
+        `INSERT INTO events (event_id, name, date, location) 
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (event_id) 
+         DO UPDATE SET 
+           name = EXCLUDED.name,
+           date = EXCLUDED.date,
+           location = EXCLUDED.location`,
+        [eventId, event.Name, event.Date, event.Location]
+      );
+
+      // Get existing matchups for this event
+      const existingMatchups = await client.query(
+        'SELECT matchup_id FROM matchups WHERE event_id = $1',
+        [eventId]
+      );
+      const existingMatchupIds = new Set(existingMatchups.rows.map(row => row.matchup_id));
+
+      // Process new/updated matchups
+      const processedMatchupIds = new Set<string>();
+      
+      for (const matchup of event.Matchups) {
+        const matchupId = generateId(eventId, matchup.Fighter1, matchup.Fighter2);
+        processedMatchupIds.add(matchupId);
+
         await client.query(
-          'INSERT INTO events (event_id, name, date, location) VALUES ($1, $2, $3, $4)',
-          [eventId, event.Name, event.Date, event.Location]
+          `INSERT INTO matchups (
+            matchup_id, event_id, fighter1_name, fighter2_name, 
+            result, winner, display_order
+          ) 
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (matchup_id) 
+          DO UPDATE SET 
+            fighter1_name = EXCLUDED.fighter1_name,
+            fighter2_name = EXCLUDED.fighter2_name,
+            result = EXCLUDED.result,
+            winner = EXCLUDED.winner,
+            display_order = EXCLUDED.display_order`,
+          [
+            matchupId, eventId, matchup.Fighter1, matchup.Fighter2,
+            matchup.Result, matchup.Winner, matchup.Order
+          ]
         );
       }
 
-      for (const matchup of event.Matchups) {
-        const matchupId = generateId(eventId, matchup.Fighter1, matchup.Fighter2);
-
-        const matchupExists = await client.query('SELECT 1 FROM matchups WHERE matchup_id = $1', [matchupId]);
-        if (matchupExists.rowCount === 0) {
-          await client.query(
-            'INSERT INTO matchups (matchup_id, event_id, fighter1_name, fighter2_name, result, winner, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [matchupId, eventId, matchup.Fighter1, matchup.Fighter2, matchup.Result, matchup.Winner, matchup.Order]
-          );
-        }
+      // Remove matchups that no longer exist in the event
+      const matchupsToRemove = Array.from(existingMatchupIds)
+        .filter(id => !processedMatchupIds.has(id));
+      
+      if (matchupsToRemove.length > 0) {
+        await client.query(
+          'DELETE FROM matchups WHERE matchup_id = ANY($1)',
+          [matchupsToRemove]
+        );
       }
 
       // Link fighters to matchups after processing the event
