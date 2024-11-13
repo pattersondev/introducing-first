@@ -104,3 +104,35 @@ CREATE TABLE IF NOT EXISTS ground_stats (
     adts VARCHAR(255),
     sm VARCHAR(255)
 );
+
+CREATE TABLE IF NOT EXISTS fight_predictions (
+    prediction_id VARCHAR(32) PRIMARY KEY,
+    matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
+    fighter1_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    fighter2_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    fighter1_win_probability DECIMAL(5,2),
+    fighter2_win_probability DECIMAL(5,2),
+    fighter1_ko_tko_probability DECIMAL(5,2),
+    fighter1_submission_probability DECIMAL(5,2),
+    fighter1_decision_probability DECIMAL(5,2),
+    fighter2_ko_tko_probability DECIMAL(5,2),
+    fighter2_submission_probability DECIMAL(5,2),
+    fighter2_decision_probability DECIMAL(5,2),
+    simulation_count INTEGER,
+    confidence_score DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS fighter_attributes (
+    attribute_id VARCHAR(32) PRIMARY KEY,
+    fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    striking_offense_rating DECIMAL(5,2),
+    striking_defense_rating DECIMAL(5,2),
+    takedown_offense_rating DECIMAL(5,2),
+    takedown_defense_rating DECIMAL(5,2),
+    submission_offense_rating DECIMAL(5,2),
+    submission_defense_rating DECIMAL(5,2),
+    cardio_rating DECIMAL(5,2),
+    chin_rating DECIMAL(5,2),
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
