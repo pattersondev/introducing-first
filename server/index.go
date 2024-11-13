@@ -231,14 +231,19 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 
-	storedHashedPassword, err := db.SelectHP(username) // Adjusted function call
+	// Debug logging
+	log.Printf("Login attempt for username: %s", username)
+
+	storedHashedPassword, err := db.SelectHP(username)
 	if err != nil {
+		log.Printf("Login failed for username %s: %v", username, err)
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	//verify pw
 	if !checkPasswordHash(password, storedHashedPassword) {
+		log.Printf("Password verification failed for username %s", username)
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
@@ -246,6 +251,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	//generate jwt token
 	token, err := generateJWT(username)
 	if err != nil {
+		log.Printf("Token generation failed for username %s: %v", username, err)
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
@@ -255,11 +261,17 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Name:     "token",
 		Value:    token,
 		Expires:  time.Now().Add(24 * time.Hour),
-		HttpOnly: true, //set as http-only
+		HttpOnly: true,
+		Secure:   true, // Only send cookie over HTTPS
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
 	})
 
-	fmt.Fprintf(w, "Login Successful!")
+	// Set content type for the response
+	w.Header().Set("Content-Type", "application/json")
 
+	// Return success response
+	fmt.Fprintf(w, `{"message": "Login Successful!"}`)
 }
 
 // authentication func using JWT
