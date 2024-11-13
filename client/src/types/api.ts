@@ -35,6 +35,17 @@ export interface Matchup {
   fighter2_country?: string;
   fighter1_recent_fights?: Fight[];
   fighter2_recent_fights?: Fight[];
+  prediction?: {
+    fighter1_win_probability: number;
+    fighter2_win_probability: number;
+    fighter1_ko_tko_probability: number;
+    fighter1_submission_probability: number;
+    fighter1_decision_probability: number;
+    fighter2_ko_tko_probability: number;
+    fighter2_submission_probability: number;
+    fighter2_decision_probability: number;
+    confidence_score: number;
+  };
 }
 
 export interface DetailedMatchup extends Matchup {

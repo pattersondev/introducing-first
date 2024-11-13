@@ -1,41 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Pool } from 'pg';
-import { 
-    Fighter, 
-    Matchup, 
-    StrikingStats, 
-    GroundStats, 
-    ClinchStats, 
-    Fight 
-} from '../types/types';
-
-interface FighterAttributes {
-    strikingOffense: number;
-    strikingDefense: number;
-    takedownOffense: number;
-    takedownDefense: number;
-    submissionOffense: number;
-    submissionDefense: number;
-    cardio: number;
-    chin: number;
-}
+import { Fighter, Matchup, Fight } from '../types/types';
 
 interface SimulationResult {
     winner: string;
     method: 'KO/TKO' | 'Submission' | 'Decision';
     round: number;
-}
-
-interface StrikingExchange {
-    damage: number;
-    knockdownProbability: number;
-    winner: 'fighter1' | 'fighter2';
-}
-
-interface GroundExchange {
-    submissionProbability: number;
-    winner: 'fighter1' | 'fighter2';
-    position: 'top' | 'bottom' | 'neutral';
 }
 
 interface PredictionResult {
@@ -59,6 +29,19 @@ interface PredictionResult {
     created_at: Date;
 }
 
+interface FighterStats {
+    totalFights: number;
+    wins: number;
+    koTkoWins: number;
+    submissionWins: number;
+    decisionWins: number;
+    koTkoLosses: number;
+    submissionLosses: number;
+    decisionLosses: number;
+    winStreak: number;
+    recentWinRate: number;
+}
+
 export class PredictionService {
     private pool: Pool;
     private readonly SIMULATION_COUNT = 10000;
@@ -67,153 +50,269 @@ export class PredictionService {
         this.pool = pool;
     }
 
-    private async calculateFighterAttributes(fighterId: string): Promise<FighterAttributes> {
-        // Fetch fighter's historical data
-        const strikingStats = await this.getFighterStrikingStats(fighterId);
-        const groundStats = await this.getFighterGroundStats(fighterId);
-        const clinchStats = await this.getFighterClinchStats(fighterId);
-        const fightHistory = await this.getFighterFightHistory(fighterId);
-
-        // Calculate normalized ratings (0-100) based on historical performance
-        return {
-            strikingOffense: this.calculateStrikingOffenseRating(strikingStats),
-            strikingDefense: this.calculateStrikingDefenseRating(strikingStats),
-            takedownOffense: this.calculateTakedownOffenseRating(clinchStats),
-            takedownDefense: this.calculateTakedownDefenseRating(clinchStats),
-            submissionOffense: this.calculateSubmissionOffenseRating(groundStats, fightHistory),
-            submissionDefense: this.calculateSubmissionDefenseRating(groundStats, fightHistory),
-            cardio: this.calculateCardioRating(fightHistory),
-            chin: this.calculateChinRating(fightHistory, strikingStats)
-        };
-    }
-
-    private simulateRound(
-        fighter1Attrs: FighterAttributes,
-        fighter2Attrs: FighterAttributes,
-        currentRound: number
-    ): SimulationResult | null {
-        // Implement round simulation logic
-        const strikingExchange = this.simulateStrikingExchange(fighter1Attrs, fighter2Attrs);
-        const groundExchange = this.simulateGroundExchange(fighter1Attrs, fighter2Attrs);
+    private async getFighterStats(fighterId: string): Promise<FighterStats> {
+        const fights = await this.getFighterFightHistory(fighterId);
+        console.log('Raw fight data:', JSON.stringify(fights, null, 2));
         
-        // Apply cardio degradation
-        const cardioFactor1 = Math.pow(0.95, currentRound) * fighter1Attrs.cardio;
-        const cardioFactor2 = Math.pow(0.95, currentRound) * fighter2Attrs.cardio;
+        const stats: FighterStats = {
+            totalFights: fights.length,
+            wins: 0,
+            koTkoWins: 0,
+            submissionWins: 0,
+            decisionWins: 0,
+            koTkoLosses: 0,
+            submissionLosses: 0,
+            decisionLosses: 0,
+            winStreak: 0,
+            recentWinRate: 0
+        };
 
-        // Calculate finish probabilities
-        return this.calculateRoundResult(
-            strikingExchange,
-            groundExchange,
-            cardioFactor1,
-            cardioFactor2
-        );
+        // Focus on last 3 fights for recent performance
+        const recentFights = fights.slice(0, 3);
+        let currentStreak = 0;
+        let recentWins = 0;
+
+        // Calculate recent performance (last 3 fights)
+        recentFights.forEach((fight, index) => {
+            const isWin = fight.result === 'W';
+            
+            if (isWin) {
+                recentWins++;
+                stats.recentWinRate += (1 / Math.pow(2, index));
+            }
+        });
+
+        // Normalize recent win rate
+        const recentWeightSum = recentFights.length > 0 ? 
+            recentFights.reduce((sum, _, i) => sum + (1 / Math.pow(2, i)), 0) : 1;
+        stats.recentWinRate = stats.recentWinRate / recentWeightSum;
+
+        // Calculate overall stats
+        fights.forEach(fight => {
+            const isWin = fight.result === 'W';
+            const isLoss = fight.result === 'L';
+            
+            if (isWin) {
+                stats.wins++;
+                
+                // Determine win method
+                if (fight.decision.includes('KO/TKO') || fight.decision.includes('TKO')) {
+                    stats.koTkoWins++;
+                } else if (fight.decision.includes('Submission')) {
+                    stats.submissionWins++;
+                } else {
+                    stats.decisionWins++;
+                }
+                
+                currentStreak++;
+            } 
+            else if (isLoss) {
+                // Determine loss method
+                if (fight.decision.includes('KO/TKO') || fight.decision.includes('TKO')) {
+                    stats.koTkoLosses++;
+                } else if (fight.decision.includes('Submission')) {
+                    stats.submissionLosses++;
+                } else {
+                    stats.decisionLosses++;
+                }
+                
+                currentStreak = 0;
+            }
+            // If it's a draw ('D') or no contest, don't affect the streak
+            
+            stats.winStreak = Math.max(stats.winStreak, currentStreak);
+        });
+
+        console.log(`Stats calculated for fighter ${fighterId}:`, stats);
+        return stats;
     }
 
     public async predictFight(matchupId: string): Promise<PredictionResult> {
         const matchup = await this.getMatchup(matchupId);
-        const fighter1Attrs = await this.calculateFighterAttributes(matchup.fighter1_id);
-        const fighter2Attrs = await this.calculateFighterAttributes(matchup.fighter2_id);
+        const fighter1Stats = await this.getFighterStats(matchup.fighter1_id);
+        const fighter2Stats = await this.getFighterStats(matchup.fighter2_id);
 
-        let results: SimulationResult[] = [];
-
-        // Run multiple simulations
-        for (let i = 0; i < this.SIMULATION_COUNT; i++) {
-            const simResult = this.simulateFight(fighter1Attrs, fighter2Attrs);
-            results.push(simResult);
-        }
-
-        // Calculate all probabilities
+        const results = this.runSimulations(fighter1Stats, fighter2Stats);
+        
         const fighter1Wins = results.filter(r => r.winner === 'fighter1');
         const fighter2Wins = results.filter(r => r.winner === 'fighter2');
 
-        const fighter1KOTKOs = fighter1Wins.filter(r => r.method === 'KO/TKO');
-        const fighter1Subs = fighter1Wins.filter(r => r.method === 'Submission');
-        const fighter1Decisions = fighter1Wins.filter(r => r.method === 'Decision');
+        const fighter1WinProb = fighter1Wins.length / this.SIMULATION_COUNT;
+        const fighter2WinProb = fighter2Wins.length / this.SIMULATION_COUNT;
 
-        const fighter2KOTKOs = fighter2Wins.filter(r => r.method === 'KO/TKO');
-        const fighter2Subs = fighter2Wins.filter(r => r.method === 'Submission');
-        const fighter2Decisions = fighter2Wins.filter(r => r.method === 'Decision');
-
-        // Store prediction in database
+        // Store prediction
         await this.storePrediction(matchupId, results);
 
-        // Return detailed prediction result
         return {
             matchup_id: matchupId,
             fighter1: {
                 fighter_id: matchup.fighter1_id,
-                win_probability: fighter1Wins.length / this.SIMULATION_COUNT,
-                ko_tko_probability: fighter1KOTKOs.length / this.SIMULATION_COUNT,
-                submission_probability: fighter1Subs.length / this.SIMULATION_COUNT,
-                decision_probability: fighter1Decisions.length / this.SIMULATION_COUNT
+                win_probability: fighter1WinProb,
+                ...this.calculateMethodProbabilities(results, 'fighter1')
             },
             fighter2: {
                 fighter_id: matchup.fighter2_id,
-                win_probability: fighter2Wins.length / this.SIMULATION_COUNT,
-                ko_tko_probability: fighter2KOTKOs.length / this.SIMULATION_COUNT,
-                submission_probability: fighter2Subs.length / this.SIMULATION_COUNT,
-                decision_probability: fighter2Decisions.length / this.SIMULATION_COUNT
+                win_probability: fighter2WinProb,
+                ...this.calculateMethodProbabilities(results, 'fighter2')
             },
-            confidence_score: this.calculateConfidenceScore(results),
+            confidence_score: this.calculateConfidenceScore(fighter1Stats, fighter2Stats),
             simulation_count: this.SIMULATION_COUNT,
             created_at: new Date()
         };
     }
 
-    private simulateFight(
-        fighter1Attrs: FighterAttributes,
-        fighter2Attrs: FighterAttributes
-    ): SimulationResult {
-        for (let round = 1; round <= 5; round++) {
-            const roundResult = this.simulateRound(fighter1Attrs, fighter2Attrs, round);
-            if (roundResult) {
-                return roundResult;
+    private runSimulations(fighter1Stats: FighterStats, fighter2Stats: FighterStats): SimulationResult[] {
+        const results: SimulationResult[] = [];
+        let f1Wins = 0;
+        let f2Wins = 0;
+
+        // Calculate base scores once
+        const calculateBaseScore = (stats: FighterStats) => {
+            console.log('Calculating score for fighter with stats:', JSON.stringify(stats, null, 2));
+            
+            let score = 50;  // Base score
+            
+            // Recent performance (last 3 fights) - up to 80 points (reduced from 100)
+            const recentScore = stats.recentWinRate * 80;
+            console.log('Recent performance score:', recentScore);
+            score += recentScore;
+            
+            // Win rate - up to 60 points (reduced from 100)
+            const winRateScore = (stats.wins / Math.max(stats.totalFights, 1)) * 60;
+            console.log('Win rate score:', winRateScore);
+            score += winRateScore;
+            
+            // Finish rate - up to 60 points (reduced from 100)
+            const finishRate = ((stats.koTkoWins + stats.submissionWins) / 
+                              Math.max(stats.wins, 1)) * 60;
+            console.log('Finish rate score:', finishRate);
+            score += finishRate;
+            
+            // Perfect record bonus - scaled based on number of fights
+            let perfectBonus = 0;
+            if (stats.wins === stats.totalFights && stats.totalFights > 0) {
+                perfectBonus = Math.min(stats.totalFights * 10, 50); // Reduced from 20/100
+                console.log('Perfect record bonus:', perfectBonus);
             }
+            score += perfectBonus;
+            
+            // All finishes bonus - reduced to 30 points
+            let finishBonus = 0;
+            if (stats.koTkoWins + stats.submissionWins === stats.wins && stats.wins > 0) {
+                finishBonus = 30;
+                console.log('All finishes bonus:', finishBonus);
+            }
+            score += finishBonus;
+            
+            // Loss penalty - reduced to 15 points per finish loss
+            const lossPenalty = (stats.koTkoLosses + stats.submissionLosses) * 15;
+            console.log('Loss penalty:', lossPenalty);
+            score = Math.max(score - lossPenalty, 50);  // Maintain minimum score of 50
+            
+            // Normalize score to reduce extreme differences
+            const normalizedScore = 50 + ((score - 50) * 0.8); // Compress the range
+            
+            console.log('Final score:', normalizedScore);
+            return normalizedScore;
+        };
+
+        const f1BaseScore = calculateBaseScore(fighter1Stats);
+        const f2BaseScore = calculateBaseScore(fighter2Stats);
+
+        console.log('\nFinal scores comparison:');
+        console.log('Fighter 1 base score:', f1BaseScore);
+        console.log('Fighter 2 base score:', f2BaseScore);
+
+        for (let i = 0; i < this.SIMULATION_COUNT; i++) {
+            // Add less randomness to maintain separation
+            const f1Score = f1BaseScore * (0.95 + Math.random() * 0.1); // ±5% variance
+            const f2Score = f2BaseScore * (0.95 + Math.random() * 0.1);
+            
+            const f1WinProb = f1Score / (f1Score + f2Score);
+            
+            const winner = Math.random() < f1WinProb ? 'fighter1' : 'fighter2';
+            if (winner === 'fighter1') f1Wins++;
+            else f2Wins++;
+
+            // Determine finish probabilities based on winner's stats
+            const winnerStats = winner === 'fighter1' ? fighter1Stats : fighter2Stats;
+            const loserStats = winner === 'fighter1' ? fighter2Stats : fighter1Stats;
+
+            // Calculate finish probability
+            const finishProb = (winnerStats.koTkoWins + winnerStats.submissionWins) / 
+                              Math.max(winnerStats.totalFights, 1);
+            
+            // Determine method
+            let method: 'KO/TKO' | 'Submission' | 'Decision';
+            if (Math.random() < finishProb) {
+                const koProb = winnerStats.koTkoWins / 
+                              Math.max(winnerStats.koTkoWins + winnerStats.submissionWins, 1);
+                method = Math.random() < koProb ? 'KO/TKO' : 'Submission';
+            } else {
+                method = 'Decision';
+            }
+
+            // Determine round
+            const round = method === 'Decision' ? 5 : 
+                         Math.min(Math.ceil(Math.random() * 5), 5);
+
+            results.push({ winner, method, round });
         }
 
-        // If no finish, simulate decision
-        return this.simulateDecision(fighter1Attrs, fighter2Attrs);
+        console.log(`\nSimulation results: Fighter 1 wins: ${f1Wins}, Fighter 2 wins: ${f2Wins}`);
+        console.log(`Win rates: Fighter 1: ${(f1Wins/this.SIMULATION_COUNT*100).toFixed(1)}%, Fighter 2: ${(f2Wins/this.SIMULATION_COUNT*100).toFixed(1)}%`);
+        
+        return results;
     }
 
-    private async getFighterStrikingStats(fighterId: string): Promise<StrikingStats[]> {
-        const query = `
-            SELECT * FROM striking_stats 
-            WHERE fighter_id = $1 
-            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
-            LIMIT 10
-        `;
-        const result = await this.pool.query(query, [fighterId]);
-        return result.rows;
+    private calculateMethodProbabilities(results: SimulationResult[], fighterId: string) {
+        const totalFights = results.filter(r => r.winner === fighterId).length;
+        if (totalFights === 0) return {
+            ko_tko_probability: 0,
+            submission_probability: 0,
+            decision_probability: 0
+        };
+
+        return {
+            ko_tko_probability: results.filter(r => 
+                r.winner === fighterId && r.method === 'KO/TKO'
+            ).length / this.SIMULATION_COUNT,
+            submission_probability: results.filter(r => 
+                r.winner === fighterId && r.method === 'Submission'
+            ).length / this.SIMULATION_COUNT,
+            decision_probability: results.filter(r => 
+                r.winner === fighterId && r.method === 'Decision'
+            ).length / this.SIMULATION_COUNT
+        };
     }
 
-    private async getFighterGroundStats(fighterId: string): Promise<GroundStats[]> {
-        const query = `
-            SELECT * FROM ground_stats 
-            WHERE fighter_id = $1 
-            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
-            LIMIT 10
-        `;
-        const result = await this.pool.query(query, [fighterId]);
-        return result.rows;
+    private calculateConfidenceScore(
+        fighter1Stats: FighterStats,
+        fighter2Stats: FighterStats
+    ): number {
+        // Calculate confidence based on sample size and consistency
+        const experienceFactor = Math.min(
+            (fighter1Stats.totalFights + fighter2Stats.totalFights) / 20,
+            1
+        );
+
+        // Calculate performance consistency
+        const f1Consistency = Math.abs(fighter1Stats.recentWinRate - 
+            (fighter1Stats.wins / fighter1Stats.totalFights));
+        const f2Consistency = Math.abs(fighter2Stats.recentWinRate - 
+            (fighter2Stats.wins / fighter2Stats.totalFights));
+        
+        const consistencyScore = (1 - ((f1Consistency + f2Consistency) / 2)) * 100;
+
+        return Math.round((experienceFactor * 0.4 + (consistencyScore * 0.6)));
     }
 
-    private async getFighterClinchStats(fighterId: string): Promise<ClinchStats[]> {
-        const query = `
-            SELECT * FROM clinch_stats 
-            WHERE fighter_id = $1 
-            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
-            LIMIT 10
-        `;
-        const result = await this.pool.query(query, [fighterId]);
-        return result.rows;
-    }
-
+    // Database helper methods...
     private async getFighterFightHistory(fighterId: string): Promise<Fight[]> {
         const query = `
             SELECT * FROM fights 
             WHERE fighter_id = $1 
-            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
-            LIMIT 10
+            ORDER BY date DESC
         `;
         const result = await this.pool.query(query, [fighterId]);
         return result.rows;
@@ -236,13 +335,8 @@ export class PredictionService {
         const fighter1Wins = results.filter(r => r.winner === 'fighter1');
         const fighter2Wins = results.filter(r => r.winner === 'fighter2');
 
-        const fighter1KOTKOs = fighter1Wins.filter(r => r.method === 'KO/TKO');
-        const fighter1Subs = fighter1Wins.filter(r => r.method === 'Submission');
-        const fighter1Decisions = fighter1Wins.filter(r => r.method === 'Decision');
-
-        const fighter2KOTKOs = fighter2Wins.filter(r => r.method === 'KO/TKO');
-        const fighter2Subs = fighter2Wins.filter(r => r.method === 'Submission');
-        const fighter2Decisions = fighter2Wins.filter(r => r.method === 'Decision');
+        const fighter1Stats = await this.getFighterStats(matchup.fighter1_id);
+        const fighter2Stats = await this.getFighterStats(matchup.fighter2_id);
 
         const query = `
             INSERT INTO fight_predictions (
@@ -263,6 +357,9 @@ export class PredictionService {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         `;
 
+        const f1Methods = this.calculateMethodProbabilities(results, 'fighter1');
+        const f2Methods = this.calculateMethodProbabilities(results, 'fighter2');
+
         await this.pool.query(query, [
             uuidv4(),
             matchupId,
@@ -270,389 +367,20 @@ export class PredictionService {
             matchup.fighter2_id,
             fighter1Wins.length / this.SIMULATION_COUNT,
             fighter2Wins.length / this.SIMULATION_COUNT,
-            fighter1KOTKOs.length / this.SIMULATION_COUNT,
-            fighter1Subs.length / this.SIMULATION_COUNT,
-            fighter1Decisions.length / this.SIMULATION_COUNT,
-            fighter2KOTKOs.length / this.SIMULATION_COUNT,
-            fighter2Subs.length / this.SIMULATION_COUNT,
-            fighter2Decisions.length / this.SIMULATION_COUNT,
+            f1Methods.ko_tko_probability,
+            f1Methods.submission_probability,
+            f1Methods.decision_probability,
+            f2Methods.ko_tko_probability,
+            f2Methods.submission_probability,
+            f2Methods.decision_probability,
             this.SIMULATION_COUNT,
-            this.calculateConfidenceScore(results)
+            this.calculateConfidenceScore(fighter1Stats, fighter2Stats)
         ]);
-    }
-
-    private calculateStrikingOffenseRating(stats: StrikingStats[]): number {
-        if (!stats.length) return 50;
-
-        // Calculate average striking accuracy, safely parsing string values
-        const accuracies = stats.map(stat => {
-            const landed = parseInt(stat.tsl || '0');
-            const attempted = parseInt(stat.tsa || '0');
-            return attempted > 0 ? (landed / attempted) * 100 : 0;
-        }).filter(acc => !isNaN(acc));
-
-        // Calculate knockdown rate
-        const kdRates = stats.map(stat => 
-            parseInt(stat.kd || '0')
-        ).filter(kd => !isNaN(kd));
-        
-        // Calculate significant strikes per minute
-        const strikesPerMinute = stats.map(stat => 
-            parseInt(stat.tsl || '0') / 5
-        ).filter(spm => !isNaN(spm));
-
-        if (!accuracies.length || !kdRates.length || !strikesPerMinute.length) return 50;
-
-        const avgAccuracy = this.calculateAverage(accuracies);
-        const avgKdRate = this.calculateAverage(kdRates);
-        const avgStrikesPerMin = this.calculateAverage(strikesPerMinute);
-
-        return this.normalizeRating(
-            (avgAccuracy * 0.4) + 
-            (avgKdRate * 20 * 0.3) + 
-            (avgStrikesPerMin * 2 * 0.3)
-        );
-    }
-
-    private calculateStrikingDefenseRating(stats: StrikingStats[]): number {
-        if (!stats.length) return 50;
-
-        const defenseRates = stats.map(stat => {
-            const opponentLanded = parseInt(stat.ssa || '0');
-            const opponentAttempted = parseInt(stat.tsa || '0');
-            return opponentAttempted > 0 ? 
-                ((opponentAttempted - opponentLanded) / opponentAttempted) * 100 : 0;
-        }).filter(rate => !isNaN(rate));
-
-        const kdsReceived = stats.map(stat => 
-            parseInt(stat.kd || '0')
-        ).filter(kd => !isNaN(kd));
-
-        if (!defenseRates.length || !kdsReceived.length) return 50;
-
-        const avgDefense = this.calculateAverage(defenseRates);
-        const avgKdsReceived = this.calculateAverage(kdsReceived);
-
-        return this.normalizeRating(
-            (avgDefense * 0.7) + 
-            ((1 - avgKdsReceived) * 30 * 0.3)
-        );
-    }
-
-    private calculateTakedownOffenseRating(stats: ClinchStats[]): number {
-        if (!stats.length) return 50;
-
-        const tdRates = stats.map(stat => {
-            const landed = parseInt(stat.tdl || '0');
-            const attempted = parseInt(stat.tda || '0');
-            return attempted > 0 ? (landed / attempted) * 100 : 0;
-        }).filter(rate => !isNaN(rate));
-
-        const tdVolume = stats.map(stat => 
-            parseInt(stat.tdl || '0')
-        ).filter(td => !isNaN(td));
-
-        if (!tdRates.length || !tdVolume.length) return 50;
-
-        const avgTdRate = this.calculateAverage(tdRates);
-        const avgTdVolume = this.calculateAverage(tdVolume);
-
-        return this.normalizeRating(
-            (avgTdRate * 0.6) + 
-            (avgTdVolume * 10 * 0.4)
-        );
-    }
-
-    private calculateTakedownDefenseRating(stats: ClinchStats[]): number {
-        if (!stats.length) return 50;
-
-        // Calculate takedown defense rate
-        const tdDefenseRates = stats.map(stat => {
-            const defended = parseInt(stat.tds);
-            const attempted = parseInt(stat.tda);
-            return (defended / attempted) * 100;
-        });
-
-        return this.normalizeRating(this.calculateAverage(tdDefenseRates));
-    }
-
-    private calculateSubmissionOffenseRating(
-        groundStats: GroundStats[], 
-        fightHistory: Fight[]
-    ): number {
-        if (!groundStats.length || !fightHistory.length) return 50;
-
-        // Calculate submission attempt rate
-        const subAttempts = groundStats.map(stat => parseInt(stat.sm));
-        
-        // Calculate submission success rate from fight history
-        const subWins = fightHistory.filter(fight => 
-            fight.result.toLowerCase().includes('submission')
-        ).length;
-
-        const avgSubAttempts = this.calculateAverage(subAttempts);
-        const subWinRate = (subWins / fightHistory.length) * 100;
-
-        return this.normalizeRating(
-            (avgSubAttempts * 5 * 0.4) + 
-            (subWinRate * 0.6)
-        );
-    }
-
-    private calculateSubmissionDefenseRating(
-        groundStats: GroundStats[],
-        fightHistory: Fight[]
-    ): number {
-        if (!groundStats.length || !fightHistory.length) return 50;
-
-        // Calculate submission defense from fight history
-        const subLosses = fightHistory.filter(fight => 
-            fight.result.toLowerCase().includes('submission') && 
-            !fight.result.toLowerCase().includes('win')
-        ).length;
-
-        const subDefenseRate = ((fightHistory.length - subLosses) / fightHistory.length) * 100;
-
-        return this.normalizeRating(subDefenseRate);
-    }
-
-    private calculateCardioRating(fightHistory: Fight[]): number {
-        if (!fightHistory.length) return 50;
-
-        const fightDurations = fightHistory.map(fight => {
-            const round = parseInt(fight.rnd || '0');
-            if (isNaN(round)) return 0;
-
-            const [minutes, seconds] = (fight.time || '0:0').split(':').map(Number);
-            if (isNaN(minutes) || isNaN(seconds)) return 0;
-
-            return (round - 1) * 5 + minutes + (seconds / 60);
-        }).filter(duration => duration > 0);
-
-        const lateRoundWins = fightHistory.filter(fight => {
-            const round = parseInt(fight.rnd || '0');
-            return !isNaN(round) && 
-                   round >= 3 && 
-                   fight.result.toLowerCase().includes('win');
-        }).length;
-
-        if (!fightDurations.length) return 50;
-
-        const avgDuration = this.calculateAverage(fightDurations);
-        const lateRoundWinRate = (lateRoundWins / fightHistory.length) * 100;
-
-        return this.normalizeRating(
-            (Math.min(avgDuration / 15 * 100, 100) * 0.6) + 
-            (lateRoundWinRate * 0.4)
-        );
-    }
-
-    private calculateChinRating(
-        fightHistory: Fight[],
-        strikingStats: StrikingStats[]
-    ): number {
-        if (!fightHistory.length) return 50;
-
-        // Calculate KO/TKO loss rate
-        const koLosses = fightHistory.filter(fight => 
-            fight.result.toLowerCase().includes('ko') && 
-            !fight.result.toLowerCase().includes('win')
-        ).length;
-
-        const koLossRate = ((fightHistory.length - koLosses) / fightHistory.length) * 100;
-
-        // Consider significant strikes absorbed
-        const strikesAbsorbed = strikingStats.map(stat => parseInt(stat.ssa));
-        const avgStrikesAbsorbed = this.calculateAverage(strikesAbsorbed);
-
-        return this.normalizeRating(
-            (koLossRate * 0.7) + 
-            (Math.max(100 - (avgStrikesAbsorbed * 2), 0) * 0.3)
-        );
-    }
-
-    private calculateAverage(numbers: number[]): number {
-        if (!numbers.length) return 0;
-        const validNumbers = numbers.filter(n => !isNaN(n));
-        return validNumbers.length ? 
-            validNumbers.reduce((a, b) => a + b, 0) / validNumbers.length : 0;
-    }
-
-    private normalizeRating(value: number): number {
-        return Math.min(Math.max(Math.round(value), 0), 100);
-    }
-
-    private calculateConfidenceScore(results: SimulationResult[]): number {
-        // Calculate how consistent the simulation results are
-        const fighter1Wins = results.filter(r => r.winner === 'fighter1').length;
-        const fighter2Wins = this.SIMULATION_COUNT - fighter1Wins;
-        
-        // The closer to 50/50, the lower the confidence
-        const winRatio = Math.abs(0.5 - (fighter1Wins / this.SIMULATION_COUNT));
-        
-        // Convert to 0-100 scale
-        return this.normalizeRating(winRatio * 200);
-    }
-
-    private simulateStrikingExchange(
-        fighter1Attrs: FighterAttributes,
-        fighter2Attrs: FighterAttributes
-    ): StrikingExchange {
-        // Calculate effective striking ratings considering both offense and defense
-        const fighter1Effective = (fighter1Attrs.strikingOffense * 0.7) + 
-                                (100 - fighter2Attrs.strikingDefense * 0.3);
-        const fighter2Effective = (fighter2Attrs.strikingOffense * 0.7) + 
-                                (100 - fighter1Attrs.strikingDefense * 0.3);
-
-        // Add some randomness to the exchange
-        const fighter1Score = fighter1Effective * (0.8 + Math.random() * 0.4);
-        const fighter2Score = fighter2Effective * (0.8 + Math.random() * 0.4);
-
-        // Determine exchange winner
-        const winner = fighter1Score > fighter2Score ? 'fighter1' : 'fighter2';
-        
-        // Calculate damage based on difference in scores and chin ratings
-        const scoreDiff = Math.abs(fighter1Score - fighter2Score);
-        const damage = scoreDiff * (winner === 'fighter1' ? 
-            (100 - fighter2Attrs.chin) / 100 : 
-            (100 - fighter1Attrs.chin) / 100
-        );
-
-        // Calculate knockdown probability based on damage and chin rating
-        const knockdownProbability = Math.min(
-            damage * (winner === 'fighter1' ? 
-                (100 - fighter2Attrs.chin) : 
-                (100 - fighter1Attrs.chin)
-            ) / 10000,
-            1
-        );
-
-        return {
-            damage,
-            knockdownProbability,
-            winner
-        };
-    }
-
-    private simulateGroundExchange(
-        fighter1Attrs: FighterAttributes,
-        fighter2Attrs: FighterAttributes
-    ): GroundExchange {
-        // Simulate takedown/position
-        const fighter1TakedownScore = fighter1Attrs.takedownOffense * (0.8 + Math.random() * 0.4);
-        const fighter2DefenseScore = fighter2Attrs.takedownDefense * (0.8 + Math.random() * 0.4);
-        
-        // Determine position
-        let position: 'top' | 'bottom' | 'neutral';
-        let winner: 'fighter1' | 'fighter2';
-        
-        if (fighter1TakedownScore > fighter2DefenseScore) {
-            position = 'top';
-            winner = 'fighter1';
-        } else {
-            position = 'neutral';
-            winner = fighter2Attrs.takedownOffense > fighter1Attrs.takedownDefense ? 
-                'fighter2' : 'fighter1';
-        }
-
-        // Calculate submission probability based on position and attributes
-        let submissionProbability = 0;
-        if (position === 'top' && winner === 'fighter1') {
-            submissionProbability = (fighter1Attrs.submissionOffense * 0.7 + 
-                (100 - fighter2Attrs.submissionDefense) * 0.3) / 400;
-        } else if (position === 'top' && winner === 'fighter2') {
-            submissionProbability = (fighter2Attrs.submissionOffense * 0.7 + 
-                (100 - fighter1Attrs.submissionDefense) * 0.3) / 400;
-        }
-
-        return {
-            submissionProbability,
-            winner,
-            position
-        };
-    }
-
-    private calculateRoundResult(
-        strikingExchange: StrikingExchange,
-        groundExchange: GroundExchange,
-        cardioFactor1: number,
-        cardioFactor2: number
-    ): SimulationResult | null {
-        // Apply cardio factors to probabilities
-        const adjustedKnockdownProb = strikingExchange.knockdownProbability * 
-            (strikingExchange.winner === 'fighter1' ? cardioFactor1 / 100 : cardioFactor2 / 100);
-        
-        const adjustedSubmissionProb = groundExchange.submissionProbability * 
-            (groundExchange.winner === 'fighter1' ? cardioFactor1 / 100 : cardioFactor2 / 100);
-
-        // Random number to determine finish
-        const random = Math.random();
-
-        // Check for KO/TKO
-        if (random < adjustedKnockdownProb) {
-            return {
-                winner: strikingExchange.winner,
-                method: 'KO/TKO',
-                round: Math.ceil(random * 5)
-            };
-        }
-
-        // Check for Submission
-        if (random < adjustedSubmissionProb) {
-            return {
-                winner: groundExchange.winner,
-                method: 'Submission',
-                round: Math.ceil(random * 5)
-            };
-        }
-
-        // No finish this round
-        return null;
-    }
-
-    private simulateDecision(
-        fighter1Attrs: FighterAttributes,
-        fighter2Attrs: FighterAttributes
-    ): SimulationResult {
-        // Calculate total effective offense considering all aspects
-        const fighter1Score = (
-            fighter1Attrs.strikingOffense * 0.4 +
-            fighter1Attrs.takedownOffense * 0.3 +
-            fighter1Attrs.cardio * 0.3
-        ) * (0.8 + Math.random() * 0.4);
-
-        const fighter2Score = (
-            fighter2Attrs.strikingOffense * 0.4 +
-            fighter2Attrs.takedownOffense * 0.3 +
-            fighter2Attrs.cardio * 0.3
-        ) * (0.8 + Math.random() * 0.4);
-
-        return {
-            winner: fighter1Score > fighter2Score ? 'fighter1' : 'fighter2',
-            method: 'Decision',
-            round: 5
-        };
     }
 
     public async getLatestPrediction(matchupId: string): Promise<PredictionResult | null> {
         const query = `
-            SELECT 
-                prediction_id,
-                matchup_id,
-                fighter1_id,
-                fighter2_id,
-                fighter1_win_probability,
-                fighter2_win_probability,
-                fighter1_ko_tko_probability,
-                fighter1_submission_probability,
-                fighter1_decision_probability,
-                fighter2_ko_tko_probability,
-                fighter2_submission_probability,
-                fighter2_decision_probability,
-                confidence_score,
-                simulation_count,
-                created_at
-            FROM fight_predictions
+            SELECT * FROM fight_predictions
             WHERE matchup_id = $1
             ORDER BY created_at DESC
             LIMIT 1
@@ -685,11 +413,5 @@ export class PredictionService {
             simulation_count: prediction.simulation_count,
             created_at: prediction.created_at
         };
-    }
-
-    private safeParseInt(value: string | null | undefined, defaultValue: number = 0): number {
-        if (!value) return defaultValue;
-        const parsed = parseInt(value);
-        return isNaN(parsed) ? defaultValue : parsed;
     }
 } 
