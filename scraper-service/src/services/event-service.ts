@@ -338,9 +338,17 @@ export class EventService {
               )
             ) as recent_fights
           FROM (
-            SELECT *
-            FROM fights
-            ORDER BY date DESC
+            SELECT DISTINCT ON (fighter_id) fighter_id, *
+            FROM (
+              SELECT *
+              FROM fights f
+              WHERE fighter_id IN (
+                SELECT fighter1_id FROM matchups WHERE matchup_id = $1
+                UNION
+                SELECT fighter2_id FROM matchups WHERE matchup_id = $1
+              )
+              ORDER BY fighter_id, date DESC
+            ) fighter_fights
             LIMIT 3
           ) recent
           GROUP BY fighter_id
