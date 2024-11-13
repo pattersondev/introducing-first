@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2/proxy"
+	"github.com/joho/godotenv"
 	"golang.org/x/net/html"
 )
 
@@ -152,6 +154,58 @@ var userAgents = []string{
 	"Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1",
 }
 
+func initializeCollector() *colly.Collector {
+	c := colly.NewCollector(
+		colly.AllowedDomains("www.espn.com", "espn.com"),
+		colly.IgnoreRobotsTxt(),
+	)
+
+	// Load .env file - continue without proxy if file doesn't exist
+	if err := godotenv.Load(); err != nil {
+		log.Printf("No .env file found, continuing without proxy")
+		return c
+	}
+
+	// Get proxy credentials from environment
+	proxyUser := os.Getenv("PROXY_USERNAME")
+	proxyPass := os.Getenv("PROXY_PASSWORD")
+	proxyHost := os.Getenv("PROXY_HOST")
+	proxyPort := os.Getenv("PROXY_PORT")
+
+	// If any proxy settings are missing, continue without proxy
+	if proxyUser == "" || proxyPass == "" || proxyHost == "" || proxyPort == "" {
+		log.Printf("Proxy credentials incomplete in .env, continuing without proxy")
+		return c
+	}
+
+	// Configure the proxy
+	proxyURL := fmt.Sprintf("http://%s:%s@%s:%s",
+		proxyUser,
+		proxyPass,
+		proxyHost,
+		proxyPort,
+	)
+
+	// Create a proxy switcher
+	proxySwitcher, err := proxy.RoundRobinProxySwitcher(proxyURL)
+	if err != nil {
+		log.Printf("Error setting up proxy switcher: %v, continuing without proxy", err)
+		return c
+	}
+	// Set the proxy function
+	c.SetProxyFunc(colly.ProxyFunc(proxySwitcher))
+
+	// Add error handling for proxy-related issues
+	c.OnError(func(r *colly.Response, err error) {
+		if r.StatusCode == 407 { // Proxy Authentication Required
+			log.Printf("Proxy authentication failed: %v", err)
+		}
+	})
+
+	log.Printf("Successfully configured proxy")
+	return c
+}
+
 func main() {
 	start := time.Now() // Start the timer
 
@@ -159,12 +213,8 @@ func main() {
 	var mu sync.Mutex       // Mutex to protect shared data
 	var wg sync.WaitGroup
 
-	c := colly.NewCollector(
-		colly.AllowedDomains("espn.com", "www.espn.com"),
-		colly.IgnoreRobotsTxt(),
-	)
-
-	// Add random delay
+	// Replace the existing collector initialization with the new one
+	c := initializeCollector()
 
 	// Rotate user agents
 	c.OnRequest(func(r *colly.Request) {

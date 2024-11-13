@@ -320,4 +320,30 @@ export class EventService {
       client.release();
     }
   }
+
+  async getMatchupDetails(matchupId: string) {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          m.*,
+          f1.win_loss_record as fighter1_record,
+          f1.reach as fighter1_reach,
+          f1.stance as fighter1_stance,
+          f1.age as fighter1_age,
+          f2.win_loss_record as fighter2_record,
+          f2.reach as fighter2_reach,
+          f2.stance as fighter2_stance,
+          f2.age as fighter2_age
+        FROM matchups m
+        LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
+        LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
+        WHERE m.matchup_id = $1
+      `, [matchupId]);
+
+      return result.rows[0] || null;
+    } finally {
+      client.release();
+    }
+  }
 } 

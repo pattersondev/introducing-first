@@ -23,6 +23,28 @@ export interface Matchup {
   result: string;
   winner: string;
   display_order: number;
+  fighter1_record?: string;
+  fighter1_reach?: string;
+  fighter1_stance?: string;
+  fighter1_age?: number;
+  fighter2_record?: string;
+  fighter2_reach?: string;
+  fighter2_stance?: string;
+  fighter2_age?: number;
+}
+
+export interface DetailedMatchup extends Matchup {
+  fighter1_stats?: FighterStats;
+  fighter2_stats?: FighterStats;
+}
+
+export interface FighterStats {
+  record: string;
+  reach: string;
+  stance: string;
+  age: number;
+  striking_accuracy?: number;
+  takedown_accuracy?: number;
 }
 
 export interface Fighter {

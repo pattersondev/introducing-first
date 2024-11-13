@@ -12,6 +12,7 @@ import {
 } from "@/utils/fight-utils";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { MatchupModal } from "./MatchupModal";
 
 interface MatchupListProps {
   matchups: Matchup[];
@@ -49,6 +50,7 @@ export function MatchupList({
   isLoading = false,
 }: MatchupListProps) {
   const [votes, setVotes] = useState<Record<string, string>>({});
+  const [selectedMatchup, setSelectedMatchup] = useState<Matchup | null>(null);
 
   const sortedMatchups = [...matchups].sort(
     (a, b) => a.display_order - b.display_order
@@ -87,7 +89,8 @@ export function MatchupList({
         return (
           <Card
             key={matchup.matchup_id}
-            className="bg-gray-800 border-gray-700"
+            className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+            onClick={() => setSelectedMatchup(matchup)}
           >
             <CardContent className="p-4">
               <div className="flex justify-between items-center">
@@ -220,6 +223,11 @@ export function MatchupList({
   return (
     <ScrollArea className="h-[calc(100vh-320px)] min-h-[480px]">
       <div className="pb-6">{content}</div>
+      <MatchupModal
+        matchup={selectedMatchup}
+        isOpen={!!selectedMatchup}
+        onClose={() => setSelectedMatchup(null)}
+      />
     </ScrollArea>
   );
 }
