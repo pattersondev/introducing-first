@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS community_rankings (
 );
 
 CREATE TABLE IF NOT EXISTS fight_predictions (
-    prediction_id VARCHAR(32) PRIMARY KEY,
+    prediction_id VARCHAR(36) PRIMARY KEY,
     matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
     fighter1_id VARCHAR(32) REFERENCES fighters(fighter_id),
     fighter2_id VARCHAR(32) REFERENCES fighters(fighter_id),
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS fight_predictions (
 );
 
 CREATE TABLE IF NOT EXISTS fighter_attributes (
-    attribute_id VARCHAR(32) PRIMARY KEY,
+    attribute_id VARCHAR(36) PRIMARY KEY,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
     striking_offense_rating DECIMAL(5,2),
     striking_defense_rating DECIMAL(5,2),

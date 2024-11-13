@@ -74,22 +74,13 @@ export function MatchupList({
     // Here you would typically make an API call to save the vote
   };
 
-  const calculateWinProbability = (
-    fighter1: string,
-    fighter2: string
-  ): [number, number] => {
-    const fighter1Prob = Math.random() * 0.4 + 0.3;
-    const fighter2Prob = 1 - fighter1Prob;
-    return [fighter1Prob, fighter2Prob];
-  };
-
   const content = (
     <div className="space-y-4 px-6">
       {sortedMatchups.map((matchup) => {
-        const [fighter1Prob, fighter2Prob] = calculateWinProbability(
-          matchup.fighter1_name,
-          matchup.fighter2_name
-        );
+        const fighter1Prob =
+          matchup.prediction?.fighter1_win_probability ?? 0.5;
+        const fighter2Prob =
+          matchup.prediction?.fighter2_win_probability ?? 0.5;
         const userVote = votes[matchup.matchup_id];
 
         return (

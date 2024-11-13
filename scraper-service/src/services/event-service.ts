@@ -140,7 +140,24 @@ export class EventService {
               'fighter2_image', f2.image_url,
               'result', m.result,
               'winner', m.winner,
-              'display_order', m.display_order
+              'display_order', m.display_order,
+              'prediction', (
+                SELECT json_build_object(
+                  'fighter1_win_probability', fp.fighter1_win_probability,
+                  'fighter2_win_probability', fp.fighter2_win_probability,
+                  'fighter1_ko_tko_probability', fp.fighter1_ko_tko_probability,
+                  'fighter1_submission_probability', fp.fighter1_submission_probability,
+                  'fighter1_decision_probability', fp.fighter1_decision_probability,
+                  'fighter2_ko_tko_probability', fp.fighter2_ko_tko_probability,
+                  'fighter2_submission_probability', fp.fighter2_submission_probability,
+                  'fighter2_decision_probability', fp.fighter2_decision_probability,
+                  'confidence_score', fp.confidence_score
+                )
+                FROM fight_predictions fp
+                WHERE fp.matchup_id = m.matchup_id
+                ORDER BY fp.created_at DESC
+                LIMIT 1
+              )
             ) ORDER BY m.display_order
           ) AS matchups
         FROM events e
