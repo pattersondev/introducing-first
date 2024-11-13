@@ -21,6 +21,7 @@ interface Fight {
 
 interface RecentFightsProps {
   fights?: Fight[];
+  //test
 }
 
 export function RecentFights({ fights }: RecentFightsProps) {
