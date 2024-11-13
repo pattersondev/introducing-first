@@ -152,6 +152,38 @@ CREATE TABLE IF NOT EXISTS community_rankings (
     UNIQUE(fighter_id, weight_class_id)
 );
 
+CREATE TABLE IF NOT EXISTS fight_predictions (
+    prediction_id VARCHAR(32) PRIMARY KEY,
+    matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
+    fighter1_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    fighter2_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    fighter1_win_probability DECIMAL(5,2),
+    fighter2_win_probability DECIMAL(5,2),
+    fighter1_ko_tko_probability DECIMAL(5,2),
+    fighter1_submission_probability DECIMAL(5,2),
+    fighter1_decision_probability DECIMAL(5,2),
+    fighter2_ko_tko_probability DECIMAL(5,2),
+    fighter2_submission_probability DECIMAL(5,2),
+    fighter2_decision_probability DECIMAL(5,2),
+    simulation_count INTEGER,
+    confidence_score DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS fighter_attributes (
+    attribute_id VARCHAR(32) PRIMARY KEY,
+    fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    striking_offense_rating DECIMAL(5,2),
+    striking_defense_rating DECIMAL(5,2),
+    takedown_offense_rating DECIMAL(5,2),
+    takedown_defense_rating DECIMAL(5,2),
+    submission_offense_rating DECIMAL(5,2),
+    submission_defense_rating DECIMAL(5,2),
+    cardio_rating DECIMAL(5,2),
+    chin_rating DECIMAL(5,2),
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Insert default weight classes
 INSERT INTO weight_classes (name, division, weight_limit, display_order) 
 VALUES 
@@ -177,4 +209,7 @@ CREATE INDEX IF NOT EXISTS idx_matchups_fighter2_name ON matchups(fighter2_name)
 CREATE INDEX IF NOT EXISTS idx_matchups_fighter_ids ON matchups(fighter1_id, fighter2_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_rankings_weight_class ON analytics_rankings(weight_class_id);
 CREATE INDEX IF NOT EXISTS idx_community_rankings_weight_class ON community_rankings(weight_class_id);
+CREATE INDEX IF NOT EXISTS idx_fight_predictions_matchup ON fight_predictions(matchup_id);
+CREATE INDEX IF NOT EXISTS idx_fight_predictions_created_at ON fight_predictions(created_at);
+CREATE INDEX IF NOT EXISTS idx_fighter_attributes_fighter ON fighter_attributes(fighter_id);
 `; 

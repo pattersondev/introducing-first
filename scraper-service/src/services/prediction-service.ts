@@ -179,7 +179,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM striking_stats 
             WHERE fighter_id = $1 
-            ORDER BY date::timestamp DESC 
+            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -190,7 +190,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM ground_stats 
             WHERE fighter_id = $1 
-            ORDER BY date::timestamp DESC 
+            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -201,7 +201,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM clinch_stats 
             WHERE fighter_id = $1 
-            ORDER BY date::timestamp DESC 
+            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -212,7 +212,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM fights 
             WHERE fighter_id = $1 
-            ORDER BY date::timestamp DESC 
+            ORDER BY TO_TIMESTAMP(date, 'YYYY-MM-DD') DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
