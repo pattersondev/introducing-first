@@ -325,7 +325,17 @@ export class EventService {
     const client = await this.pool.connect();
     try {
       const result = await client.query(`
-        WITH RecentFights AS (
+        WITH RankedFights AS (
+          SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY fighter_id ORDER BY date DESC) as fight_rank
+          FROM fights
+          WHERE fighter_id IN (
+            SELECT fighter1_id FROM matchups WHERE matchup_id = $1
+            UNION
+            SELECT fighter2_id FROM matchups WHERE matchup_id = $1
+          )
+        ),
+        RecentFights AS (
           SELECT 
             fighter_id,
             json_agg(
@@ -335,22 +345,10 @@ export class EventService {
                 'result', result,
                 'decision', decision,
                 'round', rnd
-              )
+              ) ORDER BY date DESC
             ) as recent_fights
-          FROM (
-            SELECT DISTINCT ON (fighter_id) fighter_id, *
-            FROM (
-              SELECT *
-              FROM fights f
-              WHERE fighter_id IN (
-                SELECT fighter1_id FROM matchups WHERE matchup_id = $1
-                UNION
-                SELECT fighter2_id FROM matchups WHERE matchup_id = $1
-              )
-              ORDER BY fighter_id, date DESC
-            ) fighter_fights
-            LIMIT 3
-          ) recent
+          FROM RankedFights
+          WHERE fight_rank <= 3
           GROUP BY fighter_id
         )
         SELECT 
