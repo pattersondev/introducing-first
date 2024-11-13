@@ -332,26 +332,30 @@ export class EventService {
             opp.fighter_id as opponent_id
           FROM fights f
           LEFT JOIN fighters opp ON 
-            LOWER(CONCAT(opp.first_name, ' ', opp.last_name)) = LOWER(f.opponent)
+            TRIM(LOWER(CONCAT(opp.first_name, ' ', opp.last_name))) = TRIM(LOWER(f.opponent))
           WHERE f.fighter_id IN (
             SELECT COALESCE(fighter1_id, '') FROM matchups WHERE matchup_id = $1
             UNION
             SELECT COALESCE(fighter2_id, '') FROM matchups WHERE matchup_id = $1
           )
           AND f.fighter_id IS NOT NULL
+          AND f.date IS NOT NULL
         ),
         RecentFights AS (
           SELECT 
             fighter_id,
-            json_agg(
-              json_build_object(
-                'date', date,
-                'opponent', opponent,
-                'opponent_id', opponent_id,
-                'result', result,
-                'decision', decision,
-                'round', rnd
-              ) ORDER BY date DESC
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'date', date,
+                  'opponent', opponent,
+                  'opponent_id', opponent_id,
+                  'result', result,
+                  'decision', decision,
+                  'round', rnd
+                ) ORDER BY date DESC
+              ) FILTER (WHERE date IS NOT NULL),
+              '[]'
             ) as recent_fights
           FROM RankedFights
           WHERE fight_rank <= 3
@@ -364,13 +368,13 @@ export class EventService {
           f1.stance as fighter1_stance,
           f1.age as fighter1_age,
           f1.country as fighter1_country,
-          rf1.recent_fights as fighter1_recent_fights,
+          COALESCE(rf1.recent_fights, '[]'::json) as fighter1_recent_fights,
           f2.win_loss_record as fighter2_record,
           f2.reach as fighter2_reach,
           f2.stance as fighter2_stance,
           f2.age as fighter2_age,
           f2.country as fighter2_country,
-          rf2.recent_fights as fighter2_recent_fights
+          COALESCE(rf2.recent_fights, '[]'::json) as fighter2_recent_fights
         FROM matchups m
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
