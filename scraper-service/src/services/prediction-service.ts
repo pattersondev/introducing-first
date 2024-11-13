@@ -179,7 +179,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM striking_stats 
             WHERE fighter_id = $1 
-            ORDER BY date DESC 
+            ORDER BY date::timestamp DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -190,7 +190,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM ground_stats 
             WHERE fighter_id = $1 
-            ORDER BY date DESC 
+            ORDER BY date::timestamp DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -201,7 +201,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM clinch_stats 
             WHERE fighter_id = $1 
-            ORDER BY date DESC 
+            ORDER BY date::timestamp DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -212,7 +212,7 @@ export class PredictionService {
         const query = `
             SELECT * FROM fights 
             WHERE fighter_id = $1 
-            ORDER BY date DESC 
+            ORDER BY date::timestamp DESC 
             LIMIT 10
         `;
         const result = await this.pool.query(query, [fighterId]);
@@ -282,27 +282,31 @@ export class PredictionService {
     }
 
     private calculateStrikingOffenseRating(stats: StrikingStats[]): number {
-        if (!stats.length) return 50; // default rating for new fighters
+        if (!stats.length) return 50;
 
-        // Calculate average striking accuracy
+        // Calculate average striking accuracy, safely parsing string values
         const accuracies = stats.map(stat => {
-            const landed = parseInt(stat.tsl);
-            const attempted = parseInt(stat.tsa);
-            return (landed / attempted) * 100;
-        });
+            const landed = parseInt(stat.tsl || '0');
+            const attempted = parseInt(stat.tsa || '0');
+            return attempted > 0 ? (landed / attempted) * 100 : 0;
+        }).filter(acc => !isNaN(acc));
 
         // Calculate knockdown rate
-        const kdRates = stats.map(stat => parseInt(stat.kd));
+        const kdRates = stats.map(stat => 
+            parseInt(stat.kd || '0')
+        ).filter(kd => !isNaN(kd));
         
         // Calculate significant strikes per minute
-        const strikesPerMinute = stats.map(stat => parseInt(stat.tsl) / 5); // assuming 5 minute rounds
+        const strikesPerMinute = stats.map(stat => 
+            parseInt(stat.tsl || '0') / 5
+        ).filter(spm => !isNaN(spm));
 
-        // Weighted scoring system
+        if (!accuracies.length || !kdRates.length || !strikesPerMinute.length) return 50;
+
         const avgAccuracy = this.calculateAverage(accuracies);
         const avgKdRate = this.calculateAverage(kdRates);
         const avgStrikesPerMin = this.calculateAverage(strikesPerMinute);
 
-        // Normalize to 0-100 scale
         return this.normalizeRating(
             (avgAccuracy * 0.4) + 
             (avgKdRate * 20 * 0.3) + 
@@ -313,15 +317,18 @@ export class PredictionService {
     private calculateStrikingDefenseRating(stats: StrikingStats[]): number {
         if (!stats.length) return 50;
 
-        // Calculate strike defense (opponent accuracy)
         const defenseRates = stats.map(stat => {
-            const opponentLanded = parseInt(stat.ssa);
-            const opponentAttempted = parseInt(stat.tsa);
-            return ((opponentAttempted - opponentLanded) / opponentAttempted) * 100;
-        });
+            const opponentLanded = parseInt(stat.ssa || '0');
+            const opponentAttempted = parseInt(stat.tsa || '0');
+            return opponentAttempted > 0 ? 
+                ((opponentAttempted - opponentLanded) / opponentAttempted) * 100 : 0;
+        }).filter(rate => !isNaN(rate));
 
-        // Consider knockdowns received
-        const kdsReceived = stats.map(stat => parseInt(stat.kd));
+        const kdsReceived = stats.map(stat => 
+            parseInt(stat.kd || '0')
+        ).filter(kd => !isNaN(kd));
+
+        if (!defenseRates.length || !kdsReceived.length) return 50;
 
         const avgDefense = this.calculateAverage(defenseRates);
         const avgKdsReceived = this.calculateAverage(kdsReceived);
@@ -335,15 +342,17 @@ export class PredictionService {
     private calculateTakedownOffenseRating(stats: ClinchStats[]): number {
         if (!stats.length) return 50;
 
-        // Calculate takedown success rate
         const tdRates = stats.map(stat => {
-            const landed = parseInt(stat.tdl);
-            const attempted = parseInt(stat.tda);
-            return (landed / attempted) * 100;
-        });
+            const landed = parseInt(stat.tdl || '0');
+            const attempted = parseInt(stat.tda || '0');
+            return attempted > 0 ? (landed / attempted) * 100 : 0;
+        }).filter(rate => !isNaN(rate));
 
-        // Consider takedown volume
-        const tdVolume = stats.map(stat => parseInt(stat.tdl));
+        const tdVolume = stats.map(stat => 
+            parseInt(stat.tdl || '0')
+        ).filter(td => !isNaN(td));
+
+        if (!tdRates.length || !tdVolume.length) return 50;
 
         const avgTdRate = this.calculateAverage(tdRates);
         const avgTdVolume = this.calculateAverage(tdVolume);
@@ -410,18 +419,24 @@ export class PredictionService {
     private calculateCardioRating(fightHistory: Fight[]): number {
         if (!fightHistory.length) return 50;
 
-        // Calculate average fight duration
         const fightDurations = fightHistory.map(fight => {
-            const round = parseInt(fight.rnd);
-            const [minutes, seconds] = fight.time.split(':').map(Number);
-            return (round - 1) * 5 + minutes + (seconds / 60);
-        });
+            const round = parseInt(fight.rnd || '0');
+            if (isNaN(round)) return 0;
 
-        // Consider late round performance
-        const lateRoundWins = fightHistory.filter(fight => 
-            fight.result.toLowerCase().includes('win') && 
-            parseInt(fight.rnd) >= 3
-        ).length;
+            const [minutes, seconds] = (fight.time || '0:0').split(':').map(Number);
+            if (isNaN(minutes) || isNaN(seconds)) return 0;
+
+            return (round - 1) * 5 + minutes + (seconds / 60);
+        }).filter(duration => duration > 0);
+
+        const lateRoundWins = fightHistory.filter(fight => {
+            const round = parseInt(fight.rnd || '0');
+            return !isNaN(round) && 
+                   round >= 3 && 
+                   fight.result.toLowerCase().includes('win');
+        }).length;
+
+        if (!fightDurations.length) return 50;
 
         const avgDuration = this.calculateAverage(fightDurations);
         const lateRoundWinRate = (lateRoundWins / fightHistory.length) * 100;
@@ -457,7 +472,10 @@ export class PredictionService {
     }
 
     private calculateAverage(numbers: number[]): number {
-        return numbers.reduce((a, b) => a + b, 0) / numbers.length;
+        if (!numbers.length) return 0;
+        const validNumbers = numbers.filter(n => !isNaN(n));
+        return validNumbers.length ? 
+            validNumbers.reduce((a, b) => a + b, 0) / validNumbers.length : 0;
     }
 
     private normalizeRating(value: number): number {
@@ -667,5 +685,11 @@ export class PredictionService {
             simulation_count: prediction.simulation_count,
             created_at: prediction.created_at
         };
+    }
+
+    private safeParseInt(value: string | null | undefined, defaultValue: number = 0): number {
+        if (!value) return defaultValue;
+        const parsed = parseInt(value);
+        return isNaN(parsed) ? defaultValue : parsed;
     }
 } 
