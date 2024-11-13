@@ -5,7 +5,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventService } from "@/services/event-service";
 import { Event } from "@/types/api";
-import { Sidebar } from "./Sidebar";
 import { MatchupList } from "./MatchupList";
 
 interface EventViewProps {
@@ -15,7 +14,6 @@ interface EventViewProps {
 export function EventView({ eventId }: EventViewProps) {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -34,10 +32,6 @@ export function EventView({ eventId }: EventViewProps) {
     fetchEvent();
   }, [eventId]);
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "long",
@@ -50,7 +44,6 @@ export function EventView({ eventId }: EventViewProps) {
   if (loading) {
     return (
       <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
         <div className="flex-1 p-4 lg:p-6">
           <div className="container mx-auto">
             <Skeleton className="h-12 w-2/3 mb-6 bg-gray-700" />
@@ -69,7 +62,6 @@ export function EventView({ eventId }: EventViewProps) {
   if (!event) {
     return (
       <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
         <div className="flex-1 p-4 lg:p-6">
           <div className="container mx-auto">
             <div className="text-center text-gray-400 py-8">
@@ -83,7 +75,6 @@ export function EventView({ eventId }: EventViewProps) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <div className="flex-1 p-4 lg:p-6">
         <div className="container mx-auto">
           <h1 className="text-3xl font-bold mb-6">{event.name}</h1>

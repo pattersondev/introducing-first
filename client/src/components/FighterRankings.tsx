@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/Sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -19,7 +18,6 @@ import { useRankings } from "@/hooks/useRankings";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function FighterRankings() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
   const [selectedDivision, setSelectedDivision] = useState<string>("Men's");
   const [selectedWeightClassId, setSelectedWeightClassId] = useState<
     number | null
@@ -45,10 +43,6 @@ export function FighterRankings() {
   const filteredWeightClasses = weightClasses.filter(
     (wc) => wc.division === selectedDivision
   );
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
 
   const handleDivisionChange = (division: string) => {
     setSelectedDivision(division);
@@ -130,7 +124,6 @@ export function FighterRankings() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-950 text-white">
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <div className="flex-1 p-4 lg:p-6">
         <div className="container mx-auto">
           <h1 className="text-3xl font-bold mb-6">Fighter Rankings</h1>

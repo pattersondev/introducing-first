@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
-import { Sidebar } from "@/components/Sidebar";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -40,7 +39,6 @@ interface PopularFighter extends Fighter {
 
 export function FighterSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(
     null
@@ -96,10 +94,6 @@ export function FighterSearchPage() {
     searchFighters(searchTerm, newPage);
   };
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
   const handleFighterClick = async (fighterId: string) => {
     try {
       await FighterService.trackFighterClick(fighterId);
@@ -109,38 +103,39 @@ export function FighterSearchPage() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
-      <div className="flex-1 p-4">
-        <div className="container mx-auto py-8">
-          <h1 className="text-3xl font-bold mb-8 text-white">Fighter Search</h1>
-          <Card className="bg-gray-800 border-gray-700">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <Input
-                  type="text"
-                  placeholder="Search fighters..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-gray-700 border-gray-600 text-white"
-                />
+    <div className="h-full bg-gray-950 text-white p-4 lg:p-6">
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Fighter Search</h1>
+        <Card className="bg-gray-900 border-gray-800">
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <Input
+                type="text"
+                placeholder="Search fighters..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-gray-800 border-gray-700"
+              />
 
-                <ScrollArea className="h-[600px]">
+              <ScrollArea className="h-[calc(100vh-250px)]">
+                <div className="px-6">
                   {isLoading ? (
-                    <div className="space-y-4">
-                      {[...Array(5)].map((_, i) => (
-                        <Skeleton key={i} className="h-24 w-full bg-gray-700" />
-                      ))}
-                    </div>
+                    [...Array(5)].map((_, i) => (
+                      <Skeleton
+                        key={i}
+                        className="h-24 w-full bg-gray-700 mb-6"
+                      />
+                    ))
                   ) : searchTerm ? (
-                    <div className="space-y-4">
-                      {searchResults?.fighters.map((fighter) => (
+                    searchResults?.fighters.length ? (
+                      searchResults.fighters.map((fighter) => (
                         <Link
                           href={`/fighters/${fighter.fighter_id}`}
                           key={fighter.fighter_id}
                           onClick={() => handleFighterClick(fighter.fighter_id)}
+                          className="block mb-2"
                         >
-                          <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
+                          <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
@@ -159,7 +154,7 @@ export function FighterSearchPage() {
                                     )}
                                   </Avatar>
                                   <div>
-                                    <h3 className="text-lg font-semibold text-white">
+                                    <h3 className="text-lg font-semibold">
                                       {fighter.first_name} {fighter.last_name}
                                     </h3>
                                     {fighter.nickname && (
@@ -186,11 +181,15 @@ export function FighterSearchPage() {
                             </CardContent>
                           </Card>
                         </Link>
-                      ))}
-                    </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-gray-400 py-8">
+                        No fighters found
+                      </div>
+                    )
                   ) : (
-                    <div className="space-y-4">
-                      <h2 className="text-xl font-semibold text-white mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4">
                         Popular Fighters
                       </h2>
                       {popularFighters.map((fighter) => (
@@ -198,8 +197,9 @@ export function FighterSearchPage() {
                           href={`/fighters/${fighter.fighter_id}`}
                           key={fighter.fighter_id}
                           onClick={() => handleFighterClick(fighter.fighter_id)}
+                          className="block mb-2"
                         >
-                          <Card className="bg-gray-700 hover:bg-gray-600 transition-colors">
+                          <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-4">
@@ -218,7 +218,7 @@ export function FighterSearchPage() {
                                     )}
                                   </Avatar>
                                   <div>
-                                    <h3 className="text-lg font-semibold text-white">
+                                    <h3 className="text-lg font-semibold">
                                       {fighter.first_name} {fighter.last_name}
                                     </h3>
                                     {fighter.nickname && (
@@ -240,7 +240,7 @@ export function FighterSearchPage() {
                                       {fighter.weight}lbs
                                     </p>
                                   )}
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-400">
                                     Searched {fighter.search_count} times
                                   </p>
                                 </div>
@@ -251,36 +251,35 @@ export function FighterSearchPage() {
                       ))}
                     </div>
                   )}
-                </ScrollArea>
+                </div>
+              </ScrollArea>
 
-                {searchResults && searchResults.pagination.totalPages > 1 && (
-                  <div className="flex justify-center gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      disabled={currentPage === 1}
-                      onClick={() => handlePageChange(currentPage - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <span className="flex items-center px-4 text-white">
-                      Page {currentPage} of{" "}
-                      {searchResults.pagination.totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      disabled={
-                        currentPage === searchResults.pagination.totalPages
-                      }
-                      onClick={() => handlePageChange(currentPage + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              {searchResults && searchResults.pagination.totalPages > 1 && (
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="flex items-center px-4">
+                    Page {currentPage} of {searchResults.pagination.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      currentPage === searchResults.pagination.totalPages
+                    }
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

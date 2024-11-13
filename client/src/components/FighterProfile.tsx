@@ -314,6 +314,15 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      <Card className="bg-gray-800 border-gray-700 col-span-2">
+        <CardHeader>
+          <CardTitle>Fighter Rankings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Coming Soon</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
