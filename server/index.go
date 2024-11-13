@@ -55,17 +55,34 @@ func main() {
 }
 
 // generates JWT
-func generateJWT(username string) (string, error) {
+func generateJWT(email string) (string, error) {
 	//token expire time (sets validity to one day after generation for now)
 	expirationTime := time.Now().Add(24 * time.Hour)
 
-	//define claims for token (username and expiration date for now)
-	claims := &jwt.RegisteredClaims{
-		Subject:   username,
-		ExpiresAt: jwt.NewNumericDate(expirationTime),
+	userId, err := db.SelectUserId(email)
+	if err != nil {
+		fmt.Println("Error in retrieval of user id")
 	}
 
-	//create the jwt token with claims defined above
+	username, err := db.SelectUsername(email)
+	if err != nil {
+		fmt.Println("Error in retrieval of username")
+	}
+
+	//define custom claims struct to include UserId
+	claims := struct {
+		Username string `json:"username"`
+		UserId   string `json:"userId"`
+		jwt.RegisteredClaims
+	}{
+		Username: username,
+		UserId:   userId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	//create the JWT token with custom claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtKey)
 }
@@ -195,10 +212,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	storedHashedPassword, err := db.SelectHP(username) // Adjusted function call
+	storedHashedPassword, err := db.SelectHP(email) //adjusted function call
 	if err != nil {
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
@@ -211,7 +228,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//generate jwt token
-	token, err := generateJWT(username)
+	token, err := generateJWT(email)
 	if err != nil {
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
