@@ -151,7 +151,7 @@ func isValidPassword(password string) bool {
 
 // check to see if password is valid
 func isValidUsername(username string) bool {
-	//checks password is at least 3 characters and less than 50 characters
+	//checks username is at least 3 characters and less than 50 characters
 
 	if len(username) < 3 || len(username) > 50 {
 		return false
