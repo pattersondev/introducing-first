@@ -81,5 +81,19 @@ export function setupEventRoutes(eventService: EventService) {
     }
   });
 
+  router.get('/matchups/:id/details', async (req: Request, res: Response) => {
+    try {
+      const matchup = await eventService.getMatchupDetails(req.params.id);
+      if (!matchup) {
+        res.status(404).json({ error: 'Matchup not found' });
+        return;
+      }
+      res.json(matchup);
+    } catch (error) {
+      console.error('Error fetching matchup details:', error);
+      res.status(500).json({ error: 'Error fetching matchup details' });
+    }
+  });
+
   return router;
 } 
