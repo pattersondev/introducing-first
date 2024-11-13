@@ -17,6 +17,7 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 import {
   Home,
   Search,
@@ -26,12 +27,34 @@ import {
   BarChart2,
   Flower,
   ChevronDown,
+  LogIn,
+  UserPlus,
+  LogOut,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { UserService } from "@/services/user-service";
+import { LoginDialog } from "@/components/auth/LoginDialog";
+import { RegisterDialog } from "@/components/auth/RegisterDialog";
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoading(true);
+      await UserService.logout();
+      setIsLoggedIn(false);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -44,6 +67,10 @@ export default function AppSidebar() {
     { title: "Rankings", icon: BarChart2, path: "/rankings" },
     { title: "Leaderboard", icon: Trophy, path: "/leaderboard" },
   ];
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  };
 
   return (
     <Sidebar
@@ -81,8 +108,30 @@ export default function AppSidebar() {
           </SidebarGroup>
         </Collapsible>
       </SidebarContent>
-      <SidebarFooter className="border-t border-gray-800 p-4 bg-gray-950">
-        <p className="text-sm text-gray-400">© 2024 Introducing First</p>
+      <SidebarFooter className="border-t border-gray-800 p-4 bg-gray-950 space-y-4">
+        {isLoggedIn ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <User className="h-4 w-4" />
+              <span>Welcome back!</span>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleLogout}
+              disabled={isLoading}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {isLoading ? "Logging out..." : "Logout"}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <LoginDialog onLoginSuccess={handleLoginSuccess} />
+            <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
+          </div>
+        )}
+        <p className="text-sm text-gray-400 pt-2">© 2024 Introducing First</p>
       </SidebarFooter>
     </Sidebar>
   );

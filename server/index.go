@@ -23,6 +23,43 @@ import (
 
 var jwtKey []byte
 
+// Add CORS middleware
+func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Allow specific origins
+		allowedOrigins := []string{
+			"http://localhost:3000",
+			"https://antiballsniffer.club",
+			"https://www.antiballsniffer.club",
+		}
+
+		origin := r.Header.Get("Origin")
+		for _, allowedOrigin := range allowedOrigins {
+			if origin == allowedOrigin {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				break
+			}
+		}
+
+		// Allow credentials
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Allow specific headers
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+
+		// Allow specific methods
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+		// Handle preflight requests
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		handler(w, r)
+	}
+}
+
 func main() {
 
 	_ = godotenv.Load()
@@ -37,9 +74,9 @@ func main() {
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
 
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/register", registerHandler)
-	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/login", enableCORS(loginHandler))
+	http.HandleFunc("/register", enableCORS(registerHandler))
+	http.HandleFunc("/logout", enableCORS(logoutHandler))
 
 	//test endpoint. hidden behind authentication. Delete later
 	http.HandleFunc("/protected", authenticate(protectedHandler))

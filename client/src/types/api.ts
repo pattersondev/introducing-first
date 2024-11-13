@@ -116,3 +116,20 @@ export interface RecentFight {
   decision: string;
   round: number;
 }
+
+// Add these interfaces to your existing types
+export interface AuthResponse {
+  message: string;
+}
+
+export interface RegisterData {
+  username: string;
+  password: string;
+  email: string;
+  phone: string;
+}
+
+export interface LoginData {
+  username: string;
+  password: string;
+}
