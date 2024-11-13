@@ -34,7 +34,7 @@ export function useMatchupDetails(matchup: Matchup | null) {
 
       try {
         const response = await apiClient<DetailedMatchup>(
-          `/matchups/${matchup.matchup_id}/details`
+          `/events/matchups/${matchup.matchup_id}/details`
         );
         
         if (response.error) {
