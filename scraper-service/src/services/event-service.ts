@@ -326,17 +326,19 @@ export class EventService {
     try {
       const result = await client.query(`
         WITH RankedFights AS (
-          SELECT f.*,
-            ROW_NUMBER() OVER (PARTITION BY fighter_id ORDER BY date DESC) as fight_rank,
+          SELECT 
+            f.*,
+            ROW_NUMBER() OVER (PARTITION BY f.fighter_id ORDER BY f.date DESC) as fight_rank,
             opp.fighter_id as opponent_id
           FROM fights f
           LEFT JOIN fighters opp ON 
-            CONCAT(opp.first_name, ' ', opp.last_name) = f.opponent
+            LOWER(CONCAT(opp.first_name, ' ', opp.last_name)) = LOWER(f.opponent)
           WHERE f.fighter_id IN (
-            SELECT fighter1_id FROM matchups WHERE matchup_id = $1
+            SELECT COALESCE(fighter1_id, '') FROM matchups WHERE matchup_id = $1
             UNION
-            SELECT fighter2_id FROM matchups WHERE matchup_id = $1
+            SELECT COALESCE(fighter2_id, '') FROM matchups WHERE matchup_id = $1
           )
+          AND f.fighter_id IS NOT NULL
         ),
         RecentFights AS (
           SELECT 
