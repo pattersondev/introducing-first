@@ -32,7 +32,6 @@ func main() {
 		log.Fatal("JWT_SECRET not set in environment")
 	}
 
-	db.StartDbConnection()
 	db.StartUsersDbConnection()
 
 	http.HandleFunc("/", handleRoot)
