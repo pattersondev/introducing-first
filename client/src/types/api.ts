@@ -31,6 +31,10 @@ export interface Matchup {
   fighter2_reach?: string;
   fighter2_stance?: string;
   fighter2_age?: number;
+  fighter1_country?: string;
+  fighter2_country?: string;
+  fighter1_recent_fights?: RecentFight[];
+  fighter2_recent_fights?: RecentFight[];
 }
 
 export interface DetailedMatchup extends Matchup {
@@ -102,4 +106,13 @@ export interface Fight {
 
 export interface DetailedFighter extends Fighter {
   fights: Fight[];
+}
+
+// Add this interface for recent fights
+export interface RecentFight {
+  date: string;
+  opponent: string;
+  result: string;
+  decision: string;
+  round: number;
 }

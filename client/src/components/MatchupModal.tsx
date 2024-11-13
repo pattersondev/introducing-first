@@ -9,17 +9,37 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ProbabilityBar } from "./ProbabilityBar";
+import { RecentFights } from "./RecentFights";
 
 interface FighterStatsProps {
+  name: string;
+  country?: string;
   record?: string;
   reach?: string;
   stance?: string;
   age?: number;
 }
 
-function FighterStats({ record, reach, stance, age }: FighterStatsProps) {
+function FighterStats({
+  name,
+  country,
+  record,
+  reach,
+  stance,
+  age,
+}: FighterStatsProps) {
   return (
     <div className="w-full space-y-2 mt-4">
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <h3 className="font-semibold text-lg">{name}</h3>
+        {country && (
+          <img
+            src={`https://flagcdn.com/w20/${country.toLowerCase()}.png`}
+            alt={country}
+            className="w-5 h-auto"
+          />
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="bg-gray-800 p-2 rounded">
           <span className="text-gray-400">Record:</span>{" "}
@@ -95,15 +115,17 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <h3 className="font-semibold text-lg">
-                      {matchup.fighter1_name}
-                    </h3>
-                    <ProbabilityBar probability={0.5} />
                     <FighterStats
+                      name={matchup.fighter1_name}
+                      country={detailedMatchup?.fighter1_country}
                       record={detailedMatchup?.fighter1_record}
                       reach={detailedMatchup?.fighter1_reach}
                       stance={detailedMatchup?.fighter1_stance}
                       age={detailedMatchup?.fighter1_age}
+                    />
+                    <ProbabilityBar probability={0.5} />
+                    <RecentFights
+                      fights={detailedMatchup?.fighter1_recent_fights}
                     />
                   </div>
                 </div>
@@ -126,15 +148,17 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <h3 className="font-semibold text-lg">
-                      {matchup.fighter2_name}
-                    </h3>
-                    <ProbabilityBar probability={0.5} />
                     <FighterStats
+                      name={matchup.fighter2_name}
+                      country={detailedMatchup?.fighter2_country}
                       record={detailedMatchup?.fighter2_record}
                       reach={detailedMatchup?.fighter2_reach}
                       stance={detailedMatchup?.fighter2_stance}
                       age={detailedMatchup?.fighter2_age}
+                    />
+                    <ProbabilityBar probability={0.5} />
+                    <RecentFights
+                      fights={detailedMatchup?.fighter2_recent_fights}
                     />
                   </div>
                 </div>
