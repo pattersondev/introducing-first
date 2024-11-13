@@ -92,6 +92,7 @@ export function FighterRankings() {
                           <AvatarImage
                             src={fighter.image_url}
                             alt={`${fighter.first_name} ${fighter.last_name}`}
+                            className="object-cover object-center"
                           />
                         ) : (
                           <AvatarFallback className="bg-gray-800">

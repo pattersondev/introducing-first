@@ -1,8 +1,9 @@
 import { Pool } from 'pg';
 import { generateId } from '../utils/helpers';
+import { PredictionService } from '../services/prediction-service';
 
 export class EventService {
-  constructor(private pool: Pool) {}
+  constructor(private pool: Pool, private predictionService: PredictionService) {}
 
   async processEvent(event: any) {
     const client = await this.pool.connect();
@@ -54,6 +55,10 @@ export class EventService {
             matchup.Result, matchup.Winner, matchup.Order
           ]
         );
+
+        if (matchup.fighter1_id && matchup.fighter2_id) {
+          await this.predictionService.predictFight(matchupId);
+        }
       }
 
       // Remove matchups that no longer exist in the event

@@ -13,6 +13,8 @@ import { setupRankingsRoutes } from './routes/rankings-routes';
 import { validateApiKey } from './middleware/auth';
 import { limiter } from './middleware/rateLimiter';
 import cron from 'node-cron';
+import { setupPredictionRoutes } from './routes/prediction-routes';
+import { PredictionService } from './services/prediction-service';
 
 dotenv.config();
 
@@ -21,9 +23,10 @@ const port = process.env.PORT || 5555;
 
 // Initialize services
 const dbService = new DatabaseService(process.env.DATABASE_URL!);
-const eventService = new EventService(dbService.getPool());
+const eventService = new EventService(dbService.getPool(), new PredictionService(dbService.getPool()));
 const fighterService = new FighterService(dbService.getPool());
 const rankingsService = new RankingsService(dbService.getPool());
+const predictionService = new PredictionService(dbService.getPool());
 
 // Initialize database
 dbService.initialize();
@@ -64,6 +67,7 @@ app.use('/api/events', setupEventRoutes(eventService));
 app.use('/api/fighters', setupFighterRoutes(fighterService));
 app.use('/api/analytics', setupAnalyticsRoutes(dbService.getPool()));
 app.use('/api/rankings', setupRankingsRoutes(rankingsService));
+app.use('/api/predictions', setupPredictionRoutes(predictionService));
 
 // Run cleanup at 3 AM every day
 cron.schedule('0 3 * * *', async () => {
