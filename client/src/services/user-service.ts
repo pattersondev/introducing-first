@@ -38,7 +38,14 @@ export const UserService = {
         mode: 'cors',
       });
 
-      const responseData = await response.json();
+      let responseData;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        responseData = await response.json();
+      } else {
+        const text = await response.text();
+        responseData = { message: text };
+      }
 
       return {
         data: responseData,
@@ -46,6 +53,7 @@ export const UserService = {
         error: !response.ok ? responseData.message || 'Registration failed' : undefined
       };
     } catch (error) {
+      console.error('Registration error:', error);
       return {
         status: 500,
         error: 'Failed to connect to authentication service'
