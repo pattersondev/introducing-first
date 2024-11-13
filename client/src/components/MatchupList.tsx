@@ -45,19 +45,25 @@ function ResultDisplay({ result }: { result: string }) {
 }
 
 export function MatchupList({
-  matchups,
-  eventDate,
+  matchups = [],
+  eventDate = new Date().toISOString(),
   isLoading = false,
 }: MatchupListProps) {
   const [votes, setVotes] = useState<Record<string, string>>({});
   const [selectedMatchup, setSelectedMatchup] = useState<Matchup | null>(null);
 
-  const sortedMatchups = [...matchups].sort(
-    (a, b) => a.display_order - b.display_order
-  );
+  const sortedMatchups = matchups
+    ? [...matchups].sort((a, b) => a.display_order - b.display_order)
+    : [];
 
   const isEventInFuture = (date: string) => {
-    return new Date(date) > new Date();
+    if (!date) return true;
+    try {
+      return new Date(date) > new Date();
+    } catch (e) {
+      console.error("Invalid date:", date);
+      return true;
+    }
   };
 
   const handleVote = (matchupId: string, fighter: string) => {

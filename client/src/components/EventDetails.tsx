@@ -12,14 +12,9 @@ import { MatchupChat } from "./MatchupChat";
 interface EventDetailsProps {
   event: Event;
   isLoading?: boolean;
-  isSidebarCollapsed: boolean;
 }
 
-export function EventDetails({
-  event,
-  isLoading = false,
-  isSidebarCollapsed,
-}: EventDetailsProps) {
+export function EventDetails({ event, isLoading = false }: EventDetailsProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -31,19 +26,17 @@ export function EventDetails({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
-      <div className="w-full lg:w-2/3 flex-grow">
-        <Card className="bg-gray-900 border-gray-800 h-full">
-          <CardHeader>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-[calc(100vh-180px)]">
+      <div className="lg:col-span-2 h-full">
+        <Card className="bg-gray-900 border-gray-800 h-full flex flex-col">
+          <CardHeader className="pb-4 flex-none">
             <CardTitle className="text-white">{event.name}</CardTitle>
             <CardDescription className="text-gray-400">
               {formatDate(event.date)} - {event.location}
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
-            <h3 className="text-xl font-semibold mb-4 text-white px-6">
-              Matchups
-            </h3>
+          <CardContent className="pt-0 flex-1 overflow-auto">
+            <h3 className="text-xl font-semibold mb-4 text-white">Matchups</h3>
             <MatchupList
               matchups={event.matchups}
               eventDate={event.date}
@@ -52,12 +45,12 @@ export function EventDetails({
           </CardContent>
         </Card>
       </div>
-      <div className="w-full lg:w-1/3 flex-grow">
-        <Card className="bg-gray-900 border-gray-800 h-full">
-          <CardHeader>
+      <div className="h-full">
+        <Card className="bg-gray-900 border-gray-800 h-full flex flex-col">
+          <CardHeader className="pb-4 flex-none">
             <CardTitle className="text-white">Chat</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 flex-1 overflow-auto">
             <MatchupChat matchups={event.matchups} />
           </CardContent>
         </Card>

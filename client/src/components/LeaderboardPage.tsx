@@ -2,8 +2,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Medal } from "lucide-react";
-import { Sidebar } from "./Sidebar";
-import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LeaderboardUser {
@@ -89,12 +87,6 @@ const mockLeaderboardData: LeaderboardUser[] = [
 ];
 
 export function LeaderboardPage() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
   const getPodiumColor = (position: number) => {
     switch (position) {
       case 0:
@@ -123,7 +115,6 @@ export function LeaderboardPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <div className="flex-1 p-2 sm:p-4 overflow-hidden">
         <div className="container mx-auto py-4 sm:py-8">
           <h1 className="text-2xl sm:text-3xl font-bold mb-8 sm:mb-8 text-white">

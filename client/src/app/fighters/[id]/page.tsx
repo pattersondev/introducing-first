@@ -1,18 +1,12 @@
 "use client";
 
 import { useFighter } from "@/hooks/useFighter";
-import { Sidebar } from "@/components/Sidebar";
 import { FighterProfile } from "@/components/FighterProfile";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function FighterPage({ params }: { params: { id: string } }) {
   const { fighter, loading, error } = useFighter(params.id);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
-
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
 
   if (error) {
     return (
@@ -26,20 +20,16 @@ export default function FighterPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-950 text-white">
-      <div className="flex h-full overflow-hidden">
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
-        <main
-          className={`flex-1 overflow-y-auto p-4 lg:p-6 transition-all duration-300
-            ${isSidebarCollapsed ? "" : "lg:ml-[16vw]"}`}
-        >
+    <div className="h-screen bg-gray-950 text-white">
+      <ScrollArea className="h-full">
+        <div className="container mx-auto p-4 lg:p-6">
           {loading ? (
             <FighterProfileSkeleton />
           ) : (
             fighter && <FighterProfile fighter={fighter} />
           )}
-        </main>
-      </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }
