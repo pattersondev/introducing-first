@@ -83,8 +83,6 @@ interface MatchupModalProps {
 export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
   const { detailedMatchup, isLoading, error } = useMatchupDetails(matchup);
 
-  console.log("MatchupModal - detailedMatchup:", detailedMatchup);
-
   if (!matchup) return null;
 
   return (

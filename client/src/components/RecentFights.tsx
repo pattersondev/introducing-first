@@ -24,8 +24,6 @@ interface RecentFightsProps {
 }
 
 export function RecentFights({ fights }: RecentFightsProps) {
-  console.log("RecentFights - fights prop:", fights);
-
   const getMethodIcon = (decision: string) => {
     const methodLower = decision?.toLowerCase() || "";
     if (methodLower.includes("ko") || methodLower.includes("tko")) {
@@ -47,7 +45,6 @@ export function RecentFights({ fights }: RecentFightsProps) {
   };
 
   if (!fights || fights.length === 0) {
-    console.log("RecentFights - No fights found or empty array");
     return (
       <div className="w-full mt-4">
         <h4 className="text-sm font-medium text-gray-400 mb-2">
@@ -62,55 +59,52 @@ export function RecentFights({ fights }: RecentFightsProps) {
     <div className="w-full mt-4">
       <h4 className="text-sm font-medium text-gray-400 mb-2">Recent Fights</h4>
       <div className="space-y-2">
-        {fights.map((fight, index) => {
-          console.log("RecentFights - rendering fight:", fight);
-          return (
-            <div
-              key={`${fight.date}-${fight.opponent}-${index}`}
-              className="bg-gray-800 p-2 rounded text-sm flex justify-between items-center"
-            >
-              <div className="flex-1">
-                {fight.opponent_id ? (
-                  <Link
-                    href={`/fighters/${fight.opponent_id}`}
-                    className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
-                  >
-                    {fight.opponent}
-                  </Link>
-                ) : (
-                  <div className="font-medium">{fight.opponent}</div>
-                )}
-                <div className="text-xs text-gray-400">
-                  {new Date(fight.date).toLocaleDateString()}
-                </div>
-              </div>
-              <div className="text-right">
-                <span
-                  className={cn(
-                    "inline-block min-w-[26px] text-center px-1.5 py-0.5 rounded-full text-xs font-medium",
-                    {
-                      "bg-green-500/20 text-green-400":
-                        fight.result?.toLowerCase() === "w",
-                      "bg-red-500/20 text-red-400":
-                        fight.result?.toLowerCase() === "l",
-                      "bg-yellow-500/20 text-yellow-400":
-                        fight.result?.toLowerCase() === "d" ||
-                        fight.decision?.toLowerCase().includes("no contest"),
-                    }
-                  )}
+        {fights.map((fight, index) => (
+          <div
+            key={`${fight.date}-${fight.opponent}-${index}`}
+            className="bg-gray-800 p-2 rounded text-sm flex justify-between items-center"
+          >
+            <div className="flex-1">
+              {fight.opponent_id ? (
+                <Link
+                  href={`/fighters/${fight.opponent_id}`}
+                  className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
                 >
-                  {fight.result}
-                </span>
-                <div className="text-xs text-gray-400 flex items-center gap-1 mt-1 justify-end">
-                  {getMethodIcon(fight.decision)}
-                  <span>
-                    {fight.decision} R{fight.round}
-                  </span>
-                </div>
+                  {fight.opponent}
+                </Link>
+              ) : (
+                <div className="font-medium">{fight.opponent}</div>
+              )}
+              <div className="text-xs text-gray-400">
+                {new Date(fight.date).toLocaleDateString()}
               </div>
             </div>
-          );
-        })}
+            <div className="text-right">
+              <span
+                className={cn(
+                  "inline-block min-w-[26px] text-center px-1.5 py-0.5 rounded-full text-xs font-medium",
+                  {
+                    "bg-green-500/20 text-green-400":
+                      fight.result?.toLowerCase() === "w",
+                    "bg-red-500/20 text-red-400":
+                      fight.result?.toLowerCase() === "l",
+                    "bg-yellow-500/20 text-yellow-400":
+                      fight.result?.toLowerCase() === "d" ||
+                      fight.decision?.toLowerCase().includes("no contest"),
+                  }
+                )}
+              >
+                {fight.result}
+              </span>
+              <div className="text-xs text-gray-400 flex items-center gap-1 mt-1 justify-end">
+                {getMethodIcon(fight.decision)}
+                <span>
+                  {fight.decision} R{fight.round}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

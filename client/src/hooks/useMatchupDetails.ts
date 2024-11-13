@@ -22,8 +22,6 @@ export function useMatchupDetails(matchup: Matchup | null) {
           `/events/matchups/${matchup.matchup_id}/details`
         );
         
-        console.log('useMatchupDetails - API response:', response);
-
         if (response.error) {
           throw new Error(response.error);
         }
@@ -32,7 +30,6 @@ export function useMatchupDetails(matchup: Matchup | null) {
           setDetailedMatchup(response.data);
         }
       } catch (err) {
-        console.error('useMatchupDetails - Error:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch matchup details');
       } finally {
         setIsLoading(false);
