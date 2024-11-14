@@ -6,59 +6,452 @@ interface EloRating {
   lastActivity: Date;
 }
 
+type League = 'UFC' | 'BELLATOR' | 'PFL' | 'OTHER';
+
 export class RankingsService {
-  private readonly BASE_RATING = 1500;
-  private readonly K_FACTOR_BASE = 32;
-  private readonly INACTIVITY_PENALTY = 25;
+  // Cache for prepared statements
+  private preparedStatements: { [key: string]: string } = {};
   
-  // Enhanced performance factors with opponent rating multipliers
+  // Cache for fighter data
+  private fighterCache: Map<string, any> = new Map();
+  private cacheTimeout: number = 5 * 60 * 1000; // 5 minutes
+  private lastCacheClear: number = Date.now();
+
+  private readonly BASE_RATING = 1200;
+  private readonly K_FACTOR_BASE = 40;
+  private readonly INACTIVITY_PENALTY = 50;
+
   private readonly PERFORMANCE_FACTORS = {
     // Wins
-    KO_WIN_ROUND1: 2.0,    
-    KO_WIN: 1.7,           
-    SUB_WIN_ROUND1: 1.8,   
-    SUB_WIN: 1.5,          
-    DECISION_WIN_DOMINANT: 1.3,
-    DECISION_WIN_CLOSE: 1.1,    
+    KO_WIN_ROUND1: 2.5,    
+    KO_WIN: 2.0,           
+    SUB_WIN_ROUND1: 2.3,   
+    SUB_WIN: 1.8,          
+    DECISION_WIN_DOMINANT: 1.5,
+    DECISION_WIN_CLOSE: 1.2,    
     
     // Losses
-    KO_LOSS_ROUND1: 0.5,   
-    KO_LOSS: 0.6,          
-    SUB_LOSS_ROUND1: 0.6,  
-    SUB_LOSS: 0.7,         
-    DECISION_LOSS_DOMINANT: 0.8,
-    DECISION_LOSS_CLOSE: 0.9,    
+    KO_LOSS_ROUND1: 0.4,   
+    KO_LOSS: 0.5,          
+    SUB_LOSS_ROUND1: 0.4,  
+    SUB_LOSS: 0.5,         
+    DECISION_LOSS_DOMINANT: 0.7,
+    DECISION_LOSS_CLOSE: 0.8,    
     
     DRAW: 1.0
   };
 
-  // New opponent quality multipliers
   private readonly OPPONENT_QUALITY = {
-    ELITE: 1.5,        // Opponent rating > your rating + 200
-    SUPERIOR: 1.3,     // Opponent rating > your rating + 100
+    ELITE: 2.0,        // Opponent rating > your rating + 200
+    SUPERIOR: 1.5,     // Opponent rating > your rating + 100
     EVEN: 1.0,         // Opponent rating within ±100 of your rating
-    INFERIOR: 0.8,     // Opponent rating < your rating - 100
-    MUCH_INFERIOR: 0.6 // Opponent rating < your rating - 200
+    INFERIOR: 0.6,     // Opponent rating < your rating - 100
+    MUCH_INFERIOR: 0.4 // Opponent rating < your rating - 200
   };
 
-  constructor(private pool: Pool) {}
+  private readonly LEAGUE_MULTIPLIERS: Record<League, number> = {
+    UFC: 2.5,
+    BELLATOR: 1,
+    PFL: 0.7,      
+    OTHER: 0.5
+  };
+
+  constructor(private pool: Pool) {
+    this.initializePreparedStatements();
+  }
+
+  private async initializePreparedStatements() {
+    this.preparedStatements = {
+      getFighterRating: `
+        SELECT points as rating, volatility, last_updated
+        FROM analytics_rankings
+        WHERE fighter_id = $1 AND weight_class_id = $2
+      `,
+      getFighterStats: `
+        WITH recent_fights AS (
+          SELECT 
+            result,
+            decision,
+            date,
+            ROW_NUMBER() OVER (ORDER BY date DESC) as fight_number
+          FROM fights
+          WHERE fighter_id = $1
+          ORDER BY date DESC
+          LIMIT 5
+        )
+        SELECT 
+          COUNT(*) as fight_count,
+          SUM(CASE WHEN result = 'Win' THEN 1 ELSE 0 END) as recent_wins,
+          MAX(CASE WHEN result = 'Win' AND fight_number = 1 THEN 1 
+               WHEN result != 'Win' AND fight_number = 1 THEN 0 END) as last_fight_win
+        FROM recent_fights
+      `,
+      getCurrentLeague: `
+        SELECT event 
+        FROM fights 
+        WHERE fighter_id = $1 
+        ORDER BY date DESC 
+        LIMIT 1
+      `,
+      updateRanking: `
+        INSERT INTO analytics_rankings 
+          (fighter_id, weight_class_id, points, volatility, last_updated, rank)
+        VALUES 
+          ($1, $2, $3::numeric, $4::numeric, $5, 
+            (SELECT COALESCE(MAX(rank), 0) + 1 
+             FROM analytics_rankings 
+             WHERE weight_class_id = $2)
+          )
+        ON CONFLICT (fighter_id, weight_class_id) 
+        DO UPDATE SET 
+          points = $3::numeric,
+          volatility = $4::numeric,
+          last_updated = $5
+      `
+    };
+  }
+
+  private clearCacheIfNeeded() {
+    const now = Date.now();
+    if (now - this.lastCacheClear > this.cacheTimeout) {
+      this.fighterCache.clear();
+      this.lastCacheClear = now;
+    }
+  }
+
+  private getCacheKey(type: string, id: string, additionalParams?: string): string {
+    return `${type}:${id}${additionalParams ? `:${additionalParams}` : ''}`;
+  }
+
+  private async getFromCacheOrDatabase<T>(
+    cacheKey: string,
+    dbFetch: () => Promise<T>
+  ): Promise<T> {
+    this.clearCacheIfNeeded();
+    
+    const cached = this.fighterCache.get(cacheKey);
+    if (cached) {
+      return cached as T;
+    }
+
+    const result = await dbFetch();
+    this.fighterCache.set(cacheKey, result);
+    return result;
+  }
+
+  private async batchDatabaseOperations<T>(
+    operations: (() => Promise<T>)[],
+    batchSize: number = 10
+  ): Promise<T[]> {
+    const results: T[] = [];
+    for (let i = 0; i < operations.length; i += batchSize) {
+      const batch = operations.slice(i, i + batchSize);
+      const batchResults = await Promise.all(batch.map(op => op()));
+      results.push(...batchResults);
+    }
+    return results;
+  }
+
+  private async getOrCreateFighterRating(
+    client: any,
+    fighterId: string,
+    weightClassId: number
+  ): Promise<EloRating> {
+    const cacheKey = this.getCacheKey('rating', fighterId, weightClassId.toString());
+    
+    return this.getFromCacheOrDatabase(cacheKey, async () => {
+      const result = await client.query(this.preparedStatements.getFighterRating, [fighterId, weightClassId]);
+
+      if (result.rows.length > 0) {
+        return {
+          rating: result.rows[0].rating,
+          volatility: result.rows[0].volatility,
+          lastActivity: result.rows[0].last_updated
+        };
+      }
+
+      return {
+        rating: this.BASE_RATING,
+        volatility: 100,
+        lastActivity: new Date()
+      };
+    });
+  }
+
+  private async getFighterStats(client: any, fighterId: string): Promise<{
+    winStreak: number,
+    fightCount: number,
+    recentPerformance: number
+  }> {
+    const cacheKey = this.getCacheKey('stats', fighterId);
+    
+    return this.getFromCacheOrDatabase(cacheKey, async () => {
+      const result = await client.query(this.preparedStatements.getFighterStats, [fighterId]);
+      const stats = result.rows[0];
+      
+      return {
+        winStreak: stats.last_fight_win === 1 ? 1 : 0,
+        fightCount: parseInt(stats.fight_count),
+        recentPerformance: stats.recent_wins / stats.fight_count
+      };
+    });
+  }
+
+  private async determineCurrentLeague(client: any, fighterId: string): Promise<League> {
+    const cacheKey = this.getCacheKey('league', fighterId);
+    
+    return this.getFromCacheOrDatabase(cacheKey, async () => {
+      const result = await client.query(this.preparedStatements.getCurrentLeague, [fighterId]);
+      
+      if (result.rows.length === 0) return 'OTHER';
+      
+      const eventName = result.rows[0].event.toLowerCase();
+      if (eventName.includes('ufc')) return 'UFC';
+      if (eventName.includes('bellator')) return 'BELLATOR';
+      if (eventName.includes('pfl')) return 'PFL';
+      return 'OTHER';
+    });
+  }
+
+  async updateRankings(weightClassId: number) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Get weight class details with optimized query
+      const weightClassResult = await client.query(`
+        SELECT weight_limit, division, name 
+        FROM weight_classes 
+        WHERE weight_class_id = $1
+      `, [weightClassId]);
+      
+      if (weightClassResult.rows.length === 0) {
+        throw new Error(`Weight class with ID ${weightClassId} not found`);
+      }
+      
+      const weightClass = weightClassResult.rows[0];
+      console.log(`Starting update for ${weightClass.division} ${weightClass.name}`);
+
+      // Determine weight ranges
+      const { minWeight, maxWeight } = this.getWeightRange(weightClass);
+      const isWomensDivision = [115, 125, 135, 145].includes(weightClass.weight_limit);
+
+      // Optimized fight query with materialized results
+      const fights = await client.query(`
+        WITH fight_data AS MATERIALIZED (
+          SELECT DISTINCT ON (f.fighter_id, opp.fighter_id, f.date)
+            f.fighter_id,
+            f.opponent,
+            f.result,
+            f.decision,
+            f.date,
+            f.rnd as round,
+            opp.fighter_id as opponent_id,
+            fg1.weight as fighter_weight,
+            fg2.weight as opponent_weight
+          FROM fights f
+          JOIN fighters fg1 ON f.fighter_id = fg1.fighter_id
+          JOIN fighters opp ON f.opponent = CONCAT(opp.first_name, ' ', opp.last_name)
+          JOIN fighters fg2 ON opp.fighter_id = fg2.fighter_id
+          WHERE f.date >= NOW() - INTERVAL '3 years'
+            AND fg1.weight BETWEEN $1 AND $2
+            AND fg2.weight BETWEEN $1 AND $2
+            ${isWomensDivision ? 
+              `AND fg1.weight = ANY($3::int[])
+               AND fg2.weight = ANY($3::int[])` 
+              : 
+              `AND NOT (fg1.weight = ANY($3::int[]))
+               AND NOT (fg2.weight = ANY($3::int[]))`
+            }
+        )
+        SELECT * FROM fight_data
+        ORDER BY fighter_id, opponent_id, date DESC
+      `, [minWeight, maxWeight, [115, 125, 135, 145]]);
+
+      // Process fights in batches
+      const batchSize = 50;
+      const fightsArray = fights.rows;
+      const batches = Math.ceil(fightsArray.length / batchSize);
+
+      for (let i = 0; i < batches; i++) {
+        const batchFights = fightsArray.slice(i * batchSize, (i + 1) * batchSize);
+        await this.processFightBatch(client, batchFights, weightClassId);
+        console.log(`Processed batch ${i + 1}/${batches}`);
+      }
+
+      // Final ranking update with optimized query
+      await this.updateFinalRankings(client, weightClassId);
+
+      await client.query('COMMIT');
+      console.log(`Completed update for ${weightClass.division} ${weightClass.name}`);
+    } catch (e) {
+      await client.query('ROLLBACK');
+      console.error('Error in updateRankings:', e);
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async processFightBatch(client: any, fights: any[], weightClassId: number) {
+    const operations = fights.map(fight => async () => {
+      const [fighter1Stats, fighter2Stats] = await Promise.all([
+        this.getFighterStats(client, fight.fighter_id),
+        this.getFighterStats(client, fight.opponent_id)
+      ]);
+
+      const [fighter1Rating, fighter2Rating] = await Promise.all([
+        this.getOrCreateFighterRating(client, fight.fighter_id, weightClassId),
+        this.getOrCreateFighterRating(client, fight.opponent_id, weightClassId)
+      ]);
+
+      const [fighter1WinRate, fighter2WinRate] = await Promise.all([
+        this.getOpponentStrength(client, fight.fighter_id),
+        this.getOpponentStrength(client, fight.opponent_id)
+      ]);
+
+      const performanceMultiplier = this.calculatePerformanceMultiplier(
+        fight.result,
+        fight.decision,
+        fight.round
+      );
+
+      const [fighter1WinQuality, fighter2WinQuality] = await Promise.all([
+        this.calculateWinQuality(
+          client,
+          performanceMultiplier,
+          fighter2Rating.rating,
+          fighter1Rating.rating,
+          fighter2WinRate,
+          fight.fighter_id,
+          fight.opponent_id
+        ),
+        this.calculateWinQuality(
+          client,
+          performanceMultiplier,
+          fighter1Rating.rating,
+          fighter2Rating.rating,
+          fighter1WinRate,
+          fight.opponent_id,
+          fight.fighter_id
+        )
+      ]);
+
+      // Calculate rating changes
+      const { newRating1, newRating2, volatility1, volatility2 } = 
+        this.calculateNewRatings(
+          fight,
+          fighter1Rating,
+          fighter2Rating,
+          fighter1Stats,
+          fighter2Stats,
+          fighter1WinQuality,
+          fighter2WinQuality
+        );
+
+      // Update both fighters' ratings
+      await Promise.all([
+        client.query(this.preparedStatements.updateRanking, [
+          fight.fighter_id,
+          weightClassId,
+          newRating1.toFixed(2),
+          volatility1.toFixed(2),
+          fight.date
+        ]),
+        client.query(this.preparedStatements.updateRanking, [
+          fight.opponent_id,
+          weightClassId,
+          newRating2.toFixed(2),
+          volatility2.toFixed(2),
+          fight.date
+        ])
+      ]);
+
+      // Update cache
+      this.updateRatingCache(fight.fighter_id, weightClassId, newRating1, volatility1);
+      this.updateRatingCache(fight.opponent_id, weightClassId, newRating2, volatility2);
+    });
+
+    await this.batchDatabaseOperations(operations);
+  }
+
+  private updateRatingCache(
+    fighterId: string,
+    weightClassId: number,
+    rating: number,
+    volatility: number
+  ) {
+    const cacheKey = this.getCacheKey('rating', fighterId, weightClassId.toString());
+    this.fighterCache.set(cacheKey, {
+      rating,
+      volatility,
+      lastActivity: new Date()
+    });
+  }
+
+  private async updateFinalRankings(client: any, weightClassId: number) {
+    await client.query(`
+      WITH ranked AS (
+        SELECT 
+          fighter_id,
+          weight_class_id,
+          points,
+          ROW_NUMBER() OVER (
+            PARTITION BY weight_class_id 
+            ORDER BY points DESC
+          ) as new_rank
+        FROM analytics_rankings
+        WHERE weight_class_id = $1
+      )
+      UPDATE analytics_rankings ar
+      SET 
+        previous_rank = ar.rank,
+        rank = r.new_rank
+      FROM ranked r
+      WHERE ar.fighter_id = r.fighter_id
+        AND ar.weight_class_id = r.weight_class_id
+    `, [weightClassId]);
+  }
+
+  private getWeightRange(weightClass: any): { minWeight: number, maxWeight: number } {
+    const isWomensDivision = [115, 125, 135, 145].includes(weightClass.weight_limit);
+    
+    if (isWomensDivision) {
+      return {
+        minWeight: weightClass.weight_limit,
+        maxWeight: weightClass.weight_limit
+      };
+    }
+
+    const weightRanges: { [key: number]: [number, number] } = {
+      125: [0, 125],
+      135: [126, 135],
+      145: [136, 145],
+      155: [146, 155],
+      170: [156, 170],
+      185: [171, 185],
+      205: [186, 205],
+      265: [206, 265]
+    };
+
+    const [minWeight, maxWeight] = weightRanges[weightClass.weight_limit] || [0, 0];
+    return { minWeight, maxWeight };
+  }
 
   private calculateExpectedScore(ratingA: number, ratingB: number): number {
     return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
   }
 
   private calculateKFactor(rating: number, fightCount: number): number {
-    // Higher K-factor for newer fighters or those far from average rating
-    const experienceFactor = Math.max(1, 2 - (fightCount / 10)); // Decreases with more fights
-    const ratingDispersionFactor = Math.abs(rating - this.BASE_RATING) > 200 ? 1.2 : 1;
-    return this.K_FACTOR_BASE * experienceFactor * ratingDispersionFactor;
+    const ratingDispersionFactor = Math.abs(rating - this.BASE_RATING) > 200 ? 1.5 : 1;
+    return this.K_FACTOR_BASE * ratingDispersionFactor;
   }
 
   private calculatePerformanceMultiplier(result: string, decision: string, round: number): number {
     const normalizedResult = result.toLowerCase();
     const normalizedDecision = decision.toLowerCase();
 
-    if (normalizedResult.includes('win')) {
+    if (normalizedResult === 'w') {
       if (normalizedDecision.includes('ko') || normalizedDecision.includes('tko')) {
         return round === 1 ? this.PERFORMANCE_FACTORS.KO_WIN_ROUND1 : this.PERFORMANCE_FACTORS.KO_WIN;
       }
@@ -71,7 +464,7 @@ export class RankingsService {
       return this.PERFORMANCE_FACTORS.DECISION_WIN_CLOSE;
     }
     
-    if (normalizedResult.includes('loss')) {
+    if (normalizedResult === 'l') {
       if (normalizedDecision.includes('ko') || normalizedDecision.includes('tko')) {
         return round === 1 ? this.PERFORMANCE_FACTORS.KO_LOSS_ROUND1 : this.PERFORMANCE_FACTORS.KO_LOSS;
       }
@@ -92,68 +485,6 @@ export class RankingsService {
     return Math.max(0, Math.floor(monthsInactive) * this.INACTIVITY_PENALTY);
   }
 
-  private async getOrCreateFighterRating(
-    client: any, 
-    fighterId: string, 
-    weightClassId: number
-  ): Promise<EloRating> {
-    const result = await client.query(`
-      SELECT points as rating, volatility, last_updated
-      FROM analytics_rankings
-      WHERE fighter_id = $1 AND weight_class_id = $2
-    `, [fighterId, weightClassId]);
-
-    if (result.rows.length > 0) {
-      return {
-        rating: result.rows[0].rating,
-        volatility: result.rows[0].volatility,
-        lastActivity: result.rows[0].last_updated
-      };
-    }
-
-    return {
-      rating: this.BASE_RATING,
-      volatility: 100,
-      lastActivity: new Date()
-    };
-  }
-
-  private async getFighterStats(client: any, fighterId: string): Promise<{
-    winStreak: number,
-    fightCount: number,
-    recentPerformance: number
-  }> {
-    const result = await client.query(`
-      WITH recent_fights AS (
-        SELECT 
-          result,
-          decision,
-          date,
-          ROW_NUMBER() OVER (ORDER BY date DESC) as fight_number
-        FROM fights
-        WHERE fighter_id = $1
-        ORDER BY date DESC
-        LIMIT 5
-      )
-      SELECT 
-        COUNT(*) as fight_count,
-        SUM(CASE WHEN result = 'Win' THEN 1 ELSE 0 END) as recent_wins,
-        MAX(CASE WHEN result = 'Win' AND fight_number = 1 THEN 1 
-             WHEN result != 'Win' AND fight_number = 1 THEN 0 END) as last_fight_win
-      FROM recent_fights
-    `, [fighterId]);
-
-    const stats = result.rows[0];
-    const winStreak = stats.last_fight_win === 1 ? 1 : 0;
-    const recentPerformance = stats.recent_wins / stats.fight_count;
-
-    return {
-      winStreak,
-      fightCount: parseInt(stats.fight_count),
-      recentPerformance
-    };
-  }
-
   private calculateOpponentQualityMultiplier(fighterRating: number, opponentRating: number): number {
     const ratingDiff = opponentRating - fighterRating;
     
@@ -164,20 +495,32 @@ export class RankingsService {
     return this.OPPONENT_QUALITY.EVEN;
   }
 
-  private calculateWinQuality(
+  private async calculateWinQuality(
+    client: any,
     performanceMultiplier: number,
     opponentRating: number,
     fighterRating: number,
-    opponentWinRate: number
-  ): number {
+    opponentWinRate: number,
+    fighterId: string,
+    opponentId: string
+  ): Promise<number> {
     const opponentQuality = this.calculateOpponentQualityMultiplier(fighterRating, opponentRating);
-    const opponentStrength = Math.max(0.5, opponentWinRate); // Minimum 0.5 multiplier for win rate
+    const opponentStrength = Math.max(0.6, opponentWinRate);
 
-    // Weighted combination of factors
+    const fighterLeague = await this.determineCurrentLeague(client, fighterId);
+    const opponentLeague = await this.determineCurrentLeague(client, opponentId);
+    
+    let leagueMultiplier = this.LEAGUE_MULTIPLIERS[fighterLeague];
+    
+    if (this.LEAGUE_MULTIPLIERS[opponentLeague] > this.LEAGUE_MULTIPLIERS[fighterLeague]) {
+      leagueMultiplier *= 1.5;
+    }
+
     return (
-      performanceMultiplier * 0.3 +  // How you won (30% weight)
-      opponentQuality * 0.5 +        // Opponent rating relative to you (50% weight)
-      opponentStrength * 0.2         // Opponent's win rate (20% weight)
+      performanceMultiplier * 0.35 +
+      opponentQuality * 0.35 +
+      opponentStrength * 0.25 +
+      leagueMultiplier * 0.45
     );
   }
 
@@ -191,7 +534,7 @@ export class RankingsService {
           COUNT(CASE WHEN result = 'Draw' THEN 1 END) as draws
         FROM fights
         WHERE fighter_id = $1
-          AND date >= NOW() - INTERVAL '3 years'
+          AND date >= NOW() - INTERVAL '2 years'
       )
       SELECT 
         CASE 
@@ -205,321 +548,58 @@ export class RankingsService {
     return result.rows[0].win_rate;
   }
 
-  async updateRankings(weightClassId: number) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
+  private calculateNewRatings(
+    fight: any,
+    fighter1Rating: EloRating,
+    fighter2Rating: EloRating,
+    fighter1Stats: any,
+    fighter2Stats: any,
+    fighter1WinQuality: number,
+    fighter2WinQuality: number
+  ): {
+    newRating1: number;
+    newRating2: number;
+    volatility1: number;
+    volatility2: number;
+  } {
+    const k1 = this.calculateKFactor(fighter1Rating.rating, fighter1Stats.fightCount);
+    const k2 = this.calculateKFactor(fighter2Rating.rating, fighter2Stats.fightCount);
 
-      // Get weight class details
-      const weightClassResult = await client.query(`
-        SELECT weight_limit, division, name FROM weight_classes WHERE weight_class_id = $1
-      `, [weightClassId]);
-      
-      if (weightClassResult.rows.length === 0) {
-        throw new Error(`Weight class with ID ${weightClassId} not found`);
-      }
-      
-      const weightClass = weightClassResult.rows[0];
-      console.log(`Starting update for ${weightClass.division} ${weightClass.name}`);
+    const expectedScore1 = this.calculateExpectedScore(fighter1Rating.rating, fighter2Rating.rating);
+    const actualScore = fight.result.toLowerCase().includes('win') ? 1 : 0;
 
-      // Determine weight ranges based on division
-      let minWeight, maxWeight;
-      const isWomensDivision = [115, 125, 135, 145].includes(weightClass.weight_limit);
+    const ratingChange1 = k1 * fighter1WinQuality * (actualScore - expectedScore1);
+    const ratingChange2 = k2 * fighter2WinQuality * ((1 - actualScore) - (1 - expectedScore1));
 
-      if (isWomensDivision) {
-        // Women's divisions have exact weight classes
-        minWeight = weightClass.weight_limit;
-        maxWeight = weightClass.weight_limit;
-      } else {
-        // Men's divisions have ranges
-        switch (weightClass.weight_limit) {
-          case 125: // Flyweight
-            minWeight = 0;
-            maxWeight = 125;
-            break;
-          case 135: // Bantamweight
-            minWeight = 126;
-            maxWeight = 135;
-            break;
-          case 145: // Featherweight
-            minWeight = 136;
-            maxWeight = 145;
-            break;
-          case 155: // Lightweight
-            minWeight = 146;
-            maxWeight = 155;
-            break;
-          case 170: // Welterweight
-            minWeight = 156;
-            maxWeight = 170;
-            break;
-          case 185: // Middleweight
-            minWeight = 171;
-            maxWeight = 185;
-            break;
-          case 205: // Light Heavyweight
-            minWeight = 186;
-            maxWeight = 205;
-            break;
-          case 265: // Heavyweight
-            minWeight = 206;
-            maxWeight = 265;
-            break;
-          default:
-            throw new Error(`Invalid weight limit: ${weightClass.weight_limit}`);
-        }
-      }
+    let newRating1 = fighter1Rating.rating + ratingChange1;
+    let newRating2 = fighter2Rating.rating + ratingChange2;
 
-      // Get all fights with round information - OPTIMIZED QUERY
-      const fights = await client.query(`
-        SELECT DISTINCT ON (f.fighter_id, opp.fighter_id, f.date)
-          f.fighter_id,
-          f.opponent,
-          f.result,
-          f.decision,
-          f.date,
-          f.rnd as round,
-          opp.fighter_id as opponent_id,
-          fg1.weight as fighter_weight,
-          fg2.weight as opponent_weight
-        FROM fights f
-        JOIN fighters fg1 ON f.fighter_id = fg1.fighter_id
-        JOIN fighters opp ON f.opponent = CONCAT(opp.first_name, ' ', opp.last_name)
-        JOIN fighters fg2 ON opp.fighter_id = fg2.fighter_id
-        WHERE f.date >= NOW() - INTERVAL '3 years'
-          AND fg1.weight >= $1 AND fg1.weight <= $2
-          AND fg2.weight >= $1 AND fg2.weight <= $2
-          ${isWomensDivision ? 
-            `AND fg1.weight IN (115, 125, 135, 145)
-             AND fg2.weight IN (115, 125, 135, 145)` 
-            : 
-            `AND fg1.weight NOT IN (115, 125, 135, 145)
-             AND fg2.weight NOT IN (115, 125, 135, 145)`
-          }
-        ORDER BY f.fighter_id, opp.fighter_id, f.date DESC
-      `, [minWeight, maxWeight]);
-
-      console.log(`Found ${fights.rows.length} fights to process`);
-
-      // Create a map to store fighter ratings for faster access
-      const fighterRatings = new Map<string, EloRating>();
-      const fighterStats = new Map<string, {
-        winStreak: number,
-        fightCount: number,
-        recentPerformance: number
-      }>();
-
-      // Process fights with progress logging
-      let processedFights = 0;
-      for (const fight of fights.rows) {
-        processedFights++;
-        if (processedFights % 10 === 0) {
-          console.log(`Processed ${processedFights}/${fights.rows.length} fights`);
-        }
-
-        // Get fighter stats (cached)
-        let fighter1Stats = fighterStats.get(fight.fighter_id);
-        let fighter2Stats = fighterStats.get(fight.opponent_id);
-
-        if (!fighter1Stats) {
-          fighter1Stats = await this.getFighterStats(client, fight.fighter_id);
-          fighterStats.set(fight.fighter_id, fighter1Stats);
-        }
-        if (!fighter2Stats) {
-          fighter2Stats = await this.getFighterStats(client, fight.opponent_id);
-          fighterStats.set(fight.opponent_id, fighter2Stats);
-        }
-
-        // Get fighter ratings (cached)
-        let fighter1Rating = fighterRatings.get(fight.fighter_id);
-        let fighter2Rating = fighterRatings.get(fight.opponent_id);
-
-        if (!fighter1Rating) {
-          fighter1Rating = await this.getOrCreateFighterRating(client, fight.fighter_id, weightClassId);
-          fighterRatings.set(fight.fighter_id, fighter1Rating);
-        }
-        if (!fighter2Rating) {
-          fighter2Rating = await this.getOrCreateFighterRating(client, fight.opponent_id, weightClassId);
-          fighterRatings.set(fight.opponent_id, fighter2Rating);
-        }
-
-        // Ensure valid ratings
-        fighter1Rating.rating = isNaN(fighter1Rating.rating) ? this.BASE_RATING : fighter1Rating.rating;
-        fighter2Rating.rating = isNaN(fighter2Rating.rating) ? this.BASE_RATING : fighter2Rating.rating;
-
-        const k1 = this.calculateKFactor(fighter1Rating.rating, fighter1Stats.fightCount);
-        const k2 = this.calculateKFactor(fighter2Rating.rating, fighter2Stats.fightCount);
-
-        const fighter1WinRate = await this.getOpponentStrength(client, fight.fighter_id);
-        const fighter2WinRate = await this.getOpponentStrength(client, fight.opponent_id);
-
-        const performanceMultiplier = this.calculatePerformanceMultiplier(
-          fight.result, 
-          fight.decision, 
-          fight.round
-        );
-
-        // Calculate win quality for both fighters
-        const fighter1WinQuality = this.calculateWinQuality(
-          performanceMultiplier,
-          fighter2Rating.rating,
-          fighter1Rating.rating,
-          fighter2WinRate
-        );
-
-        const fighter2WinQuality = this.calculateWinQuality(
-          performanceMultiplier,
-          fighter1Rating.rating,
-          fighter2Rating.rating,
-          fighter1WinRate
-        );
-
-        const expectedScore1 = this.calculateExpectedScore(fighter1Rating.rating, fighter2Rating.rating);
-        const actualScore = fight.result.toLowerCase().includes('win') ? 1 : 0;
-
-        // Apply win quality to rating changes
-        const ratingChange1 = k1 * fighter1WinQuality * (actualScore - expectedScore1);
-        const ratingChange2 = k2 * fighter2WinQuality * ((1 - actualScore) - (1 - expectedScore1));
-
-        // Calculate new ratings with enhanced quality factors
-        let newRating1 = fighter1Rating.rating + ratingChange1;
-        let newRating2 = fighter2Rating.rating + ratingChange2;
-
-        // Add win streak and performance bonuses scaled by opponent quality
-        if (actualScore === 1) {
-          const opponentQualityBonus1 = this.calculateOpponentQualityMultiplier(
-            fighter1Rating.rating, 
-            fighter2Rating.rating
-          ) * 50;
-          newRating1 += opponentQualityBonus1;
-        } else {
-          const opponentQualityBonus2 = this.calculateOpponentQualityMultiplier(
-            fighter2Rating.rating, 
-            fighter1Rating.rating
-          ) * 50;
-          newRating2 += opponentQualityBonus2;
-        }
-
-        // Final bounds check
-        newRating1 = Math.max(500, Math.min(2000, isNaN(newRating1) ? this.BASE_RATING : newRating1));
-        newRating2 = Math.max(500, Math.min(2000, isNaN(newRating2) ? this.BASE_RATING : newRating2));
-
-        // Update volatility with safeguards
-        const volatilityChange1 = Math.min(50, Math.max(-50, Math.abs(ratingChange1) / 100));
-        const volatilityChange2 = Math.min(50, Math.max(-50, Math.abs(ratingChange2) / 100));
-
-        // Log any unexpected values
-        if (isNaN(newRating1) || isNaN(newRating2)) {
-          console.error('Final rating is NaN:', {
-            fighter1: {
-              originalRating: fighter1Rating.rating,
-              ratingChange: ratingChange1,
-              streakBonus: 0,
-              performanceBonus: 0,
-              finalRating: newRating1
-            },
-            fighter2: {
-              originalRating: fighter2Rating.rating,
-              ratingChange: ratingChange2,
-              streakBonus: 0,
-              performanceBonus: 0,
-              finalRating: newRating2
-            }
-          });
-          continue;
-        }
-
-        // Insert or update ratings
-        await client.query(`
-          INSERT INTO analytics_rankings 
-            (fighter_id, weight_class_id, points, volatility, last_updated, rank)
-          VALUES 
-            ($1, $2, $3::numeric, $4::numeric, $5, 
-              (SELECT COALESCE(MAX(rank), 0) + 1 
-               FROM analytics_rankings 
-               WHERE weight_class_id = $2)
-            )
-          ON CONFLICT (fighter_id, weight_class_id) 
-          DO UPDATE SET 
-            points = $3::numeric,
-            volatility = $4::numeric,
-            last_updated = $5
-        `, [
-          fight.fighter_id,
-          weightClassId,
-          newRating1.toFixed(2),
-          Math.min(200, Math.max(50, fighter1Rating.volatility + volatilityChange1)).toFixed(2),
-          fight.date
-        ]);
-
-        await client.query(`
-          INSERT INTO analytics_rankings 
-            (fighter_id, weight_class_id, points, volatility, last_updated, rank)
-          VALUES 
-            ($1, $2, $3::numeric, $4::numeric, $5, 
-              (SELECT COALESCE(MAX(rank), 0) + 1 
-               FROM analytics_rankings 
-               WHERE weight_class_id = $2)
-            )
-          ON CONFLICT (fighter_id, weight_class_id) 
-          DO UPDATE SET 
-            points = $3::numeric,
-            volatility = $4::numeric,
-            last_updated = $5
-        `, [
-          fight.opponent_id,
-          weightClassId,
-          newRating2.toFixed(2),
-          Math.min(200, Math.max(50, fighter2Rating.volatility + volatilityChange2)).toFixed(2),
-          fight.date
-        ]);
-
-        // Update the cached ratings
-        fighterRatings.set(fight.fighter_id, {
-          ...fighter1Rating,
-          rating: newRating1,
-          volatility: Math.min(200, Math.max(50, fighter1Rating.volatility + volatilityChange1))
-        });
-        fighterRatings.set(fight.opponent_id, {
-          ...fighter2Rating,
-          rating: newRating2,
-          volatility: Math.min(200, Math.max(50, fighter2Rating.volatility + volatilityChange2))
-        });
-      }
-
-      console.log('Updating final rankings');
-      // Final ranking update
-      await client.query(`
-        WITH ranked AS (
-          SELECT 
-            fighter_id,
-            weight_class_id,
-            points,
-            ROW_NUMBER() OVER (
-              PARTITION BY weight_class_id 
-              ORDER BY points DESC
-            ) as new_rank
-          FROM analytics_rankings
-          WHERE weight_class_id = $1
-        )
-        UPDATE analytics_rankings ar
-        SET 
-          previous_rank = ar.rank,
-          rank = r.new_rank
-        FROM ranked r
-        WHERE ar.fighter_id = r.fighter_id
-          AND ar.weight_class_id = r.weight_class_id
-      `, [weightClassId]);
-
-      await client.query('COMMIT');
-      console.log(`Completed update for ${weightClass.division} ${weightClass.name}`);
-    } catch (e) {
-      await client.query('ROLLBACK');
-      console.error('Error in updateRankings:', e);
-      throw e;
-    } finally {
-      client.release();
+    if (actualScore === 1) {
+      const opponentQualityBonus1 = this.calculateOpponentQualityMultiplier(
+        fighter1Rating.rating,
+        fighter2Rating.rating
+      ) * 50;
+      newRating1 += opponentQualityBonus1;
+    } else {
+      const opponentQualityBonus2 = this.calculateOpponentQualityMultiplier(
+        fighter2Rating.rating,
+        fighter1Rating.rating
+      ) * 50;
+      newRating2 += opponentQualityBonus2;
     }
+
+    newRating1 = Math.max(500, Math.min(2000, isNaN(newRating1) ? this.BASE_RATING : newRating1));
+    newRating2 = Math.max(500, Math.min(2000, isNaN(newRating2) ? this.BASE_RATING : newRating2));
+
+    const volatilityChange1 = Math.min(50, Math.max(-50, Math.abs(ratingChange1) / 100));
+    const volatilityChange2 = Math.min(50, Math.max(-50, Math.abs(ratingChange2) / 100));
+
+    return {
+      newRating1,
+      newRating2,
+      volatility1: Math.min(200, Math.max(50, fighter1Rating.volatility + volatilityChange1)),
+      volatility2: Math.min(200, Math.max(50, fighter2Rating.volatility + volatilityChange2))
+    };
   }
 
   async getWeightClasses() {
@@ -539,6 +619,15 @@ export class RankingsService {
     const client = await this.pool.connect();
     try {
       const result = await client.query(`
+        WITH fighter_fights AS (
+          SELECT 
+            fighter_id,
+            COUNT(*) as fight_count,
+            MAX(date) as last_fight_date
+          FROM fights
+          WHERE date >= NOW() - INTERVAL '3 years'
+          GROUP BY fighter_id
+        )
         SELECT 
           ar.rank,
           ar.previous_rank,
@@ -550,13 +639,19 @@ export class RankingsService {
           f.win_loss_record,
           f.image_url,
           wc.name as weight_class,
-          wc.division
+          wc.division,
+          COALESCE(ff.fight_count, 0) as recent_fights,
+          ff.last_fight_date
         FROM analytics_rankings ar
         JOIN fighters f ON ar.fighter_id = f.fighter_id
         JOIN weight_classes wc ON ar.weight_class_id = wc.weight_class_id
+        LEFT JOIN fighter_fights ff ON f.fighter_id = ff.fighter_id
         WHERE ar.weight_class_id = $1
-          AND ar.rank <= 25  -- Only get top 25
+          AND ar.rank <= 25
+          AND COALESCE(ff.fight_count, 0) > 0
+          AND ff.last_fight_date >= NOW() - INTERVAL '18 months'
         ORDER BY ar.rank
+        LIMIT 25
       `, [weightClassId]);
       
       return result.rows;
@@ -591,72 +686,5 @@ export class RankingsService {
     } finally {
       client.release();
     }
-  }
-
-  // This would be called by your analytics system
-  async updateAnalyticsRanking(
-    fighterId: string,
-    weightClassId: number,
-    points: number
-  ) {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // Get current rank if exists
-      const currentRank = await client.query(
-        'SELECT rank FROM analytics_rankings WHERE fighter_id = $1 AND weight_class_id = $2',
-        [fighterId, weightClassId]
-      );
-
-      // Insert or update the ranking
-      await client.query(`
-        INSERT INTO analytics_rankings (fighter_id, weight_class_id, rank, previous_rank, points)
-        VALUES ($1, $2, 
-          (SELECT COALESCE(MAX(rank), 0) + 1 FROM analytics_rankings WHERE weight_class_id = $2),
-          NULL,
-          $3
-        )
-        ON CONFLICT (fighter_id, weight_class_id) 
-        DO UPDATE SET
-          previous_rank = analytics_rankings.rank,
-          points = $3,
-          last_updated = CURRENT_TIMESTAMP
-      `, [fighterId, weightClassId, points]);
-
-      // Recalculate ranks based on points
-      await client.query(`
-        WITH ranked AS (
-          SELECT 
-            fighter_id,
-            weight_class_id,
-            ROW_NUMBER() OVER (PARTITION BY weight_class_id ORDER BY points DESC) as new_rank
-          FROM analytics_rankings
-          WHERE weight_class_id = $1
-        )
-        UPDATE analytics_rankings ar
-        SET rank = r.new_rank
-        FROM ranked r
-        WHERE ar.fighter_id = r.fighter_id
-        AND ar.weight_class_id = r.weight_class_id
-      `, [weightClassId]);
-
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
-  }
-
-  // This would be called when users vote/rate fighters
-  async updateCommunityRanking(
-    fighterId: string,
-    weightClassId: number,
-    points: number
-  ) {
-    // Similar to updateAnalyticsRanking but for community_rankings table
-    // Implementation would depend on how you want to calculate community points
   }
 } 

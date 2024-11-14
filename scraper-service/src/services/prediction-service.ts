@@ -38,7 +38,6 @@ interface FighterStats {
     koTkoLosses: number;
     submissionLosses: number;
     decisionLosses: number;
-    winStreak: number;
     recentWinRate: number;
 }
 
@@ -63,13 +62,11 @@ export class PredictionService {
             koTkoLosses: 0,
             submissionLosses: 0,
             decisionLosses: 0,
-            winStreak: 0,
             recentWinRate: 0
         };
 
         // Focus on last 3 fights for recent performance
         const recentFights = fights.slice(0, 3);
-        let currentStreak = 0;
         let recentWins = 0;
 
         // Calculate recent performance (last 3 fights)
@@ -103,8 +100,6 @@ export class PredictionService {
                 } else {
                     stats.decisionWins++;
                 }
-                
-                currentStreak++;
             } 
             else if (isLoss) {
                 // Determine loss method
@@ -115,12 +110,8 @@ export class PredictionService {
                 } else {
                     stats.decisionLosses++;
                 }
-                
-                currentStreak = 0;
             }
             // If it's a draw ('D') or no contest, don't affect the streak
-            
-            stats.winStreak = Math.max(stats.winStreak, currentStreak);
         });
 
         console.log(`Stats calculated for fighter ${fighterId}:`, stats);
@@ -168,51 +159,39 @@ export class PredictionService {
 
         // Calculate base scores once
         const calculateBaseScore = (stats: FighterStats) => {
-            console.log('Calculating score for fighter with stats:', JSON.stringify(stats, null, 2));
-            
             let score = 50;  // Base score
             
-            // Recent performance (last 3 fights) - up to 80 points (reduced from 100)
-            const recentScore = stats.recentWinRate * 80;
-            console.log('Recent performance score:', recentScore);
+            // Increase the weight of recent performance
+            const recentScore = stats.recentWinRate * 120; // Increased from 80
             score += recentScore;
             
-            // Win rate - up to 60 points (reduced from 100)
-            const winRateScore = (stats.wins / Math.max(stats.totalFights, 1)) * 60;
-            console.log('Win rate score:', winRateScore);
+            // Increase win rate importance
+            const winRateScore = (stats.wins / Math.max(stats.totalFights, 1)) * 100; // Increased from 60
             score += winRateScore;
             
-            // Finish rate - up to 60 points (reduced from 100)
+            // Increase finish rate importance
             const finishRate = ((stats.koTkoWins + stats.submissionWins) / 
-                              Math.max(stats.wins, 1)) * 60;
-            console.log('Finish rate score:', finishRate);
+                              Math.max(stats.wins, 1)) * 80; // Increased from 60
             score += finishRate;
             
-            // Perfect record bonus - scaled based on number of fights
-            let perfectBonus = 0;
+            // Increase perfect record bonus
             if (stats.wins === stats.totalFights && stats.totalFights > 0) {
-                perfectBonus = Math.min(stats.totalFights * 10, 50); // Reduced from 20/100
-                console.log('Perfect record bonus:', perfectBonus);
+                const perfectBonus = Math.min(stats.totalFights * 20, 100); // Increased from 50
+                score += perfectBonus;
             }
-            score += perfectBonus;
             
-            // All finishes bonus - reduced to 30 points
-            let finishBonus = 0;
+            // Increase finish bonus
             if (stats.koTkoWins + stats.submissionWins === stats.wins && stats.wins > 0) {
-                finishBonus = 30;
-                console.log('All finishes bonus:', finishBonus);
+                score += 50; // Increased from 30
             }
-            score += finishBonus;
             
-            // Loss penalty - reduced to 15 points per finish loss
-            const lossPenalty = (stats.koTkoLosses + stats.submissionLosses) * 15;
-            console.log('Loss penalty:', lossPenalty);
-            score = Math.max(score - lossPenalty, 50);  // Maintain minimum score of 50
+            // Increase loss penalty
+            const lossPenalty = (stats.koTkoLosses + stats.submissionLosses) * 25; // Increased from 15
+            score = Math.max(score - lossPenalty, 30);  // Lower minimum score to allow bigger gaps
             
-            // Normalize score to reduce extreme differences
-            const normalizedScore = 50 + ((score - 50) * 0.8); // Compress the range
+            // Adjust normalization to allow more extreme probabilities
+            const normalizedScore = 30 + ((score - 30) * 0.9); // Changed from 50 and 0.8
             
-            console.log('Final score:', normalizedScore);
             return normalizedScore;
         };
 
@@ -223,10 +202,10 @@ export class PredictionService {
         console.log('Fighter 1 base score:', f1BaseScore);
         console.log('Fighter 2 base score:', f2BaseScore);
 
+        // Reduce randomness in simulation to maintain larger gaps
         for (let i = 0; i < this.SIMULATION_COUNT; i++) {
-            // Add less randomness to maintain separation
-            const f1Score = f1BaseScore * (0.95 + Math.random() * 0.1); // ±5% variance
-            const f2Score = f2BaseScore * (0.95 + Math.random() * 0.1);
+            const f1Score = f1BaseScore * (0.97 + Math.random() * 0.06); // Changed from 0.95 and 0.1
+            const f2Score = f2BaseScore * (0.97 + Math.random() * 0.06);
             
             const f1WinProb = f1Score / (f1Score + f2Score);
             
@@ -260,7 +239,7 @@ export class PredictionService {
         }
 
         console.log(`\nSimulation results: Fighter 1 wins: ${f1Wins}, Fighter 2 wins: ${f2Wins}`);
-        console.log(`Win rates: Fighter 1: ${(f1Wins/this.SIMULATION_COUNT*100).toFixed(1)}%, Fighter 2: ${(f2Wins/this.SIMULATION_COUNT*100).toFixed(1)}%`);
+        console.log(`Win rates: Fighter 1: ${(f1Wins/this.SIMULATION_COUNT*100).toFixed(2)}%, Fighter 2: ${(f2Wins/this.SIMULATION_COUNT*100).toFixed(2)}%`);
         
         return results;
     }
@@ -274,15 +253,15 @@ export class PredictionService {
         };
 
         return {
-            ko_tko_probability: results.filter(r => 
+            ko_tko_probability: Number((results.filter(r => 
                 r.winner === fighterId && r.method === 'KO/TKO'
-            ).length / this.SIMULATION_COUNT,
-            submission_probability: results.filter(r => 
+            ).length / this.SIMULATION_COUNT).toFixed(4)),
+            submission_probability: Number((results.filter(r => 
                 r.winner === fighterId && r.method === 'Submission'
-            ).length / this.SIMULATION_COUNT,
-            decision_probability: results.filter(r => 
+            ).length / this.SIMULATION_COUNT).toFixed(4)),
+            decision_probability: Number((results.filter(r => 
                 r.winner === fighterId && r.method === 'Decision'
-            ).length / this.SIMULATION_COUNT
+            ).length / this.SIMULATION_COUNT).toFixed(4))
         };
     }
 
@@ -290,13 +269,11 @@ export class PredictionService {
         fighter1Stats: FighterStats,
         fighter2Stats: FighterStats
     ): number {
-        // Calculate confidence based on sample size and consistency
         const experienceFactor = Math.min(
             (fighter1Stats.totalFights + fighter2Stats.totalFights) / 20,
             1
         );
 
-        // Calculate performance consistency
         const f1Consistency = Math.abs(fighter1Stats.recentWinRate - 
             (fighter1Stats.wins / fighter1Stats.totalFights));
         const f2Consistency = Math.abs(fighter2Stats.recentWinRate - 
@@ -304,7 +281,7 @@ export class PredictionService {
         
         const consistencyScore = (1 - ((f1Consistency + f2Consistency) / 2)) * 100;
 
-        return Math.round((experienceFactor * 0.4 + (consistencyScore * 0.6)));
+        return Number((experienceFactor * 0.4 + (consistencyScore * 0.6)).toFixed(2));
     }
 
     // Database helper methods...
@@ -340,7 +317,6 @@ export class PredictionService {
 
         const query = `
             INSERT INTO fight_predictions (
-                prediction_id,
                 matchup_id,
                 fighter1_id,
                 fighter2_id,
@@ -353,20 +329,33 @@ export class PredictionService {
                 fighter2_submission_probability,
                 fighter2_decision_probability,
                 simulation_count,
-                confidence_score
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                confidence_score,
+                updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
+            ON CONFLICT (matchup_id) 
+            DO UPDATE SET
+                fighter1_win_probability = EXCLUDED.fighter1_win_probability,
+                fighter2_win_probability = EXCLUDED.fighter2_win_probability,
+                fighter1_ko_tko_probability = EXCLUDED.fighter1_ko_tko_probability,
+                fighter1_submission_probability = EXCLUDED.fighter1_submission_probability,
+                fighter1_decision_probability = EXCLUDED.fighter1_decision_probability,
+                fighter2_ko_tko_probability = EXCLUDED.fighter2_ko_tko_probability,
+                fighter2_submission_probability = EXCLUDED.fighter2_submission_probability,
+                fighter2_decision_probability = EXCLUDED.fighter2_decision_probability,
+                simulation_count = EXCLUDED.simulation_count,
+                confidence_score = EXCLUDED.confidence_score,
+                updated_at = CURRENT_TIMESTAMP
         `;
 
         const f1Methods = this.calculateMethodProbabilities(results, 'fighter1');
         const f2Methods = this.calculateMethodProbabilities(results, 'fighter2');
 
         await this.pool.query(query, [
-            uuidv4(),
             matchupId,
             matchup.fighter1_id,
             matchup.fighter2_id,
-            fighter1Wins.length / this.SIMULATION_COUNT,
-            fighter2Wins.length / this.SIMULATION_COUNT,
+            Number((fighter1Wins.length / this.SIMULATION_COUNT).toFixed(4)),
+            Number((fighter2Wins.length / this.SIMULATION_COUNT).toFixed(4)),
             f1Methods.ko_tko_probability,
             f1Methods.submission_probability,
             f1Methods.decision_probability,
@@ -374,7 +363,7 @@ export class PredictionService {
             f2Methods.submission_probability,
             f2Methods.decision_probability,
             this.SIMULATION_COUNT,
-            this.calculateConfidenceScore(fighter1Stats, fighter2Stats)
+            Number(this.calculateConfidenceScore(fighter1Stats, fighter2Stats).toFixed(2))
         ]);
     }
 
@@ -382,8 +371,6 @@ export class PredictionService {
         const query = `
             SELECT * FROM fight_predictions
             WHERE matchup_id = $1
-            ORDER BY created_at DESC
-            LIMIT 1
         `;
 
         const result = await this.pool.query(query, [matchupId]);
@@ -397,19 +384,19 @@ export class PredictionService {
             matchup_id: prediction.matchup_id,
             fighter1: {
                 fighter_id: prediction.fighter1_id,
-                win_probability: prediction.fighter1_win_probability,
-                ko_tko_probability: prediction.fighter1_ko_tko_probability,
-                submission_probability: prediction.fighter1_submission_probability,
-                decision_probability: prediction.fighter1_decision_probability
+                win_probability: Number(prediction.fighter1_win_probability),
+                ko_tko_probability: Number(prediction.fighter1_ko_tko_probability),
+                submission_probability: Number(prediction.fighter1_submission_probability),
+                decision_probability: Number(prediction.fighter1_decision_probability)
             },
             fighter2: {
                 fighter_id: prediction.fighter2_id,
-                win_probability: prediction.fighter2_win_probability,
-                ko_tko_probability: prediction.fighter2_ko_tko_probability,
-                submission_probability: prediction.fighter2_submission_probability,
-                decision_probability: prediction.fighter2_decision_probability
+                win_probability: Number(prediction.fighter2_win_probability),
+                ko_tko_probability: Number(prediction.fighter2_ko_tko_probability),
+                submission_probability: Number(prediction.fighter2_submission_probability),
+                decision_probability: Number(prediction.fighter2_decision_probability)
             },
-            confidence_score: prediction.confidence_score,
+            confidence_score: Number(prediction.confidence_score),
             simulation_count: prediction.simulation_count,
             created_at: prediction.created_at
         };

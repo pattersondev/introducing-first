@@ -153,21 +153,22 @@ CREATE TABLE IF NOT EXISTS community_rankings (
 );
 
 CREATE TABLE IF NOT EXISTS fight_predictions (
-    prediction_id VARCHAR(36) PRIMARY KEY,
-    matchup_id VARCHAR(32) REFERENCES matchups(matchup_id),
+    matchup_id VARCHAR(32) PRIMARY KEY,
     fighter1_id VARCHAR(32) REFERENCES fighters(fighter_id),
     fighter2_id VARCHAR(32) REFERENCES fighters(fighter_id),
-    fighter1_win_probability DECIMAL(5,2),
-    fighter2_win_probability DECIMAL(5,2),
-    fighter1_ko_tko_probability DECIMAL(5,2),
-    fighter1_submission_probability DECIMAL(5,2),
-    fighter1_decision_probability DECIMAL(5,2),
-    fighter2_ko_tko_probability DECIMAL(5,2),
-    fighter2_submission_probability DECIMAL(5,2),
-    fighter2_decision_probability DECIMAL(5,2),
+    fighter1_win_probability DECIMAL(6,4),
+    fighter2_win_probability DECIMAL(6,4),
+    fighter1_ko_tko_probability DECIMAL(6,4),
+    fighter1_submission_probability DECIMAL(6,4),
+    fighter1_decision_probability DECIMAL(6,4),
+    fighter2_ko_tko_probability DECIMAL(6,4),
+    fighter2_submission_probability DECIMAL(6,4),
+    fighter2_decision_probability DECIMAL(6,4),
     simulation_count INTEGER,
     confidence_score DECIMAL(5,2),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(matchup_id)
 );
 
 CREATE TABLE IF NOT EXISTS fighter_attributes (
