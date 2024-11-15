@@ -73,31 +73,50 @@ export function RecentFights({ fights }: RecentFightsProps) {
             key={`${fight.date}-${fight.opponent}-${index}`}
             className="bg-gray-800 p-2 rounded text-sm flex justify-between items-center"
           >
-            <div className="flex-1">
-              {fight.opponent_id ? (
-                <Link
-                  href={`/fighters/${fight.opponent_id}`}
-                  className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
-                >
-                  {fight.opponent}
-                </Link>
-              ) : (
-                <div className="font-medium">
-                  {fight.opponent}
-                  {fight.is_title_fight && (
-                    <span className="text-yellow-400">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Crown className="w-4 h-4" />
-                          </TooltipTrigger>
-                          <TooltipContent>Title Fight</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                {fight.opponent_id ? (
+                  <>
+                    <Link
+                      href={`/fighters/${fight.opponent_id}`}
+                      className="font-medium text-blue-400 hover:text-blue-300 hover:underline truncate"
+                    >
+                      {fight.opponent}
+                    </Link>
+                    {fight.is_title_fight && (
+                      <span className="text-yellow-400 flex-shrink-0">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Crown className="w-4 h-4" />
+                            </TooltipTrigger>
+                            <TooltipContent>Title Fight</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium truncate">
+                      {fight.opponent}
                     </span>
-                  )}
-                </div>
-              )}
+                    {fight.is_title_fight && (
+                      <span className="text-yellow-400 flex-shrink-0">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Crown className="w-4 h-4" />
+                            </TooltipTrigger>
+                            <TooltipContent>Title Fight</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div className="text-xs text-gray-400">
                 {new Date(fight.date).toLocaleDateString()}
               </div>
