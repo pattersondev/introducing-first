@@ -10,118 +10,131 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-interface ChatMessage {
-  id: number;
-  user: string;
-  message: string;
-  timestamp: Date;
-}
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
 
 interface MatchupChatProps {
   matchups: Matchup[];
 }
 
 export function MatchupChat({ matchups }: MatchupChatProps) {
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-  const [chats, setChats] = useState<Record<string, ChatMessage[]>>({});
+  const [activeMatchupId, setActiveMatchupId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
-  const [availableMatchups, setAvailableMatchups] = useState<string[]>(
-    matchups.map((m) => `${m.fighter1_name} vs ${m.fighter2_name}`)
-  );
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { user, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    // Update available matchups when matchups prop changes
-    setAvailableMatchups(
-      matchups.map((m) => `${m.fighter1_name} vs ${m.fighter2_name}`)
-    );
-  }, [matchups]);
+  const { messages, error, isLoading, sendMessage } = useChat(
+    activeMatchupId || ""
+  );
 
-  const handleChatSelect = (value: string) => {
-    setActiveChat(value);
-    if (!chats[value]) {
-      setChats((prevChats) => ({ ...prevChats, [value]: [] }));
-    }
+  const handleChatSelect = (matchupId: string) => {
+    setActiveMatchupId(matchupId);
   };
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim() === "" || !activeChat) return;
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !activeMatchupId || !isAuthenticated) return;
 
-    const newMessage: ChatMessage = {
-      id: Date.now(),
-      user: "User", // Replace with actual user name when you have authentication
-      message: inputMessage,
-      timestamp: new Date(),
-    };
-
-    setChats((prevChats) => ({
-      ...prevChats,
-      [activeChat]: [...(prevChats[activeChat] || []), newMessage],
-    }));
-
-    setInputMessage("");
+    try {
+      await sendMessage(
+        inputMessage.trim(),
+        user?.id || "",
+        user?.username || "Anonymous",
+        user?.avatar
+      );
+      setInputMessage("");
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
-  }, [chats, activeChat]);
+  }, [messages]);
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-full flex flex-col w-full">
       <div className="mb-4">
         <Select
           onValueChange={handleChatSelect}
-          value={activeChat || undefined}
+          value={activeMatchupId || undefined}
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select a matchup chat" />
           </SelectTrigger>
           <SelectContent>
-            {availableMatchups.map((matchup) => (
-              <SelectItem key={matchup} value={matchup}>
-                {matchup}
+            {matchups.map((matchup) => (
+              <SelectItem key={matchup.matchup_id} value={matchup.matchup_id}>
+                {matchup.fighter1_name} vs {matchup.fighter2_name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-      {activeChat ? (
+
+      {activeMatchupId ? (
         <div className="flex-grow flex flex-col">
           <ScrollArea className="flex-grow w-full rounded border border-gray-800 p-4 mb-4 h-[400px]">
             <div ref={scrollAreaRef} className="space-y-2">
-              {chats[activeChat]?.map((message) => (
-                <div key={message.id} className="mb-2">
-                  <span className="font-bold text-white">{message.user}: </span>
-                  <span className="text-gray-300">{message.message}</span>
-                  <span className="text-xs text-gray-500 ml-2">
-                    {message.timestamp.toLocaleTimeString()}
-                  </span>
+              {isLoading ? (
+                <div className="text-gray-500">Loading messages...</div>
+              ) : error ? (
+                <div className="text-red-400">{error}</div>
+              ) : messages.length === 0 ? (
+                <div className="text-gray-500">
+                  No messages yet. Start the conversation!
                 </div>
-              ))}
+              ) : (
+                messages.map((message) => (
+                  <div key={message._id} className="mb-2">
+                    <div className="flex items-center gap-2">
+                      {message.user_avatar && (
+                        <img
+                          src={message.user_avatar}
+                          alt={message.user_name}
+                          className="w-6 h-6 rounded-full"
+                        />
+                      )}
+                      <span className="font-bold text-white">
+                        {message.user_name}:
+                      </span>
+                    </div>
+                    <div className="ml-8">
+                      <span className="text-gray-300">{message.content}</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        {new Date(message.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </ScrollArea>
           <div className="flex mt-auto">
             <Input
               type="text"
-              placeholder="Type your message..."
+              placeholder={
+                isAuthenticated ? "Type your message..." : "Sign in to chat"
+              }
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyUp={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && !e.shiftKey) {
                   handleSendMessage();
                 }
               }}
               className="flex-grow mr-2"
+              disabled={!isAuthenticated}
             />
-            <Button onClick={handleSendMessage}>Send</Button>
+            <Button onClick={handleSendMessage} disabled={!isAuthenticated}>
+              Send
+            </Button>
           </div>
         </div>
       ) : (
         <div className="flex-grow flex items-center justify-center text-gray-500">
-          Select a matchup to start chatting.
+          Select a matchup to start chatting
         </div>
       )}
     </div>
