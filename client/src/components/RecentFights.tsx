@@ -1,11 +1,18 @@
 import { RecentFight } from "@/types/api";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
   Swords,
   Award,
   Timer,
   Handshake,
   Ban,
   AlertCircle,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -17,6 +24,7 @@ interface Fight {
   result: string;
   decision: string;
   round: number;
+  is_title_fight?: boolean;
 }
 
 interface RecentFightsProps {
@@ -74,7 +82,21 @@ export function RecentFights({ fights }: RecentFightsProps) {
                   {fight.opponent}
                 </Link>
               ) : (
-                <div className="font-medium">{fight.opponent}</div>
+                <div className="font-medium">
+                  {fight.opponent}
+                  {fight.is_title_fight && (
+                    <span className="text-yellow-400">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Crown className="w-4 h-4" />
+                          </TooltipTrigger>
+                          <TooltipContent>Title Fight</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </span>
+                  )}
+                </div>
               )}
               <div className="text-xs text-gray-400">
                 {new Date(fight.date).toLocaleDateString()}

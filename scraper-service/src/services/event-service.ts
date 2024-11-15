@@ -474,7 +474,8 @@ export class EventService {
                   'opponent_id', opponent_id,
                   'result', result,
                   'decision', decision,
-                  'round', rnd
+                  'round', rnd,
+                  'is_title_fight', is_title_fight
                 ) ORDER BY date DESC
               ) FILTER (WHERE date IS NOT NULL),
               '[]'
