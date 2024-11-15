@@ -87,7 +87,15 @@ export function MatchupList({
           <Card
             key={matchup.matchup_id}
             className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
-            onClick={() => setSelectedMatchup(matchup)}
+            onClick={(e) => {
+              if (
+                (e.target as HTMLElement).closest("button") ||
+                (e.target as HTMLElement).closest("a")
+              ) {
+                return;
+              }
+              setSelectedMatchup(matchup);
+            }}
           >
             <CardContent className="p-4">
               <div className="flex justify-between items-center">
@@ -132,10 +140,15 @@ export function MatchupList({
                         variant={
                           userVote === matchup.fighter1_name
                             ? "default"
-                            : "secondary"
+                            : "outline"
                         }
                         size="sm"
-                        className="mt-2 w-full"
+                        className={cn(
+                          "mt-2 w-full transition-all duration-200 transform active:scale-95",
+                          userVote === matchup.fighter1_name
+                            ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
+                            : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
+                        )}
                         onClick={() =>
                           handleVote(matchup.matchup_id, matchup.fighter1_name)
                         }
@@ -191,10 +204,15 @@ export function MatchupList({
                         variant={
                           userVote === matchup.fighter2_name
                             ? "default"
-                            : "secondary"
+                            : "outline"
                         }
                         size="sm"
-                        className="mt-2 w-full"
+                        className={cn(
+                          "mt-2 w-full transition-all duration-200 transform active:scale-95",
+                          userVote === matchup.fighter2_name
+                            ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
+                            : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
+                        )}
                         onClick={() =>
                           handleVote(matchup.matchup_id, matchup.fighter2_name)
                         }
