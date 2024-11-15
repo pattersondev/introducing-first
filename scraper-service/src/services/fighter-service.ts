@@ -213,7 +213,7 @@ export class FighterService {
                 fight.Decision || '',
                 parseInt(fight.Rnd) || null,
                 fight.Time || '',
-                fight.isTitleFight || false
+                fight.IsTitleFight || false
               ]
             );
           }

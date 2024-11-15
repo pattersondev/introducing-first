@@ -27,7 +27,7 @@ type Fight struct {
 	Decision     string `json:"Decision"`
 	Rnd          string `json:"Rnd"`
 	Time         string `json:"Time"`
-	isTitleFight bool   `json:"isTitleFight"`
+	IsTitleFight bool   `json:"isTitleFight"`
 }
 
 type StrikingStats struct {
@@ -340,11 +340,11 @@ func main() {
 				}
 				mu.Unlock()
 			}
-			fmt.Printf("Fighter Updated: %s (Country: %s, Reach: %s)\n", fighterKey, stats.Country, stats.Reach)
+			fmt.Printf("Fighter Updated: %s\n", fighterKey)
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/")
+	c.Visit("https://www.espn.com/mma/fighter/history/_/id/3088812/kamaru-usman")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice
@@ -864,23 +864,9 @@ func extractFightHistoryFromRow(n *html.Node, fight *Fight) {
 				// Find the anchor element
 				fight.Opponent = extractTextFromNode(c.FirstChild)
 				if anchor := findFirstNode(c, "a"); anchor != nil {
-					// Extract opponent name (first text node in anchor)
-					for node := anchor.FirstChild; node != nil; node = node.NextSibling {
-						if node.Type == html.TextNode {
-							break
-						}
-					}
-
-					// Look for belt image directly in anchor's children
-					for node := anchor.FirstChild; node != nil; node = node.NextSibling {
-						if node.Type == html.ElementNode && node.Data == "img" {
-							for _, attr := range node.Attr {
-								if attr.Key == "src" && strings.Contains(attr.Val, "MMA-Belt-Black-icon.svg") {
-									fight.isTitleFight = true
-									break
-								}
-							}
-						}
+					// Look for belt image in the entire td cell
+					if img := findBeltImage(c); img != nil {
+						fight.IsTitleFight = true
 					}
 				}
 			case 2:
@@ -1119,4 +1105,22 @@ func saveFailedToFile(failed []SendResult) {
 	}
 
 	log.Printf("Failed fighters written to %s", filename)
+}
+
+// Add a new helper function to find belt images
+func findBeltImage(n *html.Node) *html.Node {
+	if n.Type == html.ElementNode && n.Data == "img" {
+		for _, attr := range n.Attr {
+			if attr.Key == "src" && strings.Contains(strings.ToLower(attr.Val), "belt") {
+				return n
+			}
+		}
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if found := findBeltImage(c); found != nil {
+			return found
+		}
+	}
+	return nil
 }
