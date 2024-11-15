@@ -140,6 +140,20 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
     return <AlertCircle className="w-4 h-4 text-gray-400" />;
   };
 
+  const getUniqueFights = (fights: DetailedFighter["fights"]) => {
+    if (!fights) return [];
+
+    const uniqueFights = fights.reduce((acc, current) => {
+      const key = `${current.date}-${current.event}-${current.opponent}`;
+      if (!acc.has(key)) {
+        acc.set(key, current);
+      }
+      return acc;
+    }, new Map());
+
+    return Array.from(uniqueFights.values());
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row gap-8">
@@ -249,7 +263,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {fighter.fights
+                {getUniqueFights(fighter.fights)
                   ?.sort(
                     (a, b) =>
                       new Date(b.date).getTime() - new Date(a.date).getTime()
