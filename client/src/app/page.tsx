@@ -25,9 +25,6 @@ export default function Home() {
   return (
     <div className="flex flex-col h-full w-full bg-gray-950 text-white">
       <div className="flex-none pt-2 px-4 lg:px-6 pb-4 w-full">
-        <h1 className="text-4xl font-bold text-center mb-2">
-          Introducing First
-        </h1>
         {isLoading ? (
           <Skeleton className="w-full h-10 bg-gray-800 mb-2" />
         ) : (

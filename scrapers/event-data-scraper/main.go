@@ -53,7 +53,7 @@ func main() {
 func initializeCollector() *colly.Collector {
 	c := colly.NewCollector(
 		colly.AllowedDomains("www.espn.com"),
-		colly.MaxDepth(3),
+		colly.IgnoreRobotsTxt(),
 	)
 
 	// Load .env file - continue without proxy if file doesn't exist

@@ -10,7 +10,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
-type Promotion = "ALL" | "UFC" | "BELLATOR" | "PFL";
+type Promotion = "ALL" | "UFC" | "BELLATOR" | "PFL" | "DWCS";
 
 export function EventSearchPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,7 +19,7 @@ export function EventSearchPage() {
   const [loading, setLoading] = useState(false);
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  const promotions: Promotion[] = ["ALL", "UFC", "BELLATOR", "PFL"];
+  const promotions: Promotion[] = ["ALL", "UFC", "BELLATOR", "PFL", "DWCS"];
 
   useEffect(() => {
     const fetchEvents = async () => {

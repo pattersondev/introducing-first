@@ -2,7 +2,7 @@ import { apiClient } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { Event, ApiResponse } from '@/types/api';
 
-type Promotion = 'ALL' | 'UFC' | 'BELLATOR' | 'PFL';
+type Promotion = 'ALL' | 'UFC' | 'BELLATOR' | 'PFL' | 'DWCS';
 
 export const EventService = {
   async getAllEvents(): Promise<ApiResponse<Event[]>> {

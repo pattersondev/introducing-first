@@ -188,10 +188,36 @@ export class EventService {
     }
   }
 
+  private getPromotionFilter(promotion: string): { query: string; params: any[] } {
+    if (promotion === 'ALL') {
+      return { query: '', params: [] };
+    }
+
+    if (promotion === 'DWCS') {
+      return {
+        query: ` AND (
+          LOWER(e.name) LIKE '%dwcs%' 
+          OR LOWER(e.name) LIKE '%dwc%'
+          OR (
+            LOWER(e.name) LIKE '%dana%' 
+            AND LOWER(e.name) LIKE '%white%' 
+            AND LOWER(e.name) LIKE '%contender%'
+          )
+        )`,
+        params: []
+      };
+    }
+
+    return {
+      query: ` AND LOWER(e.name) LIKE $1`,
+      params: [`%${promotion.toLowerCase()}%`]
+    };
+  }
+
   async searchEvents(searchTerm: string = '', promotion: string = 'ALL') {
     const client = await this.pool.connect();
     try {
-      let query = `
+      const baseQuery = `
         SELECT 
           e.event_id, 
           e.name, 
@@ -215,22 +241,22 @@ export class EventService {
       `;
 
       const params: any[] = [];
-      let paramCount = 1;
+      let conditions = '';
 
       // Add search term filter if provided
       if (searchTerm) {
-        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
+        conditions += ` AND LOWER(e.name) LIKE $${params.length + 1}`;
         params.push(`%${searchTerm.toLowerCase()}%`);
-        paramCount++;
       }
 
-      // Add promotion filter if provided
-      if (promotion !== 'ALL') {
-        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
-        params.push(`%${promotion.toLowerCase()}%`);
-      }
+      // Add promotion filter
+      const promotionFilter = this.getPromotionFilter(promotion);
+      conditions += promotionFilter.query;
+      params.push(...promotionFilter.params);
 
-      query += `
+      const query = `
+        ${baseQuery}
+        ${conditions}
         GROUP BY e.event_id, e.name, e.date, e.location
         ORDER BY e.date DESC
       `;
