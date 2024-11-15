@@ -34,6 +34,17 @@ export class EventService {
       const processedMatchupIds = new Set<string>();
       
       for (const matchup of event.Matchups) {
+        // Skip matchups with TBA fighters
+        if (
+          matchup.Fighter1.includes('TBA') || 
+          matchup.Fighter2.includes('TBA') ||
+          !matchup.Fighter1 || 
+          !matchup.Fighter2
+        ) {
+          console.log(`Skipping matchup with TBA fighter: ${matchup.Fighter1} vs ${matchup.Fighter2}`);
+          continue;
+        }
+
         const matchupId = generateId(eventId, matchup.Fighter1, matchup.Fighter2);
         processedMatchupIds.add(matchupId);
 
@@ -55,10 +66,6 @@ export class EventService {
             matchup.Result, matchup.Winner, matchup.Order
           ]
         );
-
-        if (matchup.fighter1_id && matchup.fighter2_id) {
-          await this.predictionService.predictFight(matchupId);
-        }
       }
 
       // Remove matchups that no longer exist in the event
@@ -72,8 +79,32 @@ export class EventService {
         );
       }
 
-      // Link fighters to matchups after processing the event
+      // Link fighters to matchups
       await this.linkFightersToMatchups(client);
+
+      // Generate predictions for future events
+      const eventDate = new Date(event.Date);
+      if (eventDate > new Date()) {
+        // Get all matchups that have both fighters linked
+        const matchupsForPrediction = await client.query(`
+          SELECT matchup_id 
+          FROM matchups 
+          WHERE event_id = $1 
+          AND fighter1_id IS NOT NULL 
+          AND fighter2_id IS NOT NULL`,
+          [eventId]
+        );
+
+        // Generate predictions for each matchup
+        for (const row of matchupsForPrediction.rows) {
+          try {
+            await this.predictionService.predictFight(row.matchup_id);
+          } catch (error) {
+            console.error(`Error generating prediction for matchup ${row.matchup_id}:`, error);
+            // Continue with other matchups even if one fails
+          }
+        }
+      }
 
       await client.query('COMMIT');
     } catch (e) {
@@ -157,10 +188,36 @@ export class EventService {
     }
   }
 
+  private getPromotionFilter(promotion: string): { query: string; params: any[] } {
+    if (promotion === 'ALL') {
+      return { query: '', params: [] };
+    }
+
+    if (promotion === 'DWCS') {
+      return {
+        query: ` AND (
+          LOWER(e.name) LIKE '%dwcs%' 
+          OR LOWER(e.name) LIKE '%dwc%'
+          OR (
+            LOWER(e.name) LIKE '%dana%' 
+            AND LOWER(e.name) LIKE '%white%' 
+            AND LOWER(e.name) LIKE '%contender%'
+          )
+        )`,
+        params: []
+      };
+    }
+
+    return {
+      query: ` AND LOWER(e.name) LIKE $1`,
+      params: [`%${promotion.toLowerCase()}%`]
+    };
+  }
+
   async searchEvents(searchTerm: string = '', promotion: string = 'ALL') {
     const client = await this.pool.connect();
     try {
-      let query = `
+      const baseQuery = `
         SELECT 
           e.event_id, 
           e.name, 
@@ -184,22 +241,22 @@ export class EventService {
       `;
 
       const params: any[] = [];
-      let paramCount = 1;
+      let conditions = '';
 
       // Add search term filter if provided
       if (searchTerm) {
-        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
+        conditions += ` AND LOWER(e.name) LIKE $${params.length + 1}`;
         params.push(`%${searchTerm.toLowerCase()}%`);
-        paramCount++;
       }
 
-      // Add promotion filter if provided
-      if (promotion !== 'ALL') {
-        query += ` AND LOWER(e.name) LIKE $${paramCount}`;
-        params.push(`%${promotion.toLowerCase()}%`);
-      }
+      // Add promotion filter
+      const promotionFilter = this.getPromotionFilter(promotion);
+      conditions += promotionFilter.query;
+      params.push(...promotionFilter.params);
 
-      query += `
+      const query = `
+        ${baseQuery}
+        ${conditions}
         GROUP BY e.event_id, e.name, e.date, e.location
         ORDER BY e.date DESC
       `;
