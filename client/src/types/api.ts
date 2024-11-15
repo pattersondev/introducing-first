@@ -113,6 +113,7 @@ export interface Fight {
   round: number;
   rnd?: number;
   time?: string;
+  is_title_fight?: boolean;
 }
 
 export interface DetailedFighter extends Fighter {

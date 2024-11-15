@@ -13,6 +13,7 @@ import {
   Ban,
   Timer,
   AlertCircle,
+  Crown,
 } from "lucide-react";
 import {
   Table,
@@ -28,6 +29,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { getCountryCode } from "@/utils/country-codes";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
@@ -253,16 +260,32 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                         {fight.date ? formatDate(fight.date) : "Unknown"}
                       </TableCell>
                       <TableCell>
-                        {fight.opponent_id ? (
-                          <Link
-                            href={`/fighters/${fight.opponent_id}`}
-                            className="text-blue-400 hover:text-blue-300 hover:underline"
-                          >
-                            {fight.opponent}
-                          </Link>
-                        ) : (
-                          fight.opponent
-                        )}
+                        <div className="flex items-center gap-1">
+                          {fight.opponent_id ? (
+                            <Link
+                              href={`/fighters/${fight.opponent_id}`}
+                              className="text-blue-400 hover:text-blue-300 hover:underline"
+                            >
+                              {fight.opponent}
+                            </Link>
+                          ) : (
+                            fight.opponent
+                          )}
+                          {fight.is_title_fight && (
+                            <span className="text-yellow-400">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Crown className="w-4 h-4" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Title Fight</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {fight.event_id ? (
