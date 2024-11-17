@@ -102,12 +102,81 @@ export function FighterSearchPage() {
     }
   };
 
+  const FighterCard = ({
+    fighter,
+    isPopular = false,
+  }: {
+    fighter: Fighter | PopularFighter;
+    isPopular?: boolean;
+  }) => (
+    <Link
+      href={`/fighters/${fighter.fighter_id}`}
+      onClick={() => handleFighterClick(fighter.fighter_id)}
+      className="block mb-2"
+    >
+      <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <Avatar className="h-12 w-12 border-2 border-gray-600 shrink-0">
+                {fighter.image_url ? (
+                  <AvatarImage
+                    src={fighter.image_url}
+                    alt={`${fighter.first_name} ${fighter.last_name}`}
+                    className="object-cover object-top"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-gray-800">
+                    {fighter.first_name[0]}
+                    {fighter.last_name[0]}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold">
+                  {fighter.first_name} {fighter.last_name}
+                </h3>
+                {fighter.nickname && (
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    "{fighter.nickname}"
+                  </p>
+                )}
+                {fighter.team && (
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    {fighter.team}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between sm:block sm:text-right border-t sm:border-0 pt-2 sm:pt-0 mt-2 sm:mt-0">
+              <p className="text-xs sm:text-sm text-gray-400">
+                Record: {fighter.win_loss_record}
+              </p>
+              {typeof fighter.weight === "number" && fighter.weight > 0 && (
+                <p className="text-xs sm:text-sm text-gray-400 sm:mb-1">
+                  {fighter.weight}lbs
+                </p>
+              )}
+              {isPopular && "search_count" in fighter && (
+                <p className="text-xs text-gray-400">
+                  Searched {fighter.search_count} times
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+
   return (
-    <div className="h-full bg-gray-950 text-white p-4 lg:p-6">
+    <div className="h-full bg-gray-950 text-white p-2 sm:p-4 lg:p-6">
       <div className="container mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Fighter Search</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">
+          Fighter Search
+        </h1>
         <Card className="bg-gray-900 border-gray-800">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <div className="space-y-4">
               <Input
                 type="text"
@@ -118,7 +187,7 @@ export function FighterSearchPage() {
               />
 
               <ScrollArea className="h-[calc(100vh-250px)]">
-                <div className="px-6">
+                <div className="px-2 sm:px-6">
                   {isLoading ? (
                     [...Array(5)].map((_, i) => (
                       <Skeleton
@@ -129,58 +198,10 @@ export function FighterSearchPage() {
                   ) : searchTerm ? (
                     searchResults?.fighters.length ? (
                       searchResults.fighters.map((fighter) => (
-                        <Link
-                          href={`/fighters/${fighter.fighter_id}`}
+                        <FighterCard
                           key={fighter.fighter_id}
-                          onClick={() => handleFighterClick(fighter.fighter_id)}
-                          className="block mb-2"
-                        >
-                          <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                  <Avatar className="h-12 w-12 border-2 border-gray-600">
-                                    {fighter.image_url ? (
-                                      <AvatarImage
-                                        src={fighter.image_url}
-                                        alt={`${fighter.first_name} ${fighter.last_name}`}
-                                        className="object-cover object-top"
-                                      />
-                                    ) : (
-                                      <AvatarFallback className="bg-gray-800">
-                                        {fighter.first_name[0]}
-                                        {fighter.last_name[0]}
-                                      </AvatarFallback>
-                                    )}
-                                  </Avatar>
-                                  <div>
-                                    <h3 className="text-lg font-semibold">
-                                      {fighter.first_name} {fighter.last_name}
-                                    </h3>
-                                    {fighter.nickname && (
-                                      <p className="text-sm text-gray-400">
-                                        "{fighter.nickname}"
-                                      </p>
-                                    )}
-                                    <p className="text-sm text-gray-400">
-                                      {fighter.team}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-gray-400">
-                                    Record: {fighter.win_loss_record}
-                                  </p>
-                                  {fighter.weight && (
-                                    <p className="text-sm text-gray-400">
-                                      {fighter.weight}lbs
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                          fighter={fighter}
+                        />
                       ))
                     ) : (
                       <div className="text-center text-gray-400 py-8">
@@ -189,65 +210,15 @@ export function FighterSearchPage() {
                     )
                   ) : (
                     <div>
-                      <h2 className="text-xl font-semibold mb-4">
+                      <h2 className="text-lg sm:text-xl font-semibold mb-4">
                         Popular Fighters
                       </h2>
                       {popularFighters.map((fighter) => (
-                        <Link
-                          href={`/fighters/${fighter.fighter_id}`}
+                        <FighterCard
                           key={fighter.fighter_id}
-                          onClick={() => handleFighterClick(fighter.fighter_id)}
-                          className="block mb-2"
-                        >
-                          <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                  <Avatar className="h-12 w-12 border-2 border-gray-600">
-                                    {fighter.image_url ? (
-                                      <AvatarImage
-                                        src={fighter.image_url}
-                                        alt={`${fighter.first_name} ${fighter.last_name}`}
-                                        className="object-cover object-top"
-                                      />
-                                    ) : (
-                                      <AvatarFallback className="bg-gray-800">
-                                        {fighter.first_name[0]}
-                                        {fighter.last_name[0]}
-                                      </AvatarFallback>
-                                    )}
-                                  </Avatar>
-                                  <div>
-                                    <h3 className="text-lg font-semibold">
-                                      {fighter.first_name} {fighter.last_name}
-                                    </h3>
-                                    {fighter.nickname && (
-                                      <p className="text-sm text-gray-400">
-                                        "{fighter.nickname}"
-                                      </p>
-                                    )}
-                                    <p className="text-sm text-gray-400">
-                                      {fighter.team}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm text-gray-400">
-                                    Record: {fighter.win_loss_record}
-                                  </p>
-                                  {fighter.weight && (
-                                    <p className="text-sm text-gray-400">
-                                      {fighter.weight}lbs
-                                    </p>
-                                  )}
-                                  <p className="text-xs text-gray-400">
-                                    Searched {fighter.search_count} times
-                                  </p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                          fighter={fighter}
+                          isPopular={true}
+                        />
                       ))}
                     </div>
                   )}
@@ -260,10 +231,11 @@ export function FighterSearchPage() {
                     variant="outline"
                     disabled={currentPage === 1}
                     onClick={() => handlePageChange(currentPage - 1)}
+                    className="text-xs sm:text-sm px-2 sm:px-4"
                   >
                     Previous
                   </Button>
-                  <span className="flex items-center px-4">
+                  <span className="flex items-center px-2 sm:px-4 text-sm">
                     Page {currentPage} of {searchResults.pagination.totalPages}
                   </span>
                   <Button
@@ -272,6 +244,7 @@ export function FighterSearchPage() {
                       currentPage === searchResults.pagination.totalPages
                     }
                     onClick={() => handlePageChange(currentPage + 1)}
+                    className="text-xs sm:text-text px-2 sm:px-4"
                   >
                     Next
                   </Button>
