@@ -32,6 +32,7 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 			"http://localhost:3000",
 			"https://antiballsniffer.club",
 			"https://www.antiballsniffer.club",
+			"https://introducing-first.vercel.app",
 		}
 
 		origin := r.Header.Get("Origin")

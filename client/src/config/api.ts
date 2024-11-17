@@ -11,6 +11,6 @@ export const API_ENDPOINTS = {
     LOGIN: '/login',
     REGISTER: '/register',
     LOGOUT: "/logout",
-    STATUS: "api/auth/status",
+    STATUS: "/api/auth/status",
   },
 } as const;

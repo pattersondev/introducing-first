@@ -22,11 +22,12 @@ export function useAuth() {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${AUTH_BASE_URL}/${API_ENDPOINTS.AUTH.STATUS}`, {
+      const response = await fetch(`${AUTH_BASE_URL}${API_ENDPOINTS.AUTH.STATUS}`, {
         method: 'GET',
-        credentials: 'include',  // Important for cookies
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         }
       });
       
