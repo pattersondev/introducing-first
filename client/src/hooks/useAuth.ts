@@ -20,9 +20,13 @@ export function useAuth() {
 
   const checkAuthStatus = async () => {
     try {
-      // You'll need to add this endpoint to your auth service
+      setIsLoading(true);
       const response = await fetch('/api/auth/status', {
-        credentials: 'include'  // Important for cookies
+        method: 'GET',
+        credentials: 'include',  // Important for cookies
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       
       if (response.ok) {
@@ -42,15 +46,24 @@ export function useAuth() {
     }
   };
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await UserService.login({ username, password });
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('password', password);
+
+      const response = await fetch('/login', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
       
-      if (response.status === 200) {
+      if (response.ok) {
         await checkAuthStatus(); // Refresh user data after login
         return { success: true };
       } else {
-        return { success: false, error: response.error };
+        const error = await response.text();
+        return { success: false, error };
       }
     } catch (error) {
       console.error('Login failed:', error);

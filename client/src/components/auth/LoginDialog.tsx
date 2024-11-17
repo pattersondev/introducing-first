@@ -23,7 +23,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<LoginData>({
-    username: "",
+    email: "",
     password: "",
   });
   const [error, setError] = useState<string>("");
@@ -55,7 +55,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
 
       // Reset form
       setFormData({
-        username: "",
+        email: "",
         password: "",
       });
     } catch (err) {
@@ -88,11 +88,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
             <Input
-              id="username"
-              placeholder="Username"
-              value={formData.username}
+              id="email"
+              placeholder="Email"
+              value={formData.email}
               onChange={(e) =>
-                setFormData({ ...formData, username: e.target.value })
+                setFormData({ ...formData, email: e.target.value })
               }
               className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
             />

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,6 +61,13 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// Add this after your other imports and before main()
+type UserResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
 func main() {
 
 	_ = godotenv.Load()
@@ -80,6 +88,9 @@ func main() {
 
 	//test endpoint. hidden behind authentication. Delete later
 	http.HandleFunc("/protected", authenticate(protectedHandler))
+
+	// Add this with your other http.HandleFunc calls in main()
+	http.HandleFunc("/api/auth/status", enableCORS(authenticate(authStatusHandler)))
 
 	port := getEnvWithFallback("PORT", "8080")
 	fmt.Printf("Server starting on :%s\n", port)
@@ -361,4 +372,64 @@ func getEnvWithFallback(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// Add this new handler function
+func authStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method. Use GET", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get the token from cookie
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Parse and validate the token
+	token, err := jwt.ParseWithClaims(cookie.Value, &struct {
+		Username string `json:"username"`
+		UserId   string `json:"userId"`
+		jwt.RegisteredClaims
+	}{}, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(*struct {
+		Username string `json:"username"`
+		UserId   string `json:"userId"`
+		jwt.RegisteredClaims
+	})
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// Get user email from database using userId
+	email, err := db.SelectEmail(claims.UserId)
+	if err != nil {
+		http.Error(w, "Error retrieving user data", http.StatusInternalServerError)
+		return
+	}
+
+	// Create response
+	user := UserResponse{
+		ID:       claims.UserId,
+		Username: claims.Username,
+		Email:    email,
+	}
+
+	// Set content type
+	w.Header().Set("Content-Type", "application/json")
+
+	// Encode and send response
+	json.NewEncoder(w).Encode(user)
 }

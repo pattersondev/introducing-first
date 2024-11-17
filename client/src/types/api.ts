@@ -142,6 +142,13 @@ export interface RegisterData {
 }
 
 export interface LoginData {
-  username: string;
+  email: string;
   password: string;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
 }
