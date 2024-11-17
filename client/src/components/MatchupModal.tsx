@@ -87,9 +87,9 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-900 text-white border-gray-800 max-w-2xl">
+      <DialogContent className="bg-gray-900 text-white border-gray-800 max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+          <DialogTitle className="text-xl font-semibold text-center">
             {matchup.fighter1_name} vs {matchup.fighter2_name}
           </DialogTitle>
         </DialogHeader>
@@ -108,10 +108,10 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
             </TabsList>
 
             <TabsContent value="standard" className="mt-4">
-              <div className="flex justify-between items-start gap-8">
-                <div className="flex-1">
+              <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-8">
+                <div className="flex-1 w-full md:w-auto">
                   <div className="flex flex-col items-center gap-4">
-                    <Avatar className="h-24 w-24 border-2 border-gray-700">
+                    <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-gray-700">
                       {matchup.fighter1_image ? (
                         <AvatarImage
                           src={matchup.fighter1_image}
@@ -144,9 +144,9 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                   </div>
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 w-full md:w-auto">
                   <div className="flex flex-col items-center gap-4">
-                    <Avatar className="h-24 w-24 border-2 border-gray-700">
+                    <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-gray-700">
                       {matchup.fighter2_image ? (
                         <AvatarImage
                           src={matchup.fighter2_image}
