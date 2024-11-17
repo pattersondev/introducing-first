@@ -47,10 +47,13 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Allow specific headers
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Cookie")
 
 		// Allow specific methods
 		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+
+		// Expose headers that are safe to share
+		w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -292,9 +295,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteNoneMode,
 		Path:     "/",
-		Domain:   ".onrender.com",
+		Domain:   "onrender.com",
 	})
 
 	// Set content type for the response
@@ -307,6 +310,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 // authentication func using JWT
 func authenticate(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Received request headers: %+v", r.Header)
+		log.Printf("Received cookies: %+v", r.Cookies())
+
 		//extract jwt from cookie
 		cookie, err := r.Cookie("token")
 		if err != nil {
@@ -314,6 +320,8 @@ func authenticate(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
+
+		log.Printf("Found cookie: %+v", cookie)
 
 		//parse the jwt
 		claims := &struct {
@@ -356,6 +364,10 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
+		Path:     "/",
+		Domain:   "onrender.com",
 	})
 	fmt.Fprintf(w, "Logged out successfully!")
 }
