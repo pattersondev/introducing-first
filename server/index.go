@@ -88,14 +88,31 @@ func main() {
 }
 
 // generates JWT
-func generateJWT(username string) (string, error) {
+func generateJWT(email string) (string, error) {
 	//token expire time (sets validity to one day after generation for now)
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	//define claims for token (username and expiration date for now)
-	claims := &jwt.RegisteredClaims{
-		Subject:   username,
-		ExpiresAt: jwt.NewNumericDate(expirationTime),
+	userId, err := db.SelectUserId(email)
+	if err != nil {
+		fmt.Println("Error in retrieval of user id")
+	}
+	username, err := db.SelectUsername(email)
+	if err != nil {
+		fmt.Println("Error in retrieval of username")
+	}
+
+	//define custom claims struct to include UserId
+	claims := struct {
+		Username string `json:"username"`
+		UserId   string `json:"userId"`
+		jwt.RegisteredClaims
+	}{
+		Username: username,
+		UserId:   userId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
 	}
 
 	//create the jwt token with claims defined above
@@ -228,30 +245,30 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
+	email := r.FormValue("email")
 	password := r.FormValue("password")
 
 	// Debug logging
-	log.Printf("Login attempt for username: %s", username)
+	log.Printf("Login attempt for username: %s", email)
 
-	storedHashedPassword, err := db.SelectHP(username)
+	storedHashedPassword, err := db.SelectHP(email)
 	if err != nil {
-		log.Printf("Login failed for username %s: %v", username, err)
+		log.Printf("Login failed for username %s: %v", email, err)
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	//verify pw
 	if !checkPasswordHash(password, storedHashedPassword) {
-		log.Printf("Password verification failed for username %s", username)
+		log.Printf("Password verification failed for username %s", email)
 		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
 		return
 	}
 
 	//generate jwt token
-	token, err := generateJWT(username)
+	token, err := generateJWT(email)
 	if err != nil {
-		log.Printf("Token generation failed for username %s: %v", username, err)
+		log.Printf("Token generation failed for username %s: %v", email, err)
 		http.Error(w, "Error generating token", http.StatusInternalServerError)
 		return
 	}
