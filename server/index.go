@@ -49,7 +49,7 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
 
 		// Allow specific methods
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
