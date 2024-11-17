@@ -21,25 +21,34 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
   const [activeMatchupId, setActiveMatchupId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
-  const { messages, error, isLoading, sendMessage } = useChat(
-    activeMatchupId || ""
-  );
+  const {
+    messages,
+    error: chatError,
+    isLoading: isChatLoading,
+    sendMessage,
+  } = useChat(activeMatchupId || "");
 
   const handleChatSelect = (matchupId: string) => {
     setActiveMatchupId(matchupId);
   };
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !activeMatchupId || !isAuthenticated) return;
+    if (!inputMessage.trim() || !activeMatchupId) return;
+
+    // Ensure user is authenticated and we have user data
+    if (!isAuthenticated || !user?.id) {
+      console.error("User must be authenticated to send messages");
+      return;
+    }
 
     try {
       await sendMessage(
         inputMessage.trim(),
-        user?.id || "",
-        user?.username || "Anonymous",
-        user?.avatar
+        user.id,
+        user.username,
+        user.avatar
       );
       setInputMessage("");
     } catch (error) {
@@ -52,6 +61,15 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Show loading state while checking auth
+  if (isAuthLoading) {
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-full flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 h-full flex flex-col w-full">
@@ -77,17 +95,25 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
         <div className="flex-grow flex flex-col">
           <ScrollArea className="flex-grow w-full rounded border border-gray-800 p-4 mb-4 h-[400px]">
             <div ref={scrollAreaRef} className="space-y-2">
-              {isLoading ? (
+              {isChatLoading ? (
                 <div className="text-gray-500">Loading messages...</div>
-              ) : error ? (
-                <div className="text-red-400">{error}</div>
+              ) : chatError ? (
+                <div className="text-red-400">{chatError}</div>
               ) : messages.length === 0 ? (
                 <div className="text-gray-500">
-                  No messages yet. Start the conversation!
+                  No messages yet.{" "}
+                  {isAuthenticated
+                    ? "Start the conversation!"
+                    : "Sign in to chat."}
                 </div>
               ) : (
                 messages.map((message) => (
-                  <div key={message._id} className="mb-2">
+                  <div
+                    key={message._id}
+                    className={`mb-2 ${
+                      message.user_id === user?.id ? "ml-auto" : ""
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       {message.user_avatar && (
                         <img
@@ -97,7 +123,8 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
                         />
                       )}
                       <span className="font-bold text-white">
-                        {message.user_name}:
+                        {message.user_name}
+                        {message.user_id === user?.id ? " (You)" : ""}:
                       </span>
                     </div>
                     <div className="ml-8">
@@ -127,7 +154,10 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
               className="flex-grow mr-2"
               disabled={!isAuthenticated}
             />
-            <Button onClick={handleSendMessage} disabled={!isAuthenticated}>
+            <Button
+              onClick={handleSendMessage}
+              disabled={!isAuthenticated || !inputMessage.trim()}
+            >
               Send
             </Button>
           </div>

@@ -96,3 +96,14 @@ func SelectUsername(email string) (string, error) {
 	}
 	return username, nil
 }
+
+// Add this new function to retrieve email by user ID
+func SelectEmail(userId string) (string, error) {
+	var email string
+	sqlStatement := "SELECT email FROM users WHERE user_id = $1"
+	err := usersDb.QueryRow(sqlStatement, userId).Scan(&email)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving email: %v", err)
+	}
+	return email, nil
+}
