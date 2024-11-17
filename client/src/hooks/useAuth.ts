@@ -22,13 +22,22 @@ export function useAuth() {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
+      
+      // Try to get token from localStorage if cookie fails
+      const storedToken = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (storedToken) {
+        headers['Authorization'] = `Bearer ${storedToken}`;
+      }
+
       const response = await fetch(`${AUTH_BASE_URL}${API_ENDPOINTS.AUTH.STATUS}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        }
+        headers
       });
       
       if (response.ok) {
@@ -36,13 +45,17 @@ export function useAuth() {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
+        const errorText = await response.text();
+        console.error('Auth check failed:', response.status, errorText);
         setUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem('auth_token'); // Clear stored token on auth failure
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
       setIsAuthenticated(false);
+      localStorage.removeItem('auth_token');
     } finally {
       setIsLoading(false);
     }
@@ -54,6 +67,8 @@ export function useAuth() {
       formData.append('email', email);
       formData.append('password', password);
 
+      console.log('Attempting login to:', `${AUTH_BASE_URL}/login`);
+      
       const response = await fetch(`${AUTH_BASE_URL}/login`, {
         method: 'POST',
         credentials: 'include',
@@ -61,10 +76,20 @@ export function useAuth() {
       });
       
       if (response.ok) {
-        await checkAuthStatus(); // Refresh user data after login
+        console.log('Login successful, checking auth status');
+        const data = await response.json();
+        console.log('Login response:', data);
+        
+        // Store the token in localStorage as backup
+        if (data.token) {
+          localStorage.setItem('auth_token', data.token);
+        }
+        
+        await checkAuthStatus();
         return { success: true };
       } else {
         const error = await response.text();
+        console.error('Login failed:', response.status, error);
         return { success: false, error };
       }
     } catch (error) {
