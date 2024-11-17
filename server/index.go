@@ -27,35 +27,25 @@ var jwtKey []byte
 // Add CORS middleware
 func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Allow specific origins
-		allowedOrigins := []string{
-			"http://localhost:3000",
-			"https://antiballsniffer.club",
-			"https://www.antiballsniffer.club",
-			"https://introducing-first.vercel.app",
-		}
-
 		origin := r.Header.Get("Origin")
-		for _, allowedOrigin := range allowedOrigins {
-			if origin == allowedOrigin {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				break
-			}
+
+		// Allow specific origins
+		allowedOrigins := map[string]bool{
+			"http://localhost:3000":                true,
+			"https://antiballsniffer.club":         true,
+			"https://www.antiballsniffer.club":     true,
+			"https://introducing-first.vercel.app": true,
 		}
 
-		// Allow credentials
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Cookie, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
+			w.Header().Set("Vary", "Origin")
+		}
 
-		// Allow specific headers
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Cookie")
-
-		// Allow specific methods
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-
-		// Expose headers that are safe to share
-		w.Header().Set("Access-Control-Expose-Headers", "Set-Cookie")
-
-		// Handle preflight requests
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
@@ -297,44 +287,52 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
 		Path:     "/",
-		Domain:   "onrender.com",
 	})
 
 	// Set content type for the response
 	w.Header().Set("Content-Type", "application/json")
 
-	// Return success response
-	fmt.Fprintf(w, `{"message": "Login Successful!"}`)
+	// Return success response with token
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Login Successful!",
+		"token":   token,
+	})
 }
 
 // authentication func using JWT
 func authenticate(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Received request headers: %+v", r.Header)
-		log.Printf("Received cookies: %+v", r.Cookies())
+		var tokenString string
 
-		//extract jwt from cookie
+		// First try to get token from cookie
 		cookie, err := r.Cookie("token")
-		if err != nil {
-			log.Printf("No token cookie found: %v", err)
+		if err == nil {
+			tokenString = cookie.Value
+		} else {
+			// If no cookie, check Authorization header
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+
+		if tokenString == "" {
+			log.Printf("No token found in cookie or Authorization header")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		log.Printf("Found cookie: %+v", cookie)
-
-		//parse the jwt
+		// Parse and validate the token
 		claims := &struct {
 			Username string `json:"username"`
 			UserId   string `json:"userId"`
 			jwt.RegisteredClaims
 		}{}
 
-		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
 
-		//check if the token is valid
 		if err != nil {
 			log.Printf("Token parsing failed: %v", err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -347,7 +345,6 @@ func authenticate(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		//if token is valid, call the next handler
 		next(w, r)
 	}
 }
@@ -367,7 +364,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteNoneMode,
 		Path:     "/",
-		Domain:   "onrender.com",
 	})
 	fmt.Fprintf(w, "Logged out successfully!")
 }
