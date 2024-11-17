@@ -186,7 +186,7 @@ export function FighterSearchPage() {
                 className="bg-gray-800 border-gray-700"
               />
 
-              <ScrollArea className="h-[calc(100vh-250px)]">
+              <ScrollArea className="h-[calc(100vh-180px)] sm:h-[calc(100vh-250px)]">
                 <div className="px-2 sm:px-6">
                   {isLoading ? (
                     [...Array(5)].map((_, i) => (

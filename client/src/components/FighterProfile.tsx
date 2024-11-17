@@ -98,7 +98,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   const details = [
     {
       label: "Age",
-      value: fighter.age,
+      value: fighter.age && fighter.age > 0 ? fighter.age : "Unknown",
       icon: User,
     },
     {
@@ -115,7 +115,10 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
     },
     {
       label: "Weight",
-      value: fighter.weight ? `${fighter.weight} lbs` : "Unknown",
+      value:
+        fighter.weight && fighter.weight > 0
+          ? `${fighter.weight} lbs`
+          : "Unknown",
       icon: Weight,
     },
   ];
@@ -123,21 +126,21 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   const getMethodIcon = (decision: string) => {
     const methodLower = decision?.toLowerCase() || "";
     if (methodLower.includes("ko") || methodLower.includes("tko")) {
-      return <Swords className="w-4 h-4 text-red-400" />;
+      return <Swords className="w-4 h-4 text-red-400 shrink-0" />;
     }
     if (methodLower.includes("submission") || methodLower.includes("sub")) {
-      return <Award className="w-4 h-4 text-blue-400" />;
+      return <Award className="w-4 h-4 text-blue-400 shrink-0" />;
     }
     if (methodLower.includes("decision")) {
-      return <Timer className="w-4 h-4 text-gray-400" />;
+      return <Timer className="w-4 h-4 text-gray-400 shrink-0" />;
     }
     if (methodLower.includes("draw")) {
-      return <Handshake className="w-4 h-4 text-yellow-400" />;
+      return <Handshake className="w-4 h-4 text-yellow-400 shrink-0" />;
     }
     if (methodLower.includes("no contest")) {
-      return <Ban className="w-4 h-4 text-yellow-400" />;
+      return <Ban className="w-4 h-4 text-yellow-400 shrink-0" />;
     }
-    return <AlertCircle className="w-4 h-4 text-gray-400" />;
+    return <AlertCircle className="w-4 h-4 text-gray-400 shrink-0" />;
   };
 
   const getUniqueFights = (fights: DetailedFighter["fights"]) => {
@@ -301,42 +304,35 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>{fight.event}</TableCell>
                       <TableCell>
-                        {fight.event_id ? (
-                          <Link
-                            href={`/events/${fight.event_id}`}
-                            className="text-blue-400 hover:text-blue-300 hover:underline"
+                        <div className="w-8 text-center">
+                          <span
+                            className={cn(
+                              "px-2 py-1 rounded-full text-sm font-medium",
+                              {
+                                "bg-green-500/20 text-green-400":
+                                  fight.result?.toLowerCase() === "w",
+                                "bg-red-500/20 text-red-400":
+                                  fight.result?.toLowerCase() === "l",
+                                "bg-yellow-500/20 text-yellow-400":
+                                  fight.result?.toLowerCase() === "d" ||
+                                  fight.decision
+                                    ?.toLowerCase()
+                                    .includes("no contest"),
+                              }
+                            )}
                           >
-                            {fight.event}
-                          </Link>
-                        ) : (
-                          fight.event
-                        )}
+                            {fight.result}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={cn(
-                            "px-2 py-1 rounded-full text-sm font-medium",
-                            {
-                              "bg-green-500/20 text-green-400":
-                                fight.result?.toLowerCase() === "w",
-                              "bg-red-500/20 text-red-400":
-                                fight.result?.toLowerCase() === "l",
-                              "bg-yellow-500/20 text-yellow-400":
-                                fight.result?.toLowerCase() === "d" ||
-                                fight.decision
-                                  ?.toLowerCase()
-                                  .includes("no contest"),
-                            }
-                          )}
-                        >
-                          {fight.result}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getMethodIcon(fight.decision)}
-                          <span>{fight.decision}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex-shrink-0">
+                            {getMethodIcon(fight.decision)}
+                          </div>
+                          <span className="truncate">{fight.decision}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
