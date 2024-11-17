@@ -43,12 +43,12 @@ func InsertUser(username string, hashed_password string, email string, phone str
 }
 
 // get hp given a username
-func SelectHP(username string) (string, error) {
+func SelectHP(email string) (string, error) {
 	var storedHashedPassword string
-	sqlStatement := "SELECT password_hash FROM users WHERE username = $1;"
-	err := usersDb.QueryRow(sqlStatement, username).Scan(&storedHashedPassword)
+	sqlStatement := "SELECT password_hash FROM users WHERE email = $1;"
+	err := usersDb.QueryRow(sqlStatement, email).Scan(&storedHashedPassword)
 	if err != nil {
-		return "", fmt.Errorf("unable to retrieve user with username %s: %w", username, err)
+		return "", fmt.Errorf("unable to retrieve user with username %s: %w", email, err)
 	}
 	return storedHashedPassword, nil
 }
@@ -73,4 +73,26 @@ func CheckUserExists(username, email string) (bool, bool, error) {
 
 	//returns true if username or email exists
 	return existingUsername != "", existingEmail != "", nil
+}
+
+// get the user id when given an email
+func SelectUserId(email string) (string, error) {
+	var userId string
+	sqlStatement := "SELECT user_id FROM users WHERE email = $1"
+	err := usersDb.QueryRow(sqlStatement, email).Scan(&userId)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving userId: %v", err)
+	}
+	return userId, nil
+}
+
+// retrieve the username when given an email
+func SelectUsername(email string) (string, error) {
+	var username string
+	sqlStatement := "SELECT username FROM users WHERE email = $1"
+	err := usersDb.QueryRow(sqlStatement, email).Scan(&username)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving username: %v", err)
+	}
+	return username, nil
 }
