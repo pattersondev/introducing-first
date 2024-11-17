@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { UserService } from '@/services/user-service';
+import { AUTH_BASE_URL, API_ENDPOINTS } from '@/config/api';
 
 interface User {
   id: string;
@@ -21,7 +22,7 @@ export function useAuth() {
   const checkAuthStatus = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/auth/status', {
+      const response = await fetch(`${AUTH_BASE_URL}/${API_ENDPOINTS.AUTH.STATUS}`, {
         method: 'GET',
         credentials: 'include',  // Important for cookies
         headers: {
