@@ -74,170 +74,176 @@ export function MatchupList({
     // Here you would typically make an API call to save the vote
   };
 
-  const content = (
-    <div className="space-y-4 px-6">
-      {sortedMatchups.map((matchup) => {
-        const fighter1Prob =
-          matchup.prediction?.fighter1_win_probability ?? 0.5;
-        const fighter2Prob =
-          matchup.prediction?.fighter2_win_probability ?? 0.5;
-        const userVote = votes[matchup.matchup_id];
-
-        return (
-          <Card
-            key={matchup.matchup_id}
-            className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
-            onClick={(e) => {
-              if (
-                (e.target as HTMLElement).closest("button") ||
-                (e.target as HTMLElement).closest("a")
-              ) {
-                return;
-              }
-              setSelectedMatchup(matchup);
-            }}
-          >
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-16 w-16 border-2 border-gray-700">
-                      {matchup.fighter1_image ? (
-                        <AvatarImage
-                          src={matchup.fighter1_image}
-                          alt={matchup.fighter1_name}
-                          className="object-cover object-center"
-                        />
-                      ) : (
-                        <AvatarFallback className="bg-gray-800">
-                          {matchup.fighter1_name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <Link
-                      href={`/fighters/${matchup.fighter1_id}`}
-                      className={`font-semibold hover:text-blue-400 ${
-                        matchup.winner === matchup.fighter1_name
-                          ? "text-green-400"
-                          : "text-white"
-                      }`}
-                    >
-                      {matchup.fighter1_name}
-                    </Link>
-                  </div>
-                  {isEventInFuture(eventDate) && (
-                    <>
-                      <div className="mt-1">
-                        <ProbabilityBar probability={fighter1Prob} />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {(fighter1Prob * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                      <Button
-                        variant={
-                          userVote === matchup.fighter1_name
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        className={cn(
-                          "mt-2 w-full transition-all duration-200 transform active:scale-95",
-                          userVote === matchup.fighter1_name
-                            ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
-                            : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
-                        )}
-                        onClick={() =>
-                          handleVote(matchup.matchup_id, matchup.fighter1_name)
-                        }
-                      >
-                        {userVote === matchup.fighter1_name
-                          ? "My Pick ✓"
-                          : "Pick to Win"}
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className="flex-1 text-center">
-                  <p className="text-sm text-gray-400">vs</p>
-                </div>
-                <div className="flex-1 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Link
-                      href={`/fighters/${matchup.fighter2_id}`}
-                      className={`font-semibold hover:text-blue-400 ${
-                        matchup.winner === matchup.fighter2_name
-                          ? "text-green-400"
-                          : "text-white"
-                      }`}
-                    >
-                      {matchup.fighter2_name}
-                    </Link>
-                    <Avatar className="h-16 w-16 border-2 border-gray-700">
-                      {matchup.fighter2_image ? (
-                        <AvatarImage
-                          src={matchup.fighter2_image}
-                          alt={matchup.fighter2_name}
-                          className="object-cover object-center"
-                        />
-                      ) : (
-                        <AvatarFallback className="bg-gray-800">
-                          {matchup.fighter2_name
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                  </div>
-                  {isEventInFuture(eventDate) && (
-                    <>
-                      <div className="mt-1">
-                        <ProbabilityBar probability={fighter2Prob} />
-                        <p className="text-xs text-gray-400 mt-1">
-                          {(fighter2Prob * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                      <Button
-                        variant={
-                          userVote === matchup.fighter2_name
-                            ? "default"
-                            : "outline"
-                        }
-                        size="sm"
-                        className={cn(
-                          "mt-2 w-full transition-all duration-200 transform active:scale-95",
-                          userVote === matchup.fighter2_name
-                            ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
-                            : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
-                        )}
-                        onClick={() =>
-                          handleVote(matchup.matchup_id, matchup.fighter2_name)
-                        }
-                      >
-                        {userVote === matchup.fighter2_name
-                          ? "My Pick ✓"
-                          : "Pick to Win"}
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-              {!isEventInFuture(eventDate) && matchup.result && (
-                <ResultDisplay result={matchup.result} />
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
-
   return (
     <ScrollArea className="h-[calc(100vh-320px)] min-h-[480px]">
-      <div className="pb-6">{content}</div>
+      <div className="pb-6">
+        <div className="space-y-4 px-2 sm:px-6">
+          {sortedMatchups.map((matchup) => {
+            const fighter1Prob =
+              matchup.prediction?.fighter1_win_probability ?? 0.5;
+            const fighter2Prob =
+              matchup.prediction?.fighter2_win_probability ?? 0.5;
+            const userVote = votes[matchup.matchup_id];
+
+            return (
+              <Card
+                key={matchup.matchup_id}
+                className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+                onClick={(e) => {
+                  if (
+                    (e.target as HTMLElement).closest("button") ||
+                    (e.target as HTMLElement).closest("a")
+                  ) {
+                    return;
+                  }
+                  setSelectedMatchup(matchup);
+                }}
+              >
+                <CardContent className="p-2 sm:p-4">
+                  <div className="flex justify-between items-start sm:items-center gap-1 sm:gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+                        <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0">
+                          {matchup.fighter1_image ? (
+                            <AvatarImage
+                              src={matchup.fighter1_image}
+                              alt={matchup.fighter1_name}
+                              className="object-cover object-center"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
+                              {matchup.fighter1_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <Link
+                          href={`/fighters/${matchup.fighter1_id}`}
+                          className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-left ${
+                            matchup.winner === matchup.fighter1_name
+                              ? "text-green-400"
+                              : "text-white"
+                          }`}
+                        >
+                          {matchup.fighter1_name}
+                        </Link>
+                      </div>
+                      {isEventInFuture(eventDate) && (
+                        <>
+                          <div className="mt-1">
+                            <ProbabilityBar probability={fighter1Prob} />
+                            <p className="text-xs text-gray-400 mt-1">
+                              {(fighter1Prob * 100).toFixed(1)}%
+                            </p>
+                          </div>
+                          <Button
+                            variant={
+                              userVote === matchup.fighter1_name
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            className={cn(
+                              "mt-2 w-full text-xs sm:text-sm transition-all duration-200 transform active:scale-95",
+                              userVote === matchup.fighter1_name
+                                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
+                                : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
+                            )}
+                            onClick={() =>
+                              handleVote(
+                                matchup.matchup_id,
+                                matchup.fighter1_name
+                              )
+                            }
+                          >
+                            {userVote === matchup.fighter1_name
+                              ? "My Pick ✓"
+                              : "Pick to Win"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex-shrink-0 px-1 sm:px-4 mt-4 sm:mt-0 self-center">
+                      <p className="text-xs sm:text-sm text-gray-400">vs</p>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row items-center justify-end gap-1 sm:gap-2">
+                        <Link
+                          href={`/fighters/${matchup.fighter2_id}`}
+                          className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-right order-2 sm:order-1 ${
+                            matchup.winner === matchup.fighter2_name
+                              ? "text-green-400"
+                              : "text-white"
+                          }`}
+                        >
+                          {matchup.fighter2_name}
+                        </Link>
+                        <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0 order-1 sm:order-2">
+                          {matchup.fighter2_image ? (
+                            <AvatarImage
+                              src={matchup.fighter2_image}
+                              alt={matchup.fighter2_name}
+                              className="object-cover object-center"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
+                              {matchup.fighter2_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                      </div>
+                      {isEventInFuture(eventDate) && (
+                        <>
+                          <div className="mt-1">
+                            <ProbabilityBar probability={fighter2Prob} />
+                            <p className="text-xs text-gray-400 mt-1">
+                              {(fighter2Prob * 100).toFixed(1)}%
+                            </p>
+                          </div>
+                          <Button
+                            variant={
+                              userVote === matchup.fighter2_name
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            className={cn(
+                              "mt-2 w-full text-xs sm:text-sm transition-all duration-200 transform active:scale-95",
+                              userVote === matchup.fighter2_name
+                                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
+                                : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
+                            )}
+                            onClick={() =>
+                              handleVote(
+                                matchup.matchup_id,
+                                matchup.fighter2_name
+                              )
+                            }
+                          >
+                            {userVote === matchup.fighter2_name
+                              ? "My Pick ✓"
+                              : "Pick to Win"}
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {!isEventInFuture(eventDate) && matchup.result && (
+                    <ResultDisplay result={matchup.result} />
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
       <MatchupModal
         matchup={selectedMatchup}
         isOpen={!!selectedMatchup}
