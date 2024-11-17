@@ -54,7 +54,7 @@ export function useAuth() {
       formData.append('email', email);
       formData.append('password', password);
 
-      const response = await fetch('/login', {
+      const response = await fetch(`${AUTH_BASE_URL}/login`, {
         method: 'POST',
         credentials: 'include',
         body: formData,

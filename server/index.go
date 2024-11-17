@@ -47,10 +47,10 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Allow specific headers
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
 
 		// Allow specific methods
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
 		// Handle preflight requests
 		if r.Method == "OPTIONS" {
@@ -291,9 +291,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		Expires:  time.Now().Add(24 * time.Hour),
 		HttpOnly: true,
-		Secure:   true, // Only send cookie over HTTPS
-		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
+		Domain:   ".onrender.com",
 	})
 
 	// Set content type for the response
@@ -309,23 +310,36 @@ func authenticate(next http.HandlerFunc) http.HandlerFunc {
 		//extract jwt from cookie
 		cookie, err := r.Cookie("token")
 		if err != nil {
+			log.Printf("No token cookie found: %v", err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		//parse the jwt
-		claims := &jwt.RegisteredClaims{}
+		claims := &struct {
+			Username string `json:"username"`
+			UserId   string `json:"userId"`
+			jwt.RegisteredClaims
+		}{}
+
 		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
 
 		//check if the token is valid
-		if err != nil || !token.Valid {
+		if err != nil {
+			log.Printf("Token parsing failed: %v", err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		//if token is valid, call the next handler (the protected one)
+		if !token.Valid {
+			log.Printf("Token is invalid")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		//if token is valid, call the next handler
 		next(w, r)
 	}
 }
