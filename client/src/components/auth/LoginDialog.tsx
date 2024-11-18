@@ -14,12 +14,14 @@ import { Input } from "@/components/ui/input";
 import { LogIn } from "lucide-react";
 import { UserService } from "@/services/user-service";
 import { LoginData } from "@/types/api";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LoginDialogProps {
   onLoginSuccess: () => void;
 }
 
 export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
+  const { login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<LoginData>({
@@ -34,30 +36,14 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
     setError("");
 
     try {
-      const response = await UserService.login(formData);
-
-      if (response.error) {
-        // Handle specific login error messages
-        if (response.error.includes("Invalid username or password")) {
-          setError("Incorrect username or password. Please try again.");
-        } else if (response.error.includes("Invalid request method")) {
-          setError("Something went wrong. Please try again later.");
-        } else {
-          // For any other errors, use the server's message
-          setError(response.error);
-        }
-        return;
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        // Close dialog and call success callback
+        onLoginSuccess();
+      } else {
+        // Handle error
+        console.error(result.error);
       }
-
-      // If successful
-      onLoginSuccess();
-      setIsOpen(false);
-
-      // Reset form
-      setFormData({
-        email: "",
-        password: "",
-      });
     } catch (err) {
       // Handle network or other errors
       setError("Unable to log in. Please try again later.");
