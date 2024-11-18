@@ -2,17 +2,22 @@ import { Message, IMessage } from '../models/Message';
 
 export class ChatService {
   async getMessages(matchupId: string, limit: number = 50, before?: Date) {
-    const query = {
-      matchup_id: matchupId,
-      deleted: { $ne: true },
-      ...(before && { created_at: { $lt: before } })
-    };
+    try {
+      const query = {
+        matchup_id: matchupId,
+        ...(before && { created_at: { $lt: before } }),
+      };
 
-    return await Message
-      .find(query)
-      .sort({ created_at: -1 })
-      .limit(limit)
-      .lean();
+      const messages = await Message.find(query)
+        .sort({ created_at: 1 })
+        .limit(limit)
+        .lean();
+
+      return messages;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
   }
 
   async createMessage(messageData: {

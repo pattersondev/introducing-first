@@ -1,30 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import chatService from '@/services/chat-service';
 
-interface ChatMessage {
-  _id: string;
-  matchup_id: string;
-  user_id: string;
-  content: string;
-  user_name: string;
-  user_avatar?: string;
-  created_at: Date;
-}
-
 export function useChat(matchupId: string) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Load initial messages
+    let timer: NodeJS.Timeout;
+    
+    if (rateLimitSeconds > 0) {
+      timer = setInterval(() => {
+        setRateLimitSeconds(prev => {
+          const newValue = prev - 1;
+          if (newValue <= 0) {
+            setRateLimitError(null);
+            return 0;
+          }
+          return newValue;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [rateLimitSeconds]);
+
+  useEffect(() => {
+    if (!matchupId) return;
+
     const loadMessages = async () => {
       setIsLoading(true);
       try {
-        const initialMessages = await chatService.getMessages(matchupId);
-        setMessages(initialMessages);
+        const fetchedMessages = await chatService.getMessages(matchupId);
+        setMessages(fetchedMessages);
+        setError(null);
       } catch (err) {
         setError('Failed to load messages');
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -32,47 +48,61 @@ export function useChat(matchupId: string) {
 
     loadMessages();
 
-    // Join the matchup room
-    chatService.joinMatchup(matchupId);
+    const handleNewMessage = (message: any) => {
+      setMessages(prev => [...prev, message]);
+    };
 
-    // Subscribe to new messages
-    const unsubscribeMessage = chatService.onMessage((message) => {
-      if (message.matchup_id === matchupId) {
-        setMessages(prev => [...prev, message]);
+    const handleError = (errorMessage: string) => {
+      if (errorMessage.includes('rate limit')) {
+        const secondsMatch = errorMessage.match(/wait (\d+) seconds/);
+        if (secondsMatch && secondsMatch[1]) {
+          const seconds = parseInt(secondsMatch[1], 10);
+          setRateLimitSeconds(seconds);
+          setRateLimitError(`Message rate limit reached. Please wait ${seconds} seconds before sending another message.`);
+        } else {
+          setRateLimitError(errorMessage);
+        }
+      } else {
+        setError(errorMessage);
       }
-    });
+    };
 
-    // Subscribe to errors
-    const unsubscribeError = chatService.onError((err) => {
-      setError(err);
-    });
+    chatService.joinMatchup(matchupId);
+    chatService.onMessage(handleNewMessage);
+    chatService.onError(handleError);
 
-    // Cleanup
     return () => {
       chatService.leaveMatchup(matchupId);
-      unsubscribeMessage();
-      unsubscribeError();
     };
   }, [matchupId]);
 
-  const sendMessage = async (content: string, userId: string, userName: string, userAvatar?: string) => {
+  const sendMessage = useCallback(async (
+    content: string,
+    userId: string,
+    userName: string,
+    userAvatar?: string
+  ) => {
     try {
       await chatService.sendMessage({
         matchup_id: matchupId,
         content,
         user_id: userId,
         user_name: userName,
-        user_avatar: userAvatar,
+        user_avatar: userAvatar
       });
-    } catch (err) {
-      setError('Failed to send message');
+      setRateLimitError(null);
+      setRateLimitSeconds(0);
+    } catch (error) {
+      throw error;
     }
-  };
+  }, [matchupId]);
 
   return {
     messages,
     error,
+    rateLimitError,
+    rateLimitSeconds,
     isLoading,
-    sendMessage,
+    sendMessage
   };
 } 
