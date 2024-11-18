@@ -44,7 +44,10 @@ export default function AppSidebar() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      const result = await logout();
+      if (!result.success) {
+        console.error("Logout failed:", result.error);
+      }
     } catch (error) {
       console.error("Logout failed:", error);
     }
