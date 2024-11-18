@@ -27,6 +27,6 @@ func StartUsersDbConnection() *sql.DB {
 	return usersDb
 }
 
-func InsertPick() {
+func InsertPick(user_id string, matchup_id string, event_id string, selection_fighter_id string) {
 
 }
