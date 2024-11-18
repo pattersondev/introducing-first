@@ -8,9 +8,17 @@ import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 const app = express();
 const httpServer = createServer(app);
+
+// Define allowed origins
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'https://www.antiballsniffer.club',
+  'https://antiballsniffer.club'
+];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Content-Type']
@@ -19,15 +27,17 @@ const io = new Server(httpServer, {
 
 // Create rate limiter - 15 messages per minute per user with some burst allowance
 const rateLimiter = new RateLimiterMemory({
-  points: 15,        // Number of messages allowed
-  duration: 60,      // Per 60 seconds (1 minute)
-  blockDuration: 60, // Block for 1 minute when limit is reached
+  points: 15,
+  duration: 60,
+  blockDuration: 60,
 });
 
+// Update Express CORS configuration as well
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true
 }));
+
 app.use(express.json());
 
 const chatService = new ChatService();
