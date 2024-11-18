@@ -40,6 +40,7 @@ export const countryToCode: { [key: string]: string } = {
   "Venezuela": "ve",
   "South Africa": "za",
   "Scotland": "gb-sct",
+  "Georgia": "ge",
   // Add more mappings as needed
 };
 
