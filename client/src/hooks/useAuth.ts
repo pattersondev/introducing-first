@@ -81,7 +81,7 @@ export function useAuth() {
         }
         
         // Immediately update auth state after successful login
-        await checkAuthStatus();
+        const authStatus = await checkAuthStatus();
         return { success: true };
       } else {
         const error = await response.text();
