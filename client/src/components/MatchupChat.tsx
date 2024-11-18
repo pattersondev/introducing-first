@@ -21,11 +21,14 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
   const [activeMatchupId, setActiveMatchupId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
 
   const {
     messages,
     error: chatError,
+    rateLimitError,
+    rateLimitSeconds,
     isLoading: isChatLoading,
     sendMessage,
   } = useChat(activeMatchupId || "");
@@ -37,9 +40,12 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !activeMatchupId) return;
 
-    // Ensure user is authenticated and we have user data
     if (!isAuthenticated || !user?.id) {
       console.error("User must be authenticated to send messages");
+      return;
+    }
+
+    if (rateLimitError) {
       return;
     }
 
@@ -51,15 +57,17 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
         user.avatar
       );
       setInputMessage("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to send message:", error);
     }
   };
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    scrollToBottom();
   }, [messages]);
 
   // Show loading state while checking auth
@@ -94,7 +102,7 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
       {activeMatchupId ? (
         <div className="flex-grow flex flex-col">
           <ScrollArea className="flex-grow w-full rounded border border-gray-800 p-4 mb-4 h-[400px]">
-            <div ref={scrollAreaRef} className="space-y-2">
+            <div className="space-y-4">
               {isChatLoading ? (
                 <div className="text-gray-500">Loading messages...</div>
               ) : chatError ? (
@@ -107,42 +115,73 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
                     : "Sign in to chat."}
                 </div>
               ) : (
-                messages.map((message) => (
-                  <div
-                    key={message._id}
-                    className={`mb-2 ${
-                      message.user_id === user?.id ? "ml-auto" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {message.user_avatar && (
-                        <img
-                          src={message.user_avatar}
-                          alt={message.user_name}
-                          className="w-6 h-6 rounded-full"
-                        />
-                      )}
-                      <span className="font-bold text-white">
-                        {message.user_name}
-                        {message.user_id === user?.id ? " (You)" : ""}:
-                      </span>
-                    </div>
-                    <div className="ml-8">
-                      <span className="text-gray-300">{message.content}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        {new Date(message.created_at).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                <>
+                  {messages.map((message) => {
+                    const isOwnMessage = message.user_id === user?.id;
+                    return (
+                      <div
+                        key={message._id}
+                        className={`flex flex-col max-w-[80%] ${
+                          isOwnMessage
+                            ? "ml-auto items-end"
+                            : "mr-auto items-start"
+                        }`}
+                      >
+                        <div
+                          className={`flex items-center gap-2 mb-1 ${
+                            isOwnMessage ? "flex-row-reverse" : "flex-row"
+                          }`}
+                        >
+                          {message.user_avatar && (
+                            <img
+                              src={message.user_avatar}
+                              alt={message.user_name}
+                              className="w-6 h-6 rounded-full flex-shrink-0"
+                            />
+                          )}
+                          <span className="text-sm text-gray-400 truncate">
+                            {isOwnMessage ? "You" : message.user_name}
+                          </span>
+                        </div>
+                        <div
+                          className={`rounded-lg px-4 py-2 break-words whitespace-pre-wrap ${
+                            isOwnMessage
+                              ? "bg-blue-600 text-white"
+                              : "bg-gray-700 text-gray-100"
+                          }`}
+                          style={{ maxWidth: "100%", width: "fit-content" }}
+                        >
+                          {message.content}
+                        </div>
+                        <span className="text-xs text-gray-500 mt-1">
+                          {new Date(message.created_at).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </>
               )}
             </div>
           </ScrollArea>
-          <div className="flex mt-auto">
+
+          {rateLimitError && (
+            <div className="text-yellow-200 text-sm mb-2 flex items-center gap-2">
+              <span className="text-yellow-400">⚠️</span>
+              Woah slow down there. Please wait {rateLimitSeconds} seconds
+              before sending another message.
+            </div>
+          )}
+
+          <div className="flex">
             <Input
               type="text"
               placeholder={
-                isAuthenticated ? "Type your message..." : "Sign in to chat"
+                isAuthenticated
+                  ? rateLimitError
+                    ? "Please wait before sending another message..."
+                    : "Type your message..."
+                  : "Sign in to chat"
               }
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
@@ -152,11 +191,13 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
                 }
               }}
               className="flex-grow mr-2"
-              disabled={!isAuthenticated}
+              disabled={!isAuthenticated || !!rateLimitError}
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!isAuthenticated || !inputMessage.trim()}
+              disabled={
+                !isAuthenticated || !inputMessage.trim() || !!rateLimitError
+              }
             >
               Send
             </Button>
