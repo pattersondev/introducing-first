@@ -53,6 +53,10 @@ export default function AppSidebar() {
     }
   };
 
+  const handleLoginSuccess = () => {
+    // The dialog will close itself and auth state will update automatically
+  };
+
   const isActive = (path: string) => {
     return pathname === path;
   };
@@ -120,8 +124,8 @@ export default function AppSidebar() {
           </div>
         ) : (
           <div className="space-y-2">
-            <LoginDialog onLoginSuccess={() => {}} />
-            <RegisterDialog onRegisterSuccess={() => {}} />
+            <LoginDialog onLoginSuccess={handleLoginSuccess} />
+            <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
           </div>
         )}
         <p className="text-sm text-gray-400 pt-2">© 2024 Introducing First</p>

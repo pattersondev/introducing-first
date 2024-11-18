@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LogIn } from "lucide-react";
-import { UserService } from "@/services/user-service";
 import { LoginData } from "@/types/api";
 import { useAuth } from "@/hooks/useAuth";
+import { AnimatedCheck } from "@/components/ui/animated-check";
+import { motion } from "framer-motion";
 
 interface LoginDialogProps {
   onLoginSuccess: () => void;
@@ -24,11 +25,21 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
   const { login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState<LoginData>({
     email: "",
     password: "",
   });
   const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset states when dialog closes
+      setIsSuccess(false);
+      setError("");
+      setFormData({ email: "", password: "" });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +49,16 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // Close dialog and call success callback
-        onLoginSuccess();
+        setIsSuccess(true);
+        // Wait for animation to complete before closing
+        setTimeout(() => {
+          setIsOpen(false);
+          onLoginSuccess();
+        }, 1500);
       } else {
-        // Handle error
-        console.error(result.error);
+        setError(result.error || "Login failed");
       }
     } catch (err) {
-      // Handle network or other errors
       setError("Unable to log in. Please try again later.");
       console.error("Login error:", err);
     } finally {
@@ -80,6 +93,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              disabled={isLoading || isSuccess}
               className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
             />
           </div>
@@ -92,17 +106,35 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
+              disabled={isLoading || isSuccess}
               className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <Button
-            type="submit"
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white"
-            disabled={isLoading}
+          <motion.div
+            animate={
+              isSuccess
+                ? {
+                    backgroundColor: "rgb(22 163 74)", // green-600
+                    transition: { duration: 0.3 },
+                  }
+                : {}
+            }
           >
-            {isLoading ? "Logging in..." : "Login"}
-          </Button>
+            <Button
+              type="submit"
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
+              disabled={isLoading || isSuccess}
+            >
+              {isSuccess ? (
+                <AnimatedCheck className="text-white" />
+              ) : isLoading ? (
+                "Logging in..."
+              ) : (
+                "Login"
+              )}
+            </Button>
+          </motion.div>
         </form>
       </DialogContent>
     </Dialog>
