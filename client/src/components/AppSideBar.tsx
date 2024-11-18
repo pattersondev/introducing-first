@@ -34,25 +34,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { UserService } from "@/services/user-service";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { RegisterDialog } from "@/components/auth/RegisterDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   const handleLogout = async () => {
     try {
-      setIsLoading(true);
-      await UserService.logout();
-      setIsLoggedIn(false);
+      await logout();
     } catch (error) {
       console.error("Logout failed:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -67,10 +61,6 @@ export default function AppSidebar() {
     { title: "Rankings", icon: BarChart2, path: "/rankings" },
     { title: "Leaderboard", icon: Trophy, path: "/leaderboard" },
   ];
-
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-  };
 
   return (
     <Sidebar
@@ -109,11 +99,11 @@ export default function AppSidebar() {
         </Collapsible>
       </SidebarContent>
       <SidebarFooter className="border-t border-gray-800 p-4 bg-gray-950 space-y-4">
-        {isLoggedIn ? (
+        {isAuthenticated ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <User className="h-4 w-4" />
-              <span>Welcome back!</span>
+              <span>Welcome, {user?.username}!</span>
             </div>
             <Button
               variant="outline"
@@ -127,8 +117,8 @@ export default function AppSidebar() {
           </div>
         ) : (
           <div className="space-y-2">
-            <LoginDialog onLoginSuccess={handleLoginSuccess} />
-            <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
+            <LoginDialog onLoginSuccess={() => {}} />
+            <RegisterDialog onRegisterSuccess={() => {}} />
           </div>
         )}
         <p className="text-sm text-gray-400 pt-2">© 2024 Introducing First</p>
