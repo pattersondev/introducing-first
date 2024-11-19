@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,55 +12,55 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { LogIn } from "lucide-react";
-import { UserService } from "@/services/user-service";
 import { LoginData } from "@/types/api";
+import { useAuth } from "@/contexts/AuthContext";
+import { AnimatedCheck } from "@/components/ui/animated-check";
+import { motion } from "framer-motion";
 
 interface LoginDialogProps {
   onLoginSuccess: () => void;
 }
 
 export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
+  const { login } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formData, setFormData] = useState<LoginData>({
     email: "",
     password: "",
   });
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset states when dialog closes
+      setIsSuccess(false);
+      setError(null);
+      setFormData({ email: "", password: "" });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError(null);
 
     try {
-      const response = await UserService.login(formData);
-
-      if (response.error) {
-        // Handle specific login error messages
-        if (response.error.includes("Invalid username or password")) {
-          setError("Incorrect username or password. Please try again.");
-        } else if (response.error.includes("Invalid request method")) {
-          setError("Something went wrong. Please try again later.");
-        } else {
-          // For any other errors, use the server's message
-          setError(response.error);
-        }
-        return;
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        setIsSuccess(true);
+        // Add delay before closing dialog
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        formData.email = "";
+        formData.password = "";
+        setShowSuccess(true);
+      } else {
+        setError(result.error || "Login failed");
       }
-
-      // If successful
-      onLoginSuccess();
-      setIsOpen(false);
-
-      // Reset form
-      setFormData({
-        email: "",
-        password: "",
-      });
     } catch (err) {
-      // Handle network or other errors
-      setError("Unable to log in. Please try again later.");
+      setError("An unexpected error occurred");
       console.error("Login error:", err);
     } finally {
       setIsLoading(false);
@@ -94,6 +94,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              disabled={isLoading || isSuccess}
               className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
             />
           </div>
@@ -106,17 +107,41 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
+              disabled={isLoading || isSuccess}
               className="bg-gray-900 border-gray-800 text-white placeholder:text-gray-500"
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <Button
-            type="submit"
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white"
-            disabled={isLoading}
+          {showSuccess && (
+            <div className="flex items-center gap-2 text-green-500">
+              <AnimatedCheck />
+              <span>Success!</span>
+            </div>
+          )}
+          <motion.div
+            animate={
+              isSuccess
+                ? {
+                    backgroundColor: "rgb(22 163 74)", // green-600
+                    transition: { duration: 0.3 },
+                  }
+                : {}
+            }
           >
-            {isLoading ? "Logging in..." : "Login"}
-          </Button>
+            <Button
+              type="submit"
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
+              disabled={isLoading || isSuccess}
+            >
+              {isSuccess ? (
+                <AnimatedCheck className="text-white" />
+              ) : isLoading ? (
+                "Logging in..."
+              ) : (
+                "Login"
+              )}
+            </Button>
+          </motion.div>
         </form>
       </DialogContent>
     </Dialog>

@@ -71,6 +71,11 @@ class ChatService {
 
   public async getMessages(matchupId: string, before?: Date): Promise<ChatMessage[]> {
     try {
+      if (!matchupId) {
+        console.warn('No matchupId provided to getMessages');
+        return [];
+      }
+
       const url = new URL(`${process.env.NEXT_PUBLIC_CHAT_SERVICE_URL || 'http://localhost:4000'}/api/messages/${matchupId}`);
       if (before) {
         url.searchParams.append('before', before.toISOString());
@@ -78,13 +83,13 @@ class ChatService {
 
       const response = await fetch(url.toString());
       if (!response.ok) {
-        throw new Error('Failed to fetch messages');
+        throw new Error(`Failed to fetch messages: ${response.statusText}`);
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error fetching messages:', error);
-      return [];
+      throw error; // Propagate the error to be handled by the hook
     }
   }
 

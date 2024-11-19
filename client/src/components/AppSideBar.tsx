@@ -36,7 +36,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { RegisterDialog } from "@/components/auth/RegisterDialog";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -44,10 +44,17 @@ export default function AppSidebar() {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      const result = await logout();
+      if (!result.success) {
+        console.error("Logout failed:", result.error);
+      }
     } catch (error) {
       console.error("Logout failed:", error);
     }
+  };
+
+  const handleLoginSuccess = () => {
+    // The dialog will close itself and auth state will update automatically
   };
 
   const isActive = (path: string) => {
@@ -117,8 +124,8 @@ export default function AppSidebar() {
           </div>
         ) : (
           <div className="space-y-2">
-            <LoginDialog onLoginSuccess={() => {}} />
-            <RegisterDialog onRegisterSuccess={() => {}} />
+            <LoginDialog onLoginSuccess={handleLoginSuccess} />
+            <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
           </div>
         )}
         <p className="text-sm text-gray-400 pt-2">© 2024 Introducing First</p>

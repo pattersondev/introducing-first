@@ -103,12 +103,22 @@ export const UserService = {
     try {
       const response = await fetch(`${AUTH_BASE_URL}${API_ENDPOINTS.AUTH.LOGOUT}`, {
         method: 'POST',
-        headers: commonHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         credentials: 'include',
         mode: 'cors',
       });
 
-      const responseData = await response.json();
+      let responseData;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.indexOf("application/json") !== -1) {
+        responseData = await response.json();
+      } else {
+        const text = await response.text();
+        responseData = { message: text };
+      }
 
       return {
         data: responseData,
@@ -116,6 +126,7 @@ export const UserService = {
         error: !response.ok ? responseData.message || 'Logout failed' : undefined
       };
     } catch (error) {
+      console.error('Logout error:', error);
       return {
         status: 500,
         error: 'Failed to connect to authentication service'

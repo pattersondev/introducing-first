@@ -67,8 +67,6 @@ export function useAuth() {
       formData.append('email', email);
       formData.append('password', password);
 
-      console.log('Attempting login to:', `${AUTH_BASE_URL}/login`);
-      
       const response = await fetch(`${AUTH_BASE_URL}/login`, {
         method: 'POST',
         credentials: 'include',
@@ -76,16 +74,14 @@ export function useAuth() {
       });
       
       if (response.ok) {
-        console.log('Login successful, checking auth status');
         const data = await response.json();
-        console.log('Login response:', data);
         
-        // Store the token in localStorage as backup
         if (data.token) {
           localStorage.setItem('auth_token', data.token);
         }
         
-        await checkAuthStatus();
+        // Immediately update auth state after successful login
+        const authStatus = await checkAuthStatus();
         return { success: true };
       } else {
         const error = await response.text();
@@ -103,15 +99,24 @@ export function useAuth() {
       const response = await UserService.logout();
       
       if (response.status === 200) {
+        // Clear local storage
+        localStorage.removeItem('auth_token');
+        // Immediately update state
         setUser(null);
         setIsAuthenticated(false);
         return { success: true };
       } else {
-        return { success: false, error: response.error };
+        return { 
+          success: false, 
+          error: response.error || 'Logout failed' 
+        };
       }
     } catch (error) {
       console.error('Logout failed:', error);
-      return { success: false, error: 'Logout failed' };
+      return { 
+        success: false, 
+        error: 'Logout failed' 
+      };
     }
   };
 
