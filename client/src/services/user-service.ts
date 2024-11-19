@@ -132,5 +132,33 @@ export const UserService = {
         error: 'Failed to connect to authentication service'
       };
     }
+  },
+
+  async uploadProfilePicture(file: File): Promise<ApiResponse<{ url: string }>> {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${AUTH_BASE_URL}/api/profile/upload`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+        mode: 'cors',
+      });
+
+      const data = await response.json();
+
+      return {
+        data,
+        status: response.status,
+        error: !response.ok ? data.message || 'Failed to upload profile picture' : undefined
+      };
+    } catch (error) {
+      console.error('Profile picture upload error:', error);
+      return {
+        status: 500,
+        error: 'Failed to upload profile picture'
+      };
+    }
   }
 }; 

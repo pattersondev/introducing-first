@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.users
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     phone_number character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    image_link VARCHAR(255),
     CONSTRAINT users_pkey PRIMARY KEY (user_id),
     CONSTRAINT users_email_key UNIQUE (email),
     CONSTRAINT users_username_key UNIQUE (username)
