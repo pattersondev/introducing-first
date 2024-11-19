@@ -22,7 +22,7 @@ interface LoginDialogProps {
 }
 
 export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
-  const { login } = useAuth();
+  const { login, refreshAuth } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -45,14 +45,16 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
     setError(null);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.email, formData.password, true);
       if (result.success) {
         setIsLoading(false);
         setIsSuccess(true);
         setShowSuccess(true);
 
         // Wait for animation
-        setTimeout(() => {
+        setTimeout(async () => {
+          // Update auth state after animation
+          await refreshAuth();
           setIsOpen(false);
           if (onLoginSuccess) {
             onLoginSuccess();
