@@ -9,14 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { Matchup } from "@/types/api";
 
 interface MatchupChatProps {
-  matchupId: string;
+  matchups: Matchup[];
 }
 
-export function MatchupChat({ matchupId }: MatchupChatProps) {
+export function MatchupChat({ matchups }: MatchupChatProps) {
   const { user } = useAuth();
-  const { messages, sendMessage } = useChat(matchupId);
+  const { messages, sendMessage } = useChat(matchups[0]?.matchup_id || "");
   const [newMessage, setNewMessage] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
