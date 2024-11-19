@@ -51,6 +51,15 @@ func InsertPick(user_id string, matchup_id string, event_id string, selection_fi
 	return nil
 }
 
+func SelectUserPicksByEvent() (string, error) {
+
+	return pickId, nil
+}
+
+func SelectAllPicksByEvent() (string, error) {
+	return picks, nil
+}
+
 // insert or update pick (to handle if someone switches their pick)
 func UpsertPick(user_id string, matchup_id string, event_id string, selection_fighter_id string) error {
 	//check if the pick already exists
