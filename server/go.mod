@@ -3,7 +3,6 @@ module server
 go 1.23.1
 
 require (
-	github.com/aws/aws-sdk-go v1.55.5
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.67.1
 	github.com/golang-jwt/jwt/v4 v4.5.1

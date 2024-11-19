@@ -24,7 +24,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -491,11 +490,12 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 func deleteFromS3(client *s3.Client, objectKey string) error {
 	ctx := context.TODO()
 
-	_, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(objectKey),
-	})
+	input := &s3.DeleteObjectInput{
+		Bucket: &bucketName,
+		Key:    &objectKey,
+	}
 
+	_, err := client.DeleteObject(ctx, input)
 	if err != nil {
 		return fmt.Errorf("error deleting from S3: %v", err)
 	}
@@ -641,7 +641,7 @@ func getUserClaimsFromToken(r *http.Request) *struct {
 	return claims
 }
 
-// Complete the uploadToS3 function
+// Update the uploadToS3 function
 func uploadToS3(client *s3.Client, file multipart.File, filename string, size int64) (string, error) {
 	ctx := context.TODO()
 
@@ -663,11 +663,11 @@ func uploadToS3(client *s3.Client, file multipart.File, filename string, size in
 
 	// Upload to S3
 	input := &s3.PutObjectInput{
-		Bucket:        aws.String(bucketName),
-		Key:           aws.String(filename),
+		Bucket:        &bucketName,
+		Key:           &filename,
 		Body:          bytes.NewReader(buffer),
-		ContentLength: aws.Int64(size),
-		ContentType:   aws.String(getContentType(filename)),
+		ContentLength: &size,
+		ContentType:   &[]string{getContentType(filename)}[0],
 	}
 
 	_, err = client.PutObject(ctx, input)
