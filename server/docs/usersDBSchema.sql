@@ -8,17 +8,21 @@ CREATE TABLE IF NOT EXISTS public.users
     username character varying(50) COLLATE pg_catalog."default" NOT NULL,
     email character varying(100) COLLATE pg_catalog."default" NOT NULL,
     password_hash text COLLATE pg_catalog."default" NOT NULL,
-    role character varying(20) COLLATE pg_catalog."default" DEFAULT 'user'::character varying,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     phone_number character varying(20) COLLATE pg_catalog."default" NOT NULL,
     image_link character varying(255) COLLATE pg_catalog."default",
     total_correct_picks integer,
     total_picks integer,
+    role_id integer DEFAULT 4,
     CONSTRAINT users_pkey PRIMARY KEY (user_id),
     CONSTRAINT users_email_key UNIQUE (email),
     CONSTRAINT users_phone_number_key UNIQUE (phone_number),
-    CONSTRAINT users_username_key UNIQUE (username)
+    CONSTRAINT users_username_key UNIQUE (username),
+    CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id)
+        REFERENCES public.roles (role_id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
 )
 
 TABLESPACE pg_default;
@@ -71,3 +75,22 @@ CREATE OR REPLACE TRIGGER set_updated_at
     ON public.picks
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at_column();
+
+
+-- Table: public.roles
+
+-- DROP TABLE IF EXISTS public.roles;
+
+CREATE TABLE IF NOT EXISTS public.roles
+(
+    role_id integer NOT NULL DEFAULT nextval('roles_role_id_seq'::regclass),
+    role_name character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default",
+    CONSTRAINT roles_pkey PRIMARY KEY (role_id),
+    CONSTRAINT roles_role_name_key UNIQUE (role_name)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.roles
+    OWNER to introducing_first_users_user;
