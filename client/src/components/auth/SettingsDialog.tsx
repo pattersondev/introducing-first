@@ -15,6 +15,7 @@ import { Settings, Check, X, Crown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnimatedCheck } from "@/components/ui/animated-check";
 import { motion } from "framer-motion";
+import { UserService } from "@/services/user-service";
 
 interface PasswordRequirement {
   text: string;
@@ -45,7 +46,7 @@ const passwordRequirements: PasswordRequirement[] = [
 ];
 
 export function SettingsDialog() {
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -65,9 +66,44 @@ export function SettingsDialog() {
     // This will be implemented when we add the endpoint to the backend
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // TODO: Implement image upload functionality
-    // This will be implemented when we add the endpoint to the backend
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File size must be less than 5MB");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const result = await UserService.uploadProfilePicture(file);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        // Refresh auth context to get updated user data
+        await refreshAuth();
+        setIsSuccess(true);
+        setTimeout(() => {
+          setIsSuccess(false);
+        }, 2000);
+      }
+    } catch (err) {
+      setError("Failed to upload profile picture");
+      console.error("Profile picture upload error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
