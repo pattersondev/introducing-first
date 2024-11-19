@@ -63,11 +63,13 @@ export function RegisterDialog({ onRegisterSuccess }: RegisterDialogProps) {
       const result = await register(formData);
       if (result.success) {
         setIsSuccess(true);
-        // Wait for animation to complete before closing
+        // First wait for the green animation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Then update auth state and close dialog
         setTimeout(() => {
-          setIsOpen(false);
           onRegisterSuccess();
-        }, 1500);
+          setIsOpen(false);
+        }, 500);
       } else {
         setError(result.error || "Registration failed");
       }

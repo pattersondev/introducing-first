@@ -50,11 +50,13 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
       const result = await login(formData.email, formData.password);
       if (result.success) {
         setIsSuccess(true);
-        // Wait for animation to complete before closing
+        // First wait for the green animation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Then update auth state and close dialog
         setTimeout(() => {
-          setIsOpen(false);
           onLoginSuccess();
-        }, 1500);
+          setIsOpen(false);
+        }, 500);
       } else {
         setError(result.error || "Login failed");
       }
