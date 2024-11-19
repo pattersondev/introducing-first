@@ -13,12 +13,15 @@ interface AuthContextType {
     delayUpdate?: boolean
   ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
-  register: (data: {
-    username: string;
-    password: string;
-    email: string;
-    phone: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  register: (
+    data: {
+      username: string;
+      password: string;
+      email: string;
+      phone: string;
+    },
+    delayUpdate?: boolean
+  ) => Promise<{ success: boolean; error?: string }>;
   refreshAuth: () => Promise<void>;
 }
 
