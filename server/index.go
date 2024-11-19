@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -20,10 +19,11 @@ import (
 	"mime/multipart"
 	"path/filepath"
 
-	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -486,18 +486,152 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// Add this function to delete object from S3
-func deleteFromS3(client *s3.Client, objectKey string) error {
-	ctx := context.TODO()
+// Add these helper functions for S3 signing
+func hmacSHA256(key []byte, data string) []byte {
+	h := hmac.New(sha256.New, key)
+	h.Write([]byte(data))
+	return h.Sum(nil)
+}
 
-	input := &s3.DeleteObjectInput{
-		Bucket: &bucketName,
-		Key:    &objectKey,
+func getSignatureKey(key, dateStamp, regionName, serviceName string) []byte {
+	kDate := hmacSHA256([]byte("AWS4"+key), dateStamp)
+	kRegion := hmacSHA256(kDate, regionName)
+	kService := hmacSHA256(kRegion, serviceName)
+	kSigning := hmacSHA256(kService, "aws4_request")
+	return kSigning
+}
+
+// Update uploadToS3 to use direct HTTP requests
+func uploadToS3(file multipart.File, filename string, size int64) (string, error) {
+	region := os.Getenv("AWS_REGION")
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+	if region == "" || accessKey == "" || secretKey == "" {
+		return "", fmt.Errorf("AWS credentials not set")
 	}
 
-	_, err := client.DeleteObject(ctx, input)
+	endpoint := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, filename)
+
+	// Create PUT request
+	req, err := http.NewRequest("PUT", endpoint, file)
 	if err != nil {
-		return fmt.Errorf("error deleting from S3: %v", err)
+		return "", err
+	}
+
+	// Set headers
+	req.ContentLength = size
+	req.Header.Set("Content-Type", getContentType(filename))
+
+	// Sign request (AWS Signature V4)
+	t := time.Now().UTC()
+	amzDate := t.Format("20060102T150405Z")
+	datestamp := t.Format("20060102")
+
+	// Create canonical request
+	canonicalURI := "/" + filename
+	canonicalQueryString := ""
+	canonicalHeaders := fmt.Sprintf("content-length:%d\ncontent-type:%s\nhost:%s.s3.%s.amazonaws.com\nx-amz-date:%s\n",
+		size, getContentType(filename), bucketName, region, amzDate)
+	signedHeaders := "content-length;content-type;host;x-amz-date"
+
+	payloadHash := "UNSIGNED-PAYLOAD"
+	canonicalRequest := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s",
+		"PUT", canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders, payloadHash)
+
+	// Create string to sign
+	algorithm := "AWS4-HMAC-SHA256"
+	credentialScope := fmt.Sprintf("%s/%s/s3/aws4_request", datestamp, region)
+	stringToSign := fmt.Sprintf("%s\n%s\n%s\n%s",
+		algorithm, amzDate, credentialScope, hex.EncodeToString(sha256.New().Sum([]byte(canonicalRequest))))
+
+	// Calculate signature
+	signingKey := getSignatureKey(secretKey, datestamp, region, "s3")
+	signature := hex.EncodeToString(hmacSHA256(signingKey, stringToSign))
+
+	// Add authorization header
+	authorizationHeader := fmt.Sprintf("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
+		algorithm, accessKey, credentialScope, signedHeaders, signature)
+
+	req.Header.Set("Authorization", authorizationHeader)
+	req.Header.Set("x-amz-date", amzDate)
+
+	// Send request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("upload failed: %s", string(body))
+	}
+
+	return endpoint, nil
+}
+
+// Update deleteFromS3 to include complete signing logic
+func deleteFromS3(objectKey string) error {
+	region := os.Getenv("AWS_REGION")
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+	if region == "" || accessKey == "" || secretKey == "" {
+		return fmt.Errorf("AWS credentials not set")
+	}
+
+	endpoint := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, objectKey)
+
+	req, err := http.NewRequest("DELETE", endpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	// Sign request with AWS Signature V4
+	t := time.Now().UTC()
+	amzDate := t.Format("20060102T150405Z")
+	datestamp := t.Format("20060102")
+
+	// Create canonical request
+	canonicalURI := "/" + objectKey
+	canonicalQueryString := ""
+	canonicalHeaders := fmt.Sprintf("host:%s.s3.%s.amazonaws.com\nx-amz-date:%s\n",
+		bucketName, region, amzDate)
+	signedHeaders := "host;x-amz-date"
+
+	payloadHash := "UNSIGNED-PAYLOAD"
+	canonicalRequest := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s",
+		"DELETE", canonicalURI, canonicalQueryString, canonicalHeaders, signedHeaders, payloadHash)
+
+	// Create string to sign
+	algorithm := "AWS4-HMAC-SHA256"
+	credentialScope := fmt.Sprintf("%s/%s/s3/aws4_request", datestamp, region)
+	stringToSign := fmt.Sprintf("%s\n%s\n%s\n%s",
+		algorithm, amzDate, credentialScope, hex.EncodeToString(sha256.New().Sum([]byte(canonicalRequest))))
+
+	// Calculate signature
+	signingKey := getSignatureKey(secretKey, datestamp, region, "s3")
+	signature := hex.EncodeToString(hmacSHA256(signingKey, stringToSign))
+
+	// Add authorization header
+	authorizationHeader := fmt.Sprintf("%s Credential=%s/%s, SignedHeaders=%s, Signature=%s",
+		algorithm, accessKey, credentialScope, signedHeaders, signature)
+
+	req.Header.Set("Authorization", authorizationHeader)
+	req.Header.Set("x-amz-date", amzDate)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete failed: %s", string(body))
 	}
 
 	return nil
@@ -547,15 +681,6 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Initialize S3 client
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		log.Printf("Error loading AWS config: %v", err)
-		sendJSONError(w, "Server configuration error", http.StatusInternalServerError)
-		return
-	}
-	s3Client := s3.NewFromConfig(cfg)
-
 	// Get current profile picture URL
 	currentPictureURL, err := db.GetProfilePicture(claims.UserId)
 	if err != nil {
@@ -568,7 +693,7 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	if currentPictureURL != "" {
 		objectKey := getObjectKeyFromURL(currentPictureURL)
 		if objectKey != "" {
-			err = deleteFromS3(s3Client, objectKey)
+			err = deleteFromS3(objectKey)
 			if err != nil {
 				log.Printf("Warning: Failed to delete old profile picture: %v", err)
 				// Continue with upload even if delete fails
@@ -580,7 +705,7 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("profile-pictures/%s%s", uuid.New().String(), filepath.Ext(header.Filename))
 
 	// Upload new picture to S3
-	url, err := uploadToS3(s3Client, file, filename, header.Size)
+	url, err := uploadToS3(file, filename, header.Size)
 	if err != nil {
 		log.Printf("Error uploading to S3: %v", err)
 		sendJSONError(w, "Failed to upload file", http.StatusInternalServerError)
@@ -591,7 +716,7 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.UpdateProfilePicture(claims.UserId, url)
 	if err != nil {
 		// If database update fails, try to delete the uploaded file
-		deleteErr := deleteFromS3(s3Client, filename)
+		deleteErr := deleteFromS3(filename)
 		if deleteErr != nil {
 			log.Printf("Warning: Failed to delete uploaded file after database error: %v", deleteErr)
 		}
@@ -639,44 +764,6 @@ func getUserClaimsFromToken(r *http.Request) *struct {
 	}
 
 	return claims
-}
-
-// Update the uploadToS3 function
-func uploadToS3(client *s3.Client, file multipart.File, filename string, size int64) (string, error) {
-	ctx := context.TODO()
-
-	// Read file contents
-	buffer := make([]byte, size)
-	_, err := file.Read(buffer)
-	if err != nil {
-		return "", fmt.Errorf("error reading file: %v", err)
-	}
-
-	// Reset file pointer to beginning
-	file.Seek(0, 0)
-
-	// Get AWS region from environment
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		return "", fmt.Errorf("AWS_REGION not set")
-	}
-
-	// Upload to S3
-	input := &s3.PutObjectInput{
-		Bucket:        &bucketName,
-		Key:           &filename,
-		Body:          bytes.NewReader(buffer),
-		ContentLength: &size,
-		ContentType:   &[]string{getContentType(filename)}[0],
-	}
-
-	_, err = client.PutObject(ctx, input)
-	if err != nil {
-		return "", fmt.Errorf("error uploading to S3: %v", err)
-	}
-
-	// Construct and return the URL using the correct region
-	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, filename), nil
 }
 
 // Helper function to determine content type
