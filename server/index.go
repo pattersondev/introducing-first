@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -94,6 +95,17 @@ func main() {
 	if bucketName == "" {
 		log.Fatal("S3_BUCKET_NAME not set in environment")
 	}
+
+	// Debug logging for AWS configuration
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	region := os.Getenv("AWS_REGION")
+
+	log.Printf("AWS Configuration Check:")
+	log.Printf("Access Key Present: %v", len(accessKey) > 0)
+	log.Printf("Secret Key Present: %v", len(secretKey) > 0)
+	log.Printf("Region Set: %s", region)
+	log.Printf("Bucket Name: %s", bucketName)
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
@@ -490,9 +502,19 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 func uploadToS3(file multipart.File, filename string, size int64) (string, error) {
 	ctx := context.TODO()
 
-	// Load AWS configuration
+	// Get AWS credentials from environment
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	region := os.Getenv("AWS_REGION")
+
+	if accessKey == "" || secretKey == "" || region == "" {
+		return "", fmt.Errorf("AWS credentials or region not set")
+	}
+
+	// Load AWS configuration with explicit credentials and region
 	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(os.Getenv("AWS_REGION")),
+		config.WithRegion(region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to load SDK config: %v", err)
@@ -501,23 +523,24 @@ func uploadToS3(file multipart.File, filename string, size int64) (string, error
 	// Create S3 client
 	client := s3.NewFromConfig(cfg)
 
+	// Log the bucket name and region being used (for debugging)
+	log.Printf("Attempting to upload to bucket: %s in region: %s", bucketName, region)
+
 	// Upload the file
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+	input := &s3.PutObjectInput{
 		Bucket:        aws.String(bucketName),
 		Key:           aws.String(filename),
 		Body:          file,
 		ContentLength: aws.Int64(size),
 		ContentType:   aws.String(getContentType(filename)),
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("failed to upload file: %v", err)
 	}
 
-	// Construct the URL
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		return "", fmt.Errorf("AWS_REGION not set")
+	_, err = client.PutObject(ctx, input)
+	if err != nil {
+		// Log more details about the error
+		log.Printf("S3 Upload Error - Bucket: %s, Region: %s, Key: %s, Error: %v",
+			bucketName, region, filename, err)
+		return "", fmt.Errorf("failed to upload file: %v", err)
 	}
 
 	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, filename)
