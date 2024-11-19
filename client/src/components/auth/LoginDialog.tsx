@@ -51,7 +51,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
         setIsSuccess(true);
         setShowSuccess(true);
 
-        // Wait for animation
+        // Wait for animation - reduced from 1500 to 750
         setTimeout(async () => {
           // Update auth state after animation
           await refreshAuth();
@@ -59,7 +59,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
           if (onLoginSuccess) {
             onLoginSuccess();
           }
-        }, 1500);
+        }, 750);
       } else {
         setError(result.error || "Login failed");
         setIsLoading(false);
@@ -117,10 +117,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <motion.div
+            className="rounded-md overflow-hidden"
             animate={
               isSuccess
                 ? {
-                    backgroundColor: "rgb(22 163 74)",
+                    backgroundColor: "rgb(34 197 94)",
                     transition: { duration: 0.3 },
                   }
                 : {}
@@ -128,7 +129,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
           >
             <Button
               type="submit"
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
+              className={`w-full ${
+                isSuccess
+                  ? "bg-transparent hover:bg-transparent"
+                  : "bg-gray-800 hover:bg-gray-700"
+              } text-white`}
               disabled={isLoading || isSuccess}
             >
               {isSuccess ? (
