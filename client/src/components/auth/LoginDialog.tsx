@@ -33,15 +33,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) {
-      // Reset states when dialog closes
-      setIsSuccess(false);
-      setError(null);
-      setFormData({ email: "", password: "" });
-      setShowSuccess(false);
+  const handleOpenChange = (open: boolean) => {
+    if (!isLoading && !showSuccess) {
+      setIsOpen(open);
     }
-  }, [isOpen]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,36 +47,31 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
+        setIsLoading(false);
         setIsSuccess(true);
         setShowSuccess(true);
+
         // Wait for animation
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        // Only close after animation
-        setIsOpen(false);
-        formData.email = "";
-        formData.password = "";
+        setTimeout(() => {
+          setIsOpen(false);
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          }
+        }, 1500);
       } else {
         setError(result.error || "Login failed");
+        setIsLoading(false);
       }
     } catch (err) {
       setError("An unexpected error occurred");
       console.error("Login error:", err);
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        // Only allow closing if not in loading or success animation state
-        if (!isLoading && !showSuccess) {
-          setIsOpen(open);
-        }
-      }}
-    >
-      <DialogTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         <Button
           variant="ghost"
           className="w-full justify-start text-gray-400 hover:text-white hover:bg-gray-800"
@@ -123,17 +114,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {showSuccess && (
-            <div className="flex items-center gap-2 text-green-500">
-              <AnimatedCheck />
-              <span>Success!</span>
-            </div>
-          )}
           <motion.div
             animate={
               isSuccess
                 ? {
-                    backgroundColor: "rgb(22 163 74)", // green-600
+                    backgroundColor: "rgb(22 163 74)",
                     transition: { duration: 0.3 },
                   }
                 : {}
