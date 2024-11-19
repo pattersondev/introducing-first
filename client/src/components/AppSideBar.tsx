@@ -31,6 +31,7 @@ import {
   UserPlus,
   LogOut,
   User,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,6 +39,14 @@ import { LoginDialog } from "@/components/auth/LoginDialog";
 import { RegisterDialog } from "@/components/auth/RegisterDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { SettingsDialog } from "@/components/auth/SettingsDialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronUp } from "lucide-react";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -84,7 +93,7 @@ export default function AppSidebar() {
             <SidebarGroupLabel asChild>
               <CollapsibleTrigger className="flex w-full items-center">
                 Navigation
-                <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
               </CollapsibleTrigger>
             </SidebarGroupLabel>
             <CollapsibleContent>
@@ -106,33 +115,71 @@ export default function AppSidebar() {
           </SidebarGroup>
         </Collapsible>
       </SidebarContent>
-      <SidebarFooter className="border-t border-gray-800 p-4 bg-gray-950 space-y-4">
-        {isAuthenticated ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-gray-400">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span>Welcome, {user?.username}!</span>
-              </div>
-              <SettingsDialog />
-            </div>
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={handleLogout}
-              disabled={isLoading}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              {isLoading ? "Logging out..." : "Logout"}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <LoginDialog onLoginSuccess={handleLoginSuccess} />
-            <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
-          </div>
-        )}
-        <p className="text-sm text-gray-400 pt-2">© 2024 Introducing First</p>
+      <SidebarFooter className="mt-auto border-t border-gray-800 bg-gray-950">
+        <SidebarMenu>
+          {isAuthenticated ? (
+            <SidebarMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="w-full px-2">
+                    <div className="flex items-center gap-3 w-full">
+                      <Avatar className="h-8 w-8 border border-gray-800">
+                        <AvatarImage
+                          src={user?.profilePicture}
+                          alt={user?.username || "User avatar"}
+                        />
+                        <AvatarFallback>
+                          {user?.username?.[0]?.toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-sm font-medium text-gray-100 truncate">
+                          {user?.username}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+                      <ChevronUp className="h-4 w-4 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                    </div>
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side="top"
+                  className="w-[--radix-popper-anchor-width] bg-gray-950 border-gray-800"
+                >
+                  <DropdownMenuItem asChild>
+                    <SettingsDialog />
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    disabled={isLoading}
+                    className="text-red-500 focus:text-red-500"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    <span>{isLoading ? "Logging out..." : "Sign out"}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SidebarMenuItem>
+          ) : (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <LoginDialog onLoginSuccess={handleLoginSuccess} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <RegisterDialog onRegisterSuccess={handleLoginSuccess} />
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </>
+          )}
+        </SidebarMenu>
+        <div className="mt-auto p-4 border-t border-gray-800">
+          <p className="text-xs text-gray-500">© 2024 Introducing First</p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
