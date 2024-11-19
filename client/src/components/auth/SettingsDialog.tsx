@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Settings, Check, X, Crown } from "lucide-react";
+import { Settings, Check, X, Crown, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { AnimatedCheck } from "@/components/ui/animated-check";
 import { motion } from "framer-motion";
@@ -111,10 +111,10 @@ export function SettingsDialog() {
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="hover:bg-gray-800 rounded-full"
+          className="w-full justify-start px-2 hover:bg-gray-800"
         >
-          <Settings className="h-4 w-4" />
+          <User className="h-4 w-4 mr-2" />
+          <span>Account</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto bg-gray-950 border border-gray-800">
