@@ -12,8 +12,12 @@ CREATE TABLE IF NOT EXISTS public.users
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     phone_number character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    image_link character varying(255) COLLATE pg_catalog."default",
+    total_correct_picks integer,
+    total_picks integer,
     CONSTRAINT users_pkey PRIMARY KEY (user_id),
     CONSTRAINT users_email_key UNIQUE (email),
+    CONSTRAINT users_phone_number_key UNIQUE (phone_number),
     CONSTRAINT users_username_key UNIQUE (username)
 )
 
@@ -31,7 +35,6 @@ CREATE OR REPLACE TRIGGER set_timestamp
     ON public.users
     FOR EACH ROW
     EXECUTE FUNCTION public.update_timestamp();
-
 
 -- Table: public.picks
 
