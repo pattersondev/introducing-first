@@ -16,13 +16,23 @@ import (
 
 	"regexp"
 
+	"mime/multipart"
+	"path/filepath"
+
+	"context"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var jwtKey []byte
+var bucketName string
 
 // Add CORS middleware
 func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
@@ -57,10 +67,16 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 
 // Add this after your other imports and before main()
 type UserResponse struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	ID             string `json:"id"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	ProfilePicture string `json:"profilePicture,omitempty"`
 }
+
+// Add these constants
+const (
+	maxUploadSize = 5 << 20 // 5MB
+)
 
 func main() {
 
@@ -72,6 +88,12 @@ func main() {
 	}
 
 	db.StartUsersDbConnection()
+
+	// Initialize bucketName from environment
+	bucketName = os.Getenv("S3_BUCKET_NAME")
+	if bucketName == "" {
+		log.Fatal("S3_BUCKET_NAME not set in environment")
+	}
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
@@ -85,6 +107,8 @@ func main() {
 
 	// Add this with your other http.HandleFunc calls in main()
 	http.HandleFunc("/api/auth/status", enableCORS(authenticate(authStatusHandler)))
+
+	http.HandleFunc("/api/profile/upload", enableCORS(authenticate(uploadProfilePictureHandler)))
 
 	port := getEnvWithFallback("PORT", "8080")
 	fmt.Printf("Server starting on :%s\n", port)
@@ -436,8 +460,14 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user email from database using userId
+	// Get user email and profile picture from database using userId
 	email, err := db.SelectEmail(claims.UserId)
+	if err != nil {
+		http.Error(w, "Error retrieving user data", http.StatusInternalServerError)
+		return
+	}
+
+	profilePicture, err := db.GetProfilePicture(claims.UserId)
 	if err != nil {
 		http.Error(w, "Error retrieving user data", http.StatusInternalServerError)
 		return
@@ -445,14 +475,230 @@ func authStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create response
 	user := UserResponse{
-		ID:       claims.UserId,
-		Username: claims.Username,
-		Email:    email,
+		ID:             claims.UserId,
+		Username:       claims.Username,
+		Email:          email,
+		ProfilePicture: profilePicture,
 	}
 
-	// Set content type
+	// Set content type and encode response
 	w.Header().Set("Content-Type", "application/json")
-
-	// Encode and send response
 	json.NewEncoder(w).Encode(user)
+}
+
+// Update uploadToS3 to use direct HTTP requests
+func uploadToS3(file multipart.File, filename string, size int64) (string, error) {
+	ctx := context.TODO()
+
+	// Load AWS configuration
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(os.Getenv("AWS_REGION")),
+	)
+	if err != nil {
+		return "", fmt.Errorf("unable to load SDK config: %v", err)
+	}
+
+	// Create S3 client
+	client := s3.NewFromConfig(cfg)
+
+	// Upload the file
+	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(bucketName),
+		Key:           aws.String(filename),
+		Body:          file,
+		ContentLength: aws.Int64(size),
+		ContentType:   aws.String(getContentType(filename)),
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to upload file: %v", err)
+	}
+
+	// Construct the URL
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		return "", fmt.Errorf("AWS_REGION not set")
+	}
+
+	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, filename)
+	return url, nil
+}
+
+// Update deleteFromS3 to include complete signing logic
+func deleteFromS3(objectKey string) error {
+	ctx := context.TODO()
+
+	// Load AWS configuration
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(os.Getenv("AWS_REGION")),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to load SDK config: %v", err)
+	}
+
+	// Create S3 client
+	client := s3.NewFromConfig(cfg)
+
+	// Delete the object
+	_, err = client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(objectKey),
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to delete file: %v", err)
+	}
+
+	return nil
+}
+
+// Extract object key from S3 URL
+func getObjectKeyFromURL(url string) string {
+	// URL format: https://bucket-name.s3.amazonaws.com/path/to/file
+	parts := strings.Split(url, bucketName+".s3.amazonaws.com/")
+	if len(parts) != 2 {
+		return ""
+	}
+	return parts[1]
+}
+
+// Update the uploadProfilePictureHandler
+func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse the multipart form
+	err := r.ParseMultipartForm(maxUploadSize)
+	if err != nil {
+		sendJSONError(w, "File too large", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		sendJSONError(w, "Invalid file", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Validate file type
+	if !isValidImageType(header.Filename) {
+		sendJSONError(w, "Invalid file type. Only jpeg, jpg, and png are allowed", http.StatusBadRequest)
+		return
+	}
+
+	// Get user ID from token
+	claims := getUserClaimsFromToken(r)
+	if claims == nil {
+		sendJSONError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Get current profile picture URL
+	currentPictureURL, err := db.GetProfilePicture(claims.UserId)
+	if err != nil {
+		log.Printf("Error getting current profile picture: %v", err)
+		sendJSONError(w, "Failed to get current profile picture", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete old profile picture if it exists
+	if currentPictureURL != "" {
+		objectKey := getObjectKeyFromURL(currentPictureURL)
+		if objectKey != "" {
+			err = deleteFromS3(objectKey)
+			if err != nil {
+				log.Printf("Warning: Failed to delete old profile picture: %v", err)
+				// Continue with upload even if delete fails
+			}
+		}
+	}
+
+	// Generate unique filename
+	filename := fmt.Sprintf("profile-pictures/%s%s", uuid.New().String(), filepath.Ext(header.Filename))
+
+	// Upload new picture to S3
+	url, err := uploadToS3(file, filename, header.Size)
+	if err != nil {
+		log.Printf("Error uploading to S3: %v", err)
+		sendJSONError(w, "Failed to upload file", http.StatusInternalServerError)
+		return
+	}
+
+	// Update user's profile picture URL in database
+	err = db.UpdateProfilePicture(claims.UserId, url)
+	if err != nil {
+		// If database update fails, try to delete the uploaded file
+		deleteErr := deleteFromS3(filename)
+		if deleteErr != nil {
+			log.Printf("Warning: Failed to delete uploaded file after database error: %v", deleteErr)
+		}
+		log.Printf("Error updating profile picture in database: %v", err)
+		sendJSONError(w, "Failed to update profile picture", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"url":     url,
+		"message": "Profile picture updated successfully",
+	})
+}
+
+func isValidImageType(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	return ext == ".jpg" || ext == ".jpeg" || ext == ".png"
+}
+
+// Add this function to get claims from token
+func getUserClaimsFromToken(r *http.Request) *struct {
+	Username string `json:"username"`
+	UserId   string `json:"userId"`
+	jwt.RegisteredClaims
+} {
+	cookie, err := r.Cookie("token")
+	if err != nil {
+		return nil
+	}
+
+	claims := &struct {
+		Username string `json:"username"`
+		UserId   string `json:"userId"`
+		jwt.RegisteredClaims
+	}{}
+
+	token, err := jwt.ParseWithClaims(cookie.Value, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil
+	}
+
+	return claims
+}
+
+// Helper function to determine content type
+func getContentType(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".png":
+		return "image/png"
+	default:
+		return "application/octet-stream"
+	}
+}
+
+// Add this helper function for consistent error responses
+func sendJSONError(w http.ResponseWriter, message string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
+	})
 }

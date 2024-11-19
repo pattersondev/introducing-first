@@ -107,3 +107,27 @@ func SelectEmail(userId string) (string, error) {
 	}
 	return email, nil
 }
+
+// UpdateProfilePicture updates the user's profile picture URL
+func UpdateProfilePicture(userId string, pictureUrl string) error {
+	sqlStatement := "UPDATE users SET image_link = $1 WHERE user_id = $2"
+	_, err := usersDb.ExecContext(context.Background(), sqlStatement, pictureUrl, userId)
+	if err != nil {
+		return fmt.Errorf("error updating profile picture: %v", err)
+	}
+	return nil
+}
+
+// GetProfilePicture gets the user's profile picture URL
+func GetProfilePicture(userId string) (string, error) {
+	var pictureUrl sql.NullString
+	sqlStatement := "SELECT image_link FROM users WHERE user_id = $1"
+	err := usersDb.QueryRow(sqlStatement, userId).Scan(&pictureUrl)
+	if err != nil {
+		return "", fmt.Errorf("error retrieving profile picture: %v", err)
+	}
+	if !pictureUrl.Valid {
+		return "", nil
+	}
+	return pictureUrl.String, nil
+}
