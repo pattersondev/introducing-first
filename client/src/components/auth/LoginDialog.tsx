@@ -22,7 +22,7 @@ interface LoginDialogProps {
 }
 
 export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
-  const { login } = useAuth();
+  const { login, refreshAuth } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -33,14 +33,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) {
-      // Reset states when dialog closes
-      setIsSuccess(false);
-      setError(null);
-      setFormData({ email: "", password: "" });
+  const handleOpenChange = (open: boolean) => {
+    if (!isLoading && !showSuccess) {
+      setIsOpen(open);
     }
-  }, [isOpen]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,28 +45,35 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
     setError(null);
 
     try {
-      const result = await login(formData.email, formData.password);
+      const result = await login(formData.email, formData.password, true);
       if (result.success) {
+        setIsLoading(false);
         setIsSuccess(true);
-        // Add delay before closing dialog
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        formData.email = "";
-        formData.password = "";
         setShowSuccess(true);
+
+        // Wait for animation - reduced from 1500 to 750
+        setTimeout(async () => {
+          // Update auth state after animation
+          await refreshAuth();
+          setIsOpen(false);
+          if (onLoginSuccess) {
+            onLoginSuccess();
+          }
+        }, 750);
       } else {
         setError(result.error || "Login failed");
+        setIsLoading(false);
       }
     } catch (err) {
       setError("An unexpected error occurred");
       console.error("Login error:", err);
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild onClick={() => setIsOpen(true)}>
         <Button
           variant="ghost"
           className="w-full justify-start text-gray-400 hover:text-white hover:bg-gray-800"
@@ -112,17 +116,12 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
             />
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          {showSuccess && (
-            <div className="flex items-center gap-2 text-green-500">
-              <AnimatedCheck />
-              <span>Success!</span>
-            </div>
-          )}
           <motion.div
+            className="rounded-md overflow-hidden"
             animate={
               isSuccess
                 ? {
-                    backgroundColor: "rgb(22 163 74)", // green-600
+                    backgroundColor: "rgb(34 197 94)",
                     transition: { duration: 0.3 },
                   }
                 : {}
@@ -130,7 +129,11 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
           >
             <Button
               type="submit"
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
+              className={`w-full ${
+                isSuccess
+                  ? "bg-transparent hover:bg-transparent"
+                  : "bg-gray-800 hover:bg-gray-700"
+              } text-white`}
               disabled={isLoading || isSuccess}
             >
               {isSuccess ? (

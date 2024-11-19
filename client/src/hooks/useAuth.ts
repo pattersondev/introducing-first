@@ -61,7 +61,7 @@ export function useAuth() {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, delayUpdate: boolean = false) => {
     try {
       const formData = new FormData();
       formData.append('email', email);
@@ -80,8 +80,11 @@ export function useAuth() {
           localStorage.setItem('auth_token', data.token);
         }
         
-        // Immediately update auth state after successful login
-        const authStatus = await checkAuthStatus();
+        if (!delayUpdate) {
+          // Immediately update auth state after successful login
+          await checkAuthStatus();
+        }
+        
         return { success: true };
       } else {
         const error = await response.text();
@@ -125,13 +128,18 @@ export function useAuth() {
     password: string;
     email: string;
     phone: string;
-  }) => {
+  }, delayUpdate: boolean = false) => {
     try {
       const response = await UserService.register(data);
       
       if (response.status === 200) {
-        await checkAuthStatus(); // Refresh user data after registration
-        return { success: true };
+        // After successful registration, automatically log in with delay
+        const loginResult = await login(data.email, data.password, delayUpdate);
+        if (loginResult.success) {
+          return { success: true };
+        } else {
+          return { success: false, error: "Registration successful but login failed. Please try logging in." };
+        }
       } else {
         return { success: false, error: response.error };
       }
