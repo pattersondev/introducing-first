@@ -12,6 +12,17 @@ import (
 
 var usersDb *sql.DB
 
+type Pick struct {
+	PickID             int    `json:"pick_id"`
+	UserID             int    `json:"user_id"`
+	MatchupID          string `json:"matchup_id"`
+	EventID            string `json:"event_id"`
+	SelectionFighterID string `json:"selection_fighter_id"`
+	PickResult         string `json:"pick_result"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+}
+
 func StartUsersDbConnection() *sql.DB {
 	connStr := os.Getenv("USERS_CONNECTION_STRING")
 
@@ -51,12 +62,96 @@ func InsertPick(user_id string, matchup_id string, event_id string, selection_fi
 	return nil
 }
 
-func SelectUserPicksByEvent() (string, error) {
+func GetPicksForUserAndEvent(userID int, eventID string) ([]Pick, error) {
+	sqlStatement := "SELECT pick_id, user_id, matchup_id, event_id, selection_fighter_id, pick_result, created_at, updated_at FROM public.picks WHERE user_id = $1 AND event_id = $2;"
 
-	return pickId, nil
+	rows, err := usersDb.Query(sqlStatement, userID, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("error querying picks for user %d and event %s: %w", userID, eventID, err)
+	}
+	defer rows.Close()
+
+	var picks []Pick
+	for rows.Next() {
+		var pick Pick
+		err := rows.Scan(
+			&pick.PickID,
+			&pick.UserID,
+			&pick.MatchupID,
+			&pick.EventID,
+			&pick.SelectionFighterID,
+			&pick.PickResult,
+			&pick.CreatedAt,
+			&pick.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning pick row: %w", err)
+		}
+		picks = append(picks, pick)
+	}
+
+	return picks, nil
 }
 
-func SelectAllPicksByEvent() (string, error) {
+func GetPicksForEvent(eventID string) ([]Pick, error) {
+	sqlStatement := "SELECT pick_id, user_id, matchup_id, event_id, selection_fighter_id, pick_result, created_at, updated_at FROM public.picks WHERE event_id = $1;"
+
+	rows, err := usersDb.Query(sqlStatement, eventID)
+	if err != nil {
+		return nil, fmt.Errorf("error querying picks for event %s: %w", eventID, err)
+	}
+	defer rows.Close()
+
+	var picks []Pick
+	for rows.Next() {
+		var pick Pick
+		err := rows.Scan(
+			&pick.PickID,
+			&pick.UserID,
+			&pick.MatchupID,
+			&pick.EventID,
+			&pick.SelectionFighterID,
+			&pick.PickResult,
+			&pick.CreatedAt,
+			&pick.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning pick row: %w", err)
+		}
+		picks = append(picks, pick)
+	}
+
+	return picks, nil
+}
+
+func GetPicksForMatchup(matchupID string) ([]Pick, error) {
+	sqlStatement := "SELECT pick_id, user_id, matchup_id, event_id, selection_fighter_id, pick_result, created_at, updated_at FROM public.picks WHERE matchup_id = $1;"
+
+	rows, err := usersDb.Query(sqlStatement, matchupID)
+	if err != nil {
+		return nil, fmt.Errorf("error querying picks for matchup %s: %w", matchupID, err)
+	}
+	defer rows.Close()
+
+	var picks []Pick
+	for rows.Next() {
+		var pick Pick
+		err := rows.Scan(
+			&pick.PickID,
+			&pick.UserID,
+			&pick.MatchupID,
+			&pick.EventID,
+			&pick.SelectionFighterID,
+			&pick.PickResult,
+			&pick.CreatedAt,
+			&pick.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning pick row: %w", err)
+		}
+		picks = append(picks, pick)
+	}
+
 	return picks, nil
 }
 
