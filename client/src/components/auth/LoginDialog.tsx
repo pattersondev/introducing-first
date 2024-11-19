@@ -39,6 +39,7 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
       setIsSuccess(false);
       setError(null);
       setFormData({ email: "", password: "" });
+      setShowSuccess(false);
     }
   }, [isOpen]);
 
@@ -51,11 +52,13 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
       const result = await login(formData.email, formData.password);
       if (result.success) {
         setIsSuccess(true);
-        // Add delay before closing dialog
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setShowSuccess(true);
+        // Wait for animation
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // Only close after animation
+        setIsOpen(false);
         formData.email = "";
         formData.password = "";
-        setShowSuccess(true);
       } else {
         setError(result.error || "Login failed");
       }
@@ -68,7 +71,15 @@ export function LoginDialog({ onLoginSuccess }: LoginDialogProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        // Only allow closing if not in loading or success animation state
+        if (!isLoading && !showSuccess) {
+          setIsOpen(open);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="ghost"
