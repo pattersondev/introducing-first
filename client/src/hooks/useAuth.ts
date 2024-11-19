@@ -106,11 +106,17 @@ export function useAuth() {
         setIsAuthenticated(false);
         return { success: true };
       } else {
-        return { success: false, error: response.error };
+        return { 
+          success: false, 
+          error: response.error || 'Logout failed' 
+        };
       }
     } catch (error) {
       console.error('Logout failed:', error);
-      return { success: false, error: 'Logout failed' };
+      return { 
+        success: false, 
+        error: 'Logout failed' 
+      };
     }
   };
 
