@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { LogIn } from "lucide-react";
 import { LoginData } from "@/types/api";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 import { AnimatedCheck } from "@/components/ui/animated-check";
 import { motion } from "framer-motion";
 

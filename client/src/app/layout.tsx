@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSideBar";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -35,15 +36,17 @@ export default function RootLayout({
           geistMono.variable
         )}
       >
-        <SidebarProvider>
-          <div className="group/sidebar-wrapper flex min-h-screen w-full">
-            <AppSidebar />
-            <main className="flex-1 overflow-hidden">
-              <SidebarTrigger className="p-4" />
-              <div className="h-full">{children}</div>
-            </main>
-          </div>
-        </SidebarProvider>
+        <AuthProvider>
+          <SidebarProvider>
+            <div className="group/sidebar-wrapper flex min-h-screen w-full">
+              <AppSidebar />
+              <main className="flex-1 overflow-hidden">
+                <SidebarTrigger className="p-4" />
+                <div className="h-full">{children}</div>
+              </main>
+            </div>
+          </SidebarProvider>
+        </AuthProvider>
       </body>
     </html>
   );

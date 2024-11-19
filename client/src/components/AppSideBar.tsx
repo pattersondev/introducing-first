@@ -36,7 +36,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { RegisterDialog } from "@/components/auth/RegisterDialog";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AppSidebar() {
   const pathname = usePathname();
