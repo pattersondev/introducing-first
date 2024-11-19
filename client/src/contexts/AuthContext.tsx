@@ -3,6 +3,14 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useAuth as useAuthHook } from "@/hooks/useAuth";
 
+interface User {
+  username: string;
+  email: string;
+  profilePicture?: string;
+  isPremium?: boolean;
+  // ... other existing user properties
+}
+
 interface AuthContextType {
   user: any;
   isAuthenticated: boolean;

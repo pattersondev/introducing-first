@@ -37,6 +37,7 @@ import { usePathname } from "next/navigation";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { RegisterDialog } from "@/components/auth/RegisterDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { SettingsDialog } from "@/components/auth/SettingsDialog";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -108,9 +109,12 @@ export default function AppSidebar() {
       <SidebarFooter className="border-t border-gray-800 p-4 bg-gray-950 space-y-4">
         {isAuthenticated ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <User className="h-4 w-4" />
-              <span>Welcome, {user?.username}!</span>
+            <div className="flex items-center justify-between text-sm text-gray-400">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                <span>Welcome, {user?.username}!</span>
+              </div>
+              <SettingsDialog />
             </div>
             <Button
               variant="outline"
