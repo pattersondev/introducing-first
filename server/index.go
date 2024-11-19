@@ -33,6 +33,7 @@ import (
 )
 
 var jwtKey []byte
+var bucketName string
 
 // Add CORS middleware
 func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
@@ -76,7 +77,6 @@ type UserResponse struct {
 // Add these constants
 const (
 	maxUploadSize = 5 << 20 // 5MB
-	bucketName    = "your-s3-bucket-name"
 )
 
 func main() {
@@ -89,6 +89,12 @@ func main() {
 	}
 
 	db.StartUsersDbConnection()
+
+	// Initialize bucketName from environment
+	bucketName = os.Getenv("S3_BUCKET_NAME")
+	if bucketName == "" {
+		log.Fatal("S3_BUCKET_NAME not set in environment")
+	}
 
 	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/hello", handleHello)
@@ -517,34 +523,35 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the multipart form
 	err := r.ParseMultipartForm(maxUploadSize)
 	if err != nil {
-		http.Error(w, "File too large", http.StatusBadRequest)
+		sendJSONError(w, "File too large", http.StatusBadRequest)
 		return
 	}
 
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "Invalid file", http.StatusBadRequest)
+		sendJSONError(w, "Invalid file", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
 	// Validate file type
 	if !isValidImageType(header.Filename) {
-		http.Error(w, "Invalid file type. Only jpeg, jpg, and png are allowed", http.StatusBadRequest)
+		sendJSONError(w, "Invalid file type. Only jpeg, jpg, and png are allowed", http.StatusBadRequest)
 		return
 	}
 
 	// Get user ID from token
 	claims := getUserClaimsFromToken(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		sendJSONError(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	// Initialize S3 client
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		http.Error(w, "Server error", http.StatusInternalServerError)
+		log.Printf("Error loading AWS config: %v", err)
+		sendJSONError(w, "Server configuration error", http.StatusInternalServerError)
 		return
 	}
 	s3Client := s3.NewFromConfig(cfg)
@@ -552,7 +559,8 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	// Get current profile picture URL
 	currentPictureURL, err := db.GetProfilePicture(claims.UserId)
 	if err != nil {
-		http.Error(w, "Failed to get current profile picture", http.StatusInternalServerError)
+		log.Printf("Error getting current profile picture: %v", err)
+		sendJSONError(w, "Failed to get current profile picture", http.StatusInternalServerError)
 		return
 	}
 
@@ -574,7 +582,8 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 	// Upload new picture to S3
 	url, err := uploadToS3(s3Client, file, filename, header.Size)
 	if err != nil {
-		http.Error(w, "Failed to upload file", http.StatusInternalServerError)
+		log.Printf("Error uploading to S3: %v", err)
+		sendJSONError(w, "Failed to upload file", http.StatusInternalServerError)
 		return
 	}
 
@@ -586,14 +595,16 @@ func uploadProfilePictureHandler(w http.ResponseWriter, r *http.Request) {
 		if deleteErr != nil {
 			log.Printf("Warning: Failed to delete uploaded file after database error: %v", deleteErr)
 		}
-		http.Error(w, "Failed to update profile picture", http.StatusInternalServerError)
+		log.Printf("Error updating profile picture in database: %v", err)
+		sendJSONError(w, "Failed to update profile picture", http.StatusInternalServerError)
 		return
 	}
 
 	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
-		"url": url,
+		"url":     url,
+		"message": "Profile picture updated successfully",
 	})
 }
 
@@ -644,21 +655,28 @@ func uploadToS3(client *s3.Client, file multipart.File, filename string, size in
 	// Reset file pointer to beginning
 	file.Seek(0, 0)
 
+	// Get AWS region from environment
+	region := os.Getenv("AWS_REGION")
+	if region == "" {
+		return "", fmt.Errorf("AWS_REGION not set")
+	}
+
 	// Upload to S3
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+	input := &s3.PutObjectInput{
 		Bucket:        aws.String(bucketName),
 		Key:           aws.String(filename),
 		Body:          bytes.NewReader(buffer),
 		ContentLength: aws.Int64(size),
 		ContentType:   aws.String(getContentType(filename)),
-	})
+	}
 
+	_, err = client.PutObject(ctx, input)
 	if err != nil {
 		return "", fmt.Errorf("error uploading to S3: %v", err)
 	}
 
-	// Construct and return the URL
-	return fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucketName, filename), nil
+	// Construct and return the URL using the correct region
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, filename), nil
 }
 
 // Helper function to determine content type
@@ -672,4 +690,13 @@ func getContentType(filename string) string {
 	default:
 		return "application/octet-stream"
 	}
+}
+
+// Add this helper function for consistent error responses
+func sendJSONError(w http.ResponseWriter, message string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
+	})
 }
