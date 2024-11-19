@@ -185,3 +185,12 @@ func UpsertPick(user_id string, matchup_id string, event_id string, selection_fi
 
 	return nil
 }
+
+func UpdateMatchupPickResults(winning_fighter_id string, event_id string, matchup_id string) error {
+	//select all picks in picks db with pick result = 'pending' and matchup_id = '$matchup_id' and event_id = '$event_id'
+
+	//for each pick
+	//if pick.selection_fighter_id == winning_fighter_id, set pick.pick_result to 'correct', else set pick to 'incorrect'
+
+	return nil
+}
