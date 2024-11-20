@@ -448,6 +448,8 @@ export class EventService {
                 'fighter2_age', f2.age,
                 'fighter2_stance', f2.stance,
                 'fighter2_reach', f2.reach,
+                'fighter1_rank', f1.current_promotion_rank,
+                'fighter2_rank', f2.current_promotion_rank,
                 'result', m.result,
                 'winner', m.winner,
                 'display_order', m.display_order,
