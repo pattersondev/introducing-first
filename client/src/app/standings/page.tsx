@@ -109,7 +109,7 @@ export default function StandingsPage() {
     return (
       <div className="h-full bg-gray-950 text-white p-4 lg:p-6">
         <div className="container mx-auto">
-          <h1 className="text-3xl font-bold mb-6">UFC Rankings</h1>
+          <h1 className="text-3xl font-bold mb-6">UFC Standings</h1>
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -125,7 +125,7 @@ export default function StandingsPage() {
   return (
     <div className="h-full bg-gray-950 text-white p-4 lg:p-6">
       <div className="container mx-auto">
-        <h1 className="text-3xl font-bold mb-6">UFC Rankings</h1>
+        <h1 className="text-3xl font-bold mb-6">UFC Standings</h1>
         <Card className="bg-gray-900 border-gray-800">
           <CardContent className="p-6">
             <div className="space-y-6">
@@ -147,7 +147,7 @@ export default function StandingsPage() {
               </Select>
 
               <ScrollArea className="h-[calc(100vh-280px)]">
-                <div className="space-y-2 pr-4">
+                <div className="flex flex-col gap-2 pr-4">
                   {selectedClass &&
                     groupedFighters[selectedClass]
                       .sort((a, b) => {
