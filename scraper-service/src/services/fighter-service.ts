@@ -19,6 +19,14 @@ interface FightWithOpponentId extends DBFight {
   opponent_id?: string;
 }
 
+interface RankingData {
+  weightClass: string;
+  rankings: {
+    name: string;
+    position: number;
+  }[];
+}
+
 export class FighterService {
   private s3Service: S3Service;
 
@@ -512,10 +520,15 @@ export class FighterService {
           win_loss_record,
           weight,
           height,
-          image_url
+          image_url,
+          current_promotion_rank,
+          weight_class
          FROM fighters 
          WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)
-         ORDER BY last_name, first_name
+         ORDER BY 
+           COALESCE(current_promotion_rank, 999),
+           last_name, 
+           first_name
          LIMIT $2 OFFSET $3`,
         [`%${query}%`, limit, offset]
       );
@@ -539,7 +552,7 @@ export class FighterService {
     try {
       // Get fighter basic info
       const fighterResult = await client.query(
-        `SELECT * FROM fighters WHERE fighter_id = $1`,
+        `SELECT *, current_promotion_rank, weight_class FROM fighters WHERE fighter_id = $1`,
         [fighterId]
       );
 
@@ -608,6 +621,8 @@ export class FighterService {
           f.weight,
           f.height,
           f.image_url,
+          f.current_promotion_rank,
+          f.weight_class,
           fs.search_count
         FROM fighters f
         JOIN fighter_searches fs ON f.fighter_id = fs.fighter_id
@@ -643,6 +658,48 @@ export class FighterService {
           OFFSET 50
         )
       `);
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  async updateFighterRankings(rankings: RankingData[]) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // First, reset all rankings to null
+      await client.query(`
+        UPDATE fighters 
+        SET current_promotion_rank = NULL
+      `);
+
+      // Process each weight class
+      for (const weightClass of rankings) {
+        for (const rank of weightClass.rankings) {
+          // Split the name into first and last name
+          const nameParts = rank.name.split(', ');
+          if (nameParts.length !== 2) continue;
+
+          const lastName = nameParts[0];
+          const firstName = nameParts[1];
+
+          // Update the fighter's rank and weight class
+          await client.query(`
+            UPDATE fighters 
+            SET 
+              current_promotion_rank = $1,
+              weight_class = $2
+            WHERE LOWER(first_name) = LOWER($3) 
+            AND LOWER(last_name) = LOWER($4)
+          `, [rank.position, weightClass.weightClass, firstName, lastName]);
+        }
+      }
 
       await client.query('COMMIT');
     } catch (e) {
