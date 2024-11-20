@@ -344,7 +344,7 @@ func main() {
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/")
+	c.Visit("https://www.espn.com/mma/fightcenter")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice

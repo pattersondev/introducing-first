@@ -152,3 +152,14 @@ export interface User {
   email: string;
   avatar?: string;
 }
+
+export interface Pick {
+  pick_id: number;
+  user_id: number;
+  matchup_id: string;
+  event_id: string;
+  selection_fighter_id: string;
+  pick_result: string;
+  created_at: string;
+  updated_at: string;
+}

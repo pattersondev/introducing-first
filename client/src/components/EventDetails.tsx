@@ -40,6 +40,7 @@ export function EventDetails({ event, isLoading = false }: EventDetailsProps) {
             <MatchupList
               matchups={event.matchups}
               eventDate={event.date}
+              eventId={event.event_id}
               isLoading={isLoading}
             />
           </CardContent>

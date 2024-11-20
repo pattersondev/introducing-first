@@ -4,7 +4,7 @@ import { ProbabilityBar } from "./ProbabilityBar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   parseResult,
   getResultIcon,
@@ -13,10 +13,15 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { MatchupModal } from "./MatchupModal";
+import { MatchupPick } from "./MatchupPick";
+import { useAuth } from "@/contexts/AuthContext";
+import { PicksService } from "@/services/picks-service";
+import { Pick } from "@/types/api";
 
 interface MatchupListProps {
   matchups: Matchup[];
   eventDate: string;
+  eventId: string;
   isLoading?: boolean;
 }
 
@@ -47,10 +52,30 @@ function ResultDisplay({ result }: { result: string }) {
 export function MatchupList({
   matchups = [],
   eventDate = new Date().toISOString(),
+  eventId,
   isLoading = false,
 }: MatchupListProps) {
-  const [votes, setVotes] = useState<Record<string, string>>({});
   const [selectedMatchup, setSelectedMatchup] = useState<Matchup | null>(null);
+  const [userPicks, setUserPicks] = useState<Pick[]>([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const fetchUserPicks = async () => {
+      if (user?.id && eventId) {
+        try {
+          const picks = await PicksService.getPicksForUserAndEvent(
+            parseInt(user.id),
+            eventId
+          );
+          setUserPicks(picks);
+        } catch (error) {
+          console.error("Error fetching user picks:", error);
+        }
+      }
+    };
+
+    fetchUserPicks();
+  }, [user?.id, eventId]);
 
   const sortedMatchups = matchups
     ? [...matchups].sort((a, b) => a.display_order - b.display_order)
@@ -66,38 +91,26 @@ export function MatchupList({
     }
   };
 
-  const handleVote = (matchupId: string, fighter: string) => {
-    setVotes((prev) => ({
-      ...prev,
-      [matchupId]: fighter,
-    }));
-    // Here you would typically make an API call to save the vote
-  };
-
   return (
     <ScrollArea className="h-[calc(100vh-320px)] min-h-[480px]">
       <div className="pb-6">
         <div className="space-y-4 px-2 sm:px-6">
           {sortedMatchups.map((matchup) => {
-            const fighter1Prob =
-              matchup.prediction?.fighter1_win_probability ?? 0.5;
-            const fighter2Prob =
-              matchup.prediction?.fighter2_win_probability ?? 0.5;
-            const userVote = votes[matchup.matchup_id];
+            const fighter1Pick = userPicks.find(
+              (pick) =>
+                pick.matchup_id === matchup.matchup_id &&
+                pick.selection_fighter_id === matchup.fighter1_id
+            );
+            const fighter2Pick = userPicks.find(
+              (pick) =>
+                pick.matchup_id === matchup.matchup_id &&
+                pick.selection_fighter_id === matchup.fighter2_id
+            );
 
             return (
               <Card
                 key={matchup.matchup_id}
                 className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
-                onClick={(e) => {
-                  if (
-                    (e.target as HTMLElement).closest("button") ||
-                    (e.target as HTMLElement).closest("a")
-                  ) {
-                    return;
-                  }
-                  setSelectedMatchup(matchup);
-                }}
               >
                 <CardContent className="p-2 sm:p-4">
                   <div className="flex justify-between items-start sm:items-center gap-1 sm:gap-2">
@@ -131,38 +144,31 @@ export function MatchupList({
                         </Link>
                       </div>
                       {isEventInFuture(eventDate) && (
-                        <>
-                          <div className="mt-1">
-                            <ProbabilityBar probability={fighter1Prob} />
-                            <p className="text-xs text-gray-400 mt-1">
-                              {(fighter1Prob * 100).toFixed(1)}%
-                            </p>
-                          </div>
-                          <Button
-                            variant={
-                              userVote === matchup.fighter1_name
-                                ? "default"
-                                : "outline"
-                            }
-                            size="sm"
-                            className={cn(
-                              "mt-2 w-full text-xs sm:text-sm transition-all duration-200 transform active:scale-95",
-                              userVote === matchup.fighter1_name
-                                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
-                                : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
-                            )}
-                            onClick={() =>
-                              handleVote(
-                                matchup.matchup_id,
-                                matchup.fighter1_name
+                        <MatchupPick
+                          matchupId={matchup.matchup_id}
+                          eventId={eventId}
+                          fighterName={matchup.fighter1_name}
+                          fighterId={matchup.fighter1_id}
+                          probability={
+                            matchup.prediction?.fighter1_win_probability
+                          }
+                          isSelected={!!fighter1Pick}
+                          onPickSubmitted={() => {
+                            if (user?.id) {
+                              PicksService.getPicksForUserAndEvent(
+                                parseInt(user.id),
+                                eventId
                               )
+                                .then((picks) => setUserPicks(picks))
+                                .catch((error) =>
+                                  console.error(
+                                    "Error refreshing picks:",
+                                    error
+                                  )
+                                );
                             }
-                          >
-                            {userVote === matchup.fighter1_name
-                              ? "My Pick ✓"
-                              : "Pick to Win"}
-                          </Button>
-                        </>
+                          }}
+                        />
                       )}
                     </div>
 
@@ -200,38 +206,31 @@ export function MatchupList({
                         </Avatar>
                       </div>
                       {isEventInFuture(eventDate) && (
-                        <>
-                          <div className="mt-1">
-                            <ProbabilityBar probability={fighter2Prob} />
-                            <p className="text-xs text-gray-400 mt-1">
-                              {(fighter2Prob * 100).toFixed(1)}%
-                            </p>
-                          </div>
-                          <Button
-                            variant={
-                              userVote === matchup.fighter2_name
-                                ? "default"
-                                : "outline"
-                            }
-                            size="sm"
-                            className={cn(
-                              "mt-2 w-full text-xs sm:text-sm transition-all duration-200 transform active:scale-95",
-                              userVote === matchup.fighter2_name
-                                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
-                                : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
-                            )}
-                            onClick={() =>
-                              handleVote(
-                                matchup.matchup_id,
-                                matchup.fighter2_name
+                        <MatchupPick
+                          matchupId={matchup.matchup_id}
+                          eventId={eventId}
+                          fighterName={matchup.fighter2_name}
+                          fighterId={matchup.fighter2_id}
+                          probability={
+                            matchup.prediction?.fighter2_win_probability
+                          }
+                          isSelected={!!fighter2Pick}
+                          onPickSubmitted={() => {
+                            if (user?.id) {
+                              PicksService.getPicksForUserAndEvent(
+                                parseInt(user.id),
+                                eventId
                               )
+                                .then((picks) => setUserPicks(picks))
+                                .catch((error) =>
+                                  console.error(
+                                    "Error refreshing picks:",
+                                    error
+                                  )
+                                );
                             }
-                          >
-                            {userVote === matchup.fighter2_name
-                              ? "My Pick ✓"
-                              : "Pick to Win"}
-                          </Button>
-                        </>
+                          }}
+                        />
                       )}
                     </div>
                   </div>
