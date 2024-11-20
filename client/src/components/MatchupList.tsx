@@ -29,16 +29,27 @@ function FighterStats({
   record,
   age,
   stance,
+  rank,
+  weightClass,
 }: {
   record?: string;
   age?: number;
   stance?: string;
+  rank?: number;
+  weightClass?: string;
 }) {
   return (
-    <div className="flex gap-2 justify-center text-xs text-gray-400">
-      {record && <span>{record}</span>}
-      {age && <span>• {age} years</span>}
-      {stance && <span>• {stance}</span>}
+    <div className="flex flex-col items-center sm:items-start">
+      <div className="flex gap-2 justify-center text-xs text-gray-400">
+        {record && <span>{record}</span>}
+        {age && <span>• {age} years</span>}
+        {stance && <span>• {stance}</span>}
+      </div>
+      {rank !== undefined && weightClass && (
+        <div className="text-xs text-blue-400 mt-1">
+          {rank === 0 ? "Champion" : `#${rank} ${weightClass}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -170,6 +181,8 @@ export function MatchupList({
                             record={matchup.fighter1_record}
                             age={matchup.fighter1_age}
                             stance={matchup.fighter1_stance}
+                            rank={matchup.fighter1_rank}
+                            weightClass={matchup.weight_class}
                           />
                         </div>
                       </div>
@@ -223,6 +236,8 @@ export function MatchupList({
                             record={matchup.fighter2_record}
                             age={matchup.fighter2_age}
                             stance={matchup.fighter2_stance}
+                            rank={matchup.fighter2_rank}
+                            weightClass={matchup.weight_class}
                           />
                         </div>
                         <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0 order-1 sm:order-2">

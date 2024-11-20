@@ -35,6 +35,9 @@ export interface Matchup {
   fighter2_country?: string;
   fighter1_recent_fights?: Fight[];
   fighter2_recent_fights?: Fight[];
+  fighter1_rank?: number;
+  fighter2_rank?: number;
+  weight_class?: string;
   prediction?: {
     fighter1_win_probability: number;
     fighter2_win_probability: number;
