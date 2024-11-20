@@ -122,8 +122,8 @@ export default function AppSidebar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton className="w-full px-2">
-                    <div className="flex items-center gap-3 w-full">
-                      <Avatar className="h-8 w-8 border border-gray-800">
+                    <div className="flex items-center gap-3 w-full py-1.5">
+                      <Avatar className="h-8 w-8 border border-gray-800 shrink-0">
                         <AvatarImage
                           src={user?.profilePicture}
                           alt={user?.username || "User avatar"}
@@ -132,15 +132,15 @@ export default function AppSidebar() {
                           {user?.username?.[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-medium text-gray-100 truncate">
+                      <div className="flex-1 overflow-hidden space-y-0.5">
+                        <p className="text-sm font-medium text-gray-100 truncate leading-tight">
                           {user?.username}
                         </p>
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-gray-400 truncate leading-tight">
                           {user?.email}
                         </p>
                       </div>
-                      <ChevronUp className="h-4 w-4 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <ChevronUp className="h-4 w-4 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180 shrink-0" />
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

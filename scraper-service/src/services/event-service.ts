@@ -19,6 +19,10 @@ export class EventService {
       // For future events, delete existing event and its matchups first
       if (eventDate > new Date()) {
         await client.query(
+          'DELETE FROM matchups WHERE event_id = $1',
+          [eventId]
+        );
+        await client.query(
           'DELETE FROM events WHERE event_id = $1',
           [eventId]
         );
