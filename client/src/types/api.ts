@@ -79,6 +79,8 @@ export interface Fighter {
   country: string;
   reach: string;
   image_url?: string;
+  weight_class?: string;
+  current_promotion_rank?: number;
 }
 
 // export interface FighterAnalytics {

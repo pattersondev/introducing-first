@@ -584,7 +584,7 @@ export class FighterService {
 
       return {
         ...fighter,
-        fights: fightsResult.rows,
+        fights: fightsResult?.rows || []
       };
     } finally {
       client.release();
@@ -705,6 +705,32 @@ export class FighterService {
     } catch (e) {
       await client.query('ROLLBACK');
       throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getPromotionRankings() {
+    const client = await this.pool.connect();
+    try {
+      const result = await client.query(`
+        SELECT 
+          fighter_id,
+          first_name,
+          last_name,
+          nickname,
+          image_url,
+          current_promotion_rank,
+          weight_class
+        FROM fighters 
+        WHERE current_promotion_rank IS NOT NULL 
+          AND weight_class IS NOT NULL
+        ORDER BY 
+          weight_class,
+          COALESCE(current_promotion_rank, 999)
+      `);
+
+      return result.rows;
     } finally {
       client.release();
     }

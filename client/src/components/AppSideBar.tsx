@@ -75,6 +75,7 @@ export default function AppSidebar() {
     { title: "Home", icon: Home, path: "/" },
     { title: "Events", icon: CalendarDays, path: "/event-search" },
     { title: "Fighters", icon: Users, path: "/fighter-search" },
+    { title: "Standings", icon: Trophy, path: "/standings" },
     { title: "Rankings", icon: BarChart2, path: "/rankings" },
     { title: "Leaderboard", icon: Trophy, path: "/leaderboard" },
   ];
