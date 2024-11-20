@@ -112,7 +112,10 @@ export function MatchupPick({
       </div>
 
       <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-950 border border-gray-800">
+        <DialogContent
+          className="sm:max-w-[425px] bg-gray-950 border border-gray-800"
+          onClick={(e) => e.stopPropagation()}
+        >
           <DialogHeader className="space-y-4">
             <div className="mx-auto bg-blue-500/10 rounded-full p-3 w-fit">
               <Trophy className="w-8 h-8 text-blue-400" />
