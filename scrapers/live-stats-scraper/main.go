@@ -9,15 +9,23 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
 )
 
+// 12967296
+// 12948654
+// 12967105
+// 13114222
+
+// REAL IDS ^^
+
 const (
 	baseURL      = "https://www.sofascore.com/api/v1"
 	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-	startEventID = 12900000
+	startEventID = 12965000
 	batchSize    = 100
 )
 
@@ -54,7 +62,7 @@ type PlayerTeamInfo struct {
 }
 
 type MatchData struct {
-	EventID     int64  `json:"event_id"`
+	LiveID      int64  `json:"live_id"`
 	EventName   string `json:"event_name"`
 	Location    string `json:"location"`
 	Fighter1    string `json:"fighter1"`
@@ -143,19 +151,25 @@ func main() {
 	client := initializeClient()
 
 	eventsChan := make(chan int, batchSize)
-	resultsChan := make(chan *APIResponse)
-	matchesChan := make(chan MatchData)
+	resultsChan := make(chan *APIResponse, batchSize)
+	matchesChan := make(chan MatchData, batchSize)
 
 	// Add progress tracking
 	processedCount := 0
-	totalEvents := 100000 // Total events to process
+	totalEvents := 5000 // Total events to process
 	startTime := time.Now()
 
 	// Start worker goroutines
 	numWorkers := 5
+	var wg sync.WaitGroup
 	fmt.Printf("Starting %d workers to process %d events...\n", numWorkers, totalEvents)
+
 	for i := 0; i < numWorkers; i++ {
-		go worker(client, eventsChan, resultsChan)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			worker(client, eventsChan, resultsChan)
+		}()
 	}
 
 	// Start producer goroutine
@@ -165,6 +179,12 @@ func main() {
 		}
 		close(eventsChan)
 		fmt.Println("All events queued for processing")
+	}()
+
+	// Start a goroutine to close resultsChan after all workers are done
+	go func() {
+		wg.Wait()
+		close(resultsChan)
 	}()
 
 	// Start processor goroutine with progress tracking
@@ -198,7 +218,7 @@ func main() {
 		close(matchesChan)
 	}()
 
-	// Collect matches with counter
+	// Collect matches
 	matches := []MatchData{}
 	matchCount := 0
 	for match := range matchesChan {
@@ -276,7 +296,7 @@ func isUFCEvent(event *EventDetails) bool {
 
 func processUFCEvent(event *EventDetails) *MatchData {
 	match := &MatchData{
-		EventID:     event.ID,
+		LiveID:      event.ID,
 		EventName:   event.Tournament.Name,
 		Location:    event.Tournament.Location,
 		Fighter1:    event.HomeTeam.Name,

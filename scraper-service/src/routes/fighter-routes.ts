@@ -17,6 +17,14 @@ interface DBFight {
   is_title_fight: boolean;
 }
 
+interface RankingData {
+  weightClass: string;
+  rankings: {
+    name: string;
+    position: number;
+  }[];
+}
+
 export function setupFighterRoutes(fighterService: FighterService) {
   const router = Router();
 
@@ -116,6 +124,36 @@ export function setupFighterRoutes(fighterService: FighterService) {
     } catch (error) {
       console.error('Error fetching fighter:', error);
       res.status(500).json({ error: 'Error fetching fighter details' });
+    }
+  });
+
+  router.post('/rankings', async (req: Request, res: Response) => {
+    try {
+      const rankings = req.body as RankingData[];
+      
+      if (!Array.isArray(rankings)) {
+        throw new Error('Rankings data must be an array');
+      }
+
+      // Validate the rankings data
+      rankings.forEach((weightClass, index) => {
+        if (!weightClass.weightClass || !Array.isArray(weightClass.rankings)) {
+          throw new Error(`Invalid rankings data at index ${index}`);
+        }
+      });
+
+      await fighterService.updateFighterRankings(rankings);
+
+      res.json({ 
+        message: 'Rankings updated successfully',
+        updatedWeightClasses: rankings.length
+      });
+    } catch (error) {
+      console.error('Error updating rankings:', error);
+      res.status(500).json({ 
+        error: 'Error updating rankings',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
