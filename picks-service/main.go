@@ -15,18 +15,45 @@ import (
 	_ "github.com/lib/pq"
 )
 
+func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		// Allow specific origins
+		allowedOrigins := map[string]bool{
+			"http://localhost:3000":                true,
+			"https://antiballsniffer.club":         true,
+			"https://www.antiballsniffer.club":     true,
+			"https://introducing-first.vercel.app": true,
+		}
+
+		if allowedOrigins[origin] {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, Cookie, X-Requested-With")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Vary", "Origin")
+		}
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		handler(w, r)
+	}
+}
+
 func main() {
 	_ = godotenv.Load()
 
 	db.StartUsersDbConnection()
 
-	//fmt.Printf(test("hi"))
-
 	http.HandleFunc("/", handleRoot)
-	http.HandleFunc("/insertPick", insertPickHandler)
-	http.HandleFunc("/getPicksForEvent", getPicksForEventHandler)
-	http.HandleFunc("/getPicksForUserAndEvent", getPicksForUserAndEventHandler)
-	http.HandleFunc("/getPicksForMatchup", getPicksForMatchupHandler)
+	http.HandleFunc("/insertPick", enableCORS(insertPickHandler))
+	http.HandleFunc("/api/v1/getPicksForEvent", enableCORS(getPicksForEventHandler))
+	http.HandleFunc("/api/v1/getPicksForUserAndEvent", enableCORS(getPicksForUserAndEventHandler))
+	http.HandleFunc("/api/v1/getPicksForMatchup", enableCORS(getPicksForMatchupHandler))
 
 	port := getEnvWithFallback("PORT", "8080")
 	fmt.Printf("Server starting on :%s\n", port)
@@ -126,7 +153,6 @@ func insertPickHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//receive username and password and do basic length check
 	userId := r.FormValue("userId")
 	matchupId := r.FormValue("matchupId")
 	eventId := r.FormValue("eventId")
