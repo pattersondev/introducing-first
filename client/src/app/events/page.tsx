@@ -25,6 +25,7 @@ export default function EventsPage() {
           <MatchupList
             matchups={selectedEvent.matchups}
             eventDate={selectedEvent.date}
+            eventId={selectedEvent.event_id}
           />
         </div>
       )}
