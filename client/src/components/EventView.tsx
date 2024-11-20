@@ -89,6 +89,7 @@ export function EventView({ eventId }: EventViewProps) {
                 )}
               </div>
               <MatchupList
+                eventId={event.event_id}
                 matchups={event.matchups}
                 eventDate={event.date}
                 isLoading={loading}
