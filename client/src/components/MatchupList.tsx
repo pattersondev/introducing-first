@@ -111,6 +111,11 @@ export function MatchupList({
               <Card
                 key={matchup.matchup_id}
                 className="bg-gray-800 border-gray-700 cursor-pointer hover:bg-gray-750 transition-colors"
+                onClick={(e) => {
+                  if (!(e.target as HTMLElement).closest("button, a")) {
+                    setSelectedMatchup(matchup);
+                  }
+                }}
               >
                 <CardContent className="p-2 sm:p-4">
                   <div className="flex justify-between items-start sm:items-center gap-1 sm:gap-2">

@@ -75,6 +75,11 @@ export function MatchupPick({
     handlePick();
   };
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Stop the event from bubbling up to the card
+    handlePick();
+  };
+
   return (
     <>
       <div className={className}>
@@ -96,7 +101,7 @@ export function MatchupPick({
               ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border-blue-500/50"
               : "border-gray-700 hover:border-gray-600 hover:bg-gray-700/50"
           )}
-          onClick={handlePick}
+          onClick={handleClick}
         >
           {isSubmitting
             ? "Submitting..."
