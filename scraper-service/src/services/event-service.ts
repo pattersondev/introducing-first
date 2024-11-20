@@ -9,9 +9,22 @@ export class EventService {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      
+      // Add one day to the event date to correct timezone offset
+      const eventDate = new Date(event.Date);
+      eventDate.setDate(eventDate.getDate() + 1);
+      
       const eventId = generateId(event.Name, event.Date);
       
-      // Update or insert event
+      // For future events, delete existing event and its matchups first
+      if (eventDate > new Date()) {
+        await client.query(
+          'DELETE FROM events WHERE event_id = $1',
+          [eventId]
+        );
+      }
+      
+      // Update or insert event with corrected date
       await client.query(
         `INSERT INTO events (event_id, name, date, location) 
          VALUES ($1, $2, $3, $4)
@@ -20,15 +33,18 @@ export class EventService {
            name = EXCLUDED.name,
            date = EXCLUDED.date,
            location = EXCLUDED.location`,
-        [eventId, event.Name, event.Date, event.Location]
+        [eventId, event.Name, eventDate.toISOString(), event.Location]
       );
 
-      // Get existing matchups for this event
-      const existingMatchups = await client.query(
-        'SELECT matchup_id FROM matchups WHERE event_id = $1',
-        [eventId]
-      );
-      const existingMatchupIds = new Set(existingMatchups.rows.map(row => row.matchup_id));
+      // For past events, get existing matchups
+      let existingMatchupIds = new Set<string>();
+      if (eventDate <= new Date()) {
+        const existingMatchups = await client.query(
+          'SELECT matchup_id FROM matchups WHERE event_id = $1',
+          [eventId]
+        );
+        existingMatchupIds = new Set(existingMatchups.rows.map(row => row.matchup_id));
+      }
 
       // Process new/updated matchups
       const processedMatchupIds = new Set<string>();
@@ -72,7 +88,7 @@ export class EventService {
       const matchupsToRemove = Array.from(existingMatchupIds)
         .filter(id => !processedMatchupIds.has(id));
       
-      if (matchupsToRemove.length > 0) {
+      if (eventDate <= new Date() && matchupsToRemove.length > 0) {
         await client.query(
           'DELETE FROM matchups WHERE matchup_id = ANY($1)',
           [matchupsToRemove]
@@ -83,7 +99,6 @@ export class EventService {
       await this.linkFightersToMatchups(client);
 
       // Generate predictions for future events
-      const eventDate = new Date(event.Date);
       if (eventDate > new Date()) {
         // Get all matchups that have both fighters linked
         const matchupsForPrediction = await client.query(`

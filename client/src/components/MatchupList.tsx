@@ -96,12 +96,12 @@ export function MatchupList({
       <div className="pb-6">
         <div className="space-y-4 px-2 sm:px-6">
           {sortedMatchups.map((matchup) => {
-            const fighter1Pick = userPicks.find(
+            const fighter1Pick = userPicks?.find(
               (pick) =>
                 pick.matchup_id === matchup.matchup_id &&
                 pick.selection_fighter_id === matchup.fighter1_id
             );
-            const fighter2Pick = userPicks.find(
+            const fighter2Pick = userPicks?.find(
               (pick) =>
                 pick.matchup_id === matchup.matchup_id &&
                 pick.selection_fighter_id === matchup.fighter2_id
