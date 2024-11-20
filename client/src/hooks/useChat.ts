@@ -49,7 +49,11 @@ export function useChat(matchupId: string) {
     loadMessages();
 
     const handleNewMessage = (message: any) => {
-      setMessages(prev => [...prev, message]);
+      setMessages(prev => {
+        const messageExists = prev.some(m => m._id === message._id);
+        if (messageExists) return prev;
+        return [...prev, message];
+      });
     };
 
     const handleError = (errorMessage: string) => {
