@@ -100,6 +100,16 @@ export function setupFighterRoutes(fighterService: FighterService) {
     }
   });
 
+  router.get('/promotion-rankings', async (_req: Request, res: Response) => {
+    try {
+      const rankedFighters = await fighterService.getPromotionRankings();
+      res.json(rankedFighters);
+    } catch (error) {
+      console.error('Error fetching rankings:', error);
+      res.status(500).json({ error: 'Error fetching rankings' });
+    }
+  });
+
   router.get('/:id', async (req: Request, res: Response) => {
     try {
       const fighter = await fighterService.getFighterById(req.params.id);
@@ -156,6 +166,5 @@ export function setupFighterRoutes(fighterService: FighterService) {
       });
     }
   });
-
   return router;
 } 

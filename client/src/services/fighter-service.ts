@@ -35,5 +35,9 @@ export const FighterService = {
     return apiClient<void>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}/track`, {
       method: 'POST'
     });
+  },
+
+  async getFightersByRank(): Promise<ApiResponse<Fighter[]>> {
+    return apiClient<Fighter[]>(`${API_ENDPOINTS.FIGHTERS}/promotion-rankings`);
   }
 }; 
