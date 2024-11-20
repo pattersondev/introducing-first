@@ -132,13 +132,19 @@ export function MatchupChat({ matchups }: MatchupChatProps) {
                             isOwnMessage ? "flex-row-reverse" : "flex-row"
                           }`}
                         >
-                          {message.user_avatar && (
-                            <img
-                              src={message.user_avatar}
-                              alt={message.user_name}
-                              className="w-6 h-6 rounded-full flex-shrink-0"
-                            />
-                          )}
+                          <div className="h-6 w-6 rounded-full overflow-hidden flex-shrink-0 bg-gray-800">
+                            {message.user_avatar ? (
+                              <img
+                                src={message.user_avatar}
+                                alt={message.user_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                                {message.user_name?.[0]?.toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                           <span className="text-sm text-gray-400 truncate">
                             {isOwnMessage ? "You" : message.user_name}
                           </span>
