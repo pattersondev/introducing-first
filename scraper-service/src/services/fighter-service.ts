@@ -721,7 +721,10 @@ export class FighterService {
           nickname,
           image_url,
           current_promotion_rank,
-          weight_class
+          weight_class,
+          win_loss_record,
+          tko_record,
+          sub_record
         FROM fighters 
         WHERE current_promotion_rank IS NOT NULL 
           AND weight_class IS NOT NULL
