@@ -24,13 +24,13 @@ export interface Matchup {
   winner: string;
   display_order: number;
   fighter1_record?: string;
-  fighter1_reach?: string;
-  fighter1_stance?: string;
   fighter1_age?: number;
+  fighter1_stance?: string;
+  fighter1_reach?: string;
   fighter2_record?: string;
-  fighter2_reach?: string;
-  fighter2_stance?: string;
   fighter2_age?: number;
+  fighter2_stance?: string;
+  fighter2_reach?: string;
   fighter1_country?: string;
   fighter2_country?: string;
   fighter1_recent_fights?: Fight[];

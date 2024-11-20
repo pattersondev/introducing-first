@@ -25,6 +25,24 @@ interface MatchupListProps {
   isLoading?: boolean;
 }
 
+function FighterStats({
+  record,
+  age,
+  stance,
+}: {
+  record?: string;
+  age?: number;
+  stance?: string;
+}) {
+  return (
+    <div className="flex gap-2 justify-center text-xs text-gray-400">
+      {record && <span>{record}</span>}
+      {age && <span>• {age} years</span>}
+      {stance && <span>• {stance}</span>}
+    </div>
+  );
+}
+
 function ResultDisplay({ result }: { result: string }) {
   const parsedResult = parseResult(result);
   const IconComponent = parsedResult.method
@@ -137,16 +155,23 @@ export function MatchupList({
                             </AvatarFallback>
                           )}
                         </Avatar>
-                        <Link
-                          href={`/fighters/${matchup.fighter1_id}`}
-                          className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-left ${
-                            matchup.winner === matchup.fighter1_name
-                              ? "text-green-400"
-                              : "text-white"
-                          }`}
-                        >
-                          {matchup.fighter1_name}
-                        </Link>
+                        <div className="flex flex-col items-center sm:items-start">
+                          <Link
+                            href={`/fighters/${matchup.fighter1_id}`}
+                            className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-left ${
+                              matchup.winner === matchup.fighter1_name
+                                ? "text-green-400"
+                                : "text-white"
+                            }`}
+                          >
+                            {matchup.fighter1_name}
+                          </Link>
+                          <FighterStats
+                            record={matchup.fighter1_record}
+                            age={matchup.fighter1_age}
+                            stance={matchup.fighter1_stance}
+                          />
+                        </div>
                       </div>
                       {isEventInFuture(eventDate) && (
                         <MatchupPick
@@ -183,16 +208,23 @@ export function MatchupList({
 
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row items-center justify-end gap-1 sm:gap-2">
-                        <Link
-                          href={`/fighters/${matchup.fighter2_id}`}
-                          className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-right order-2 sm:order-1 ${
-                            matchup.winner === matchup.fighter2_name
-                              ? "text-green-400"
-                              : "text-white"
-                          }`}
-                        >
-                          {matchup.fighter2_name}
-                        </Link>
+                        <div className="flex flex-col items-center sm:items-end order-2 sm:order-1">
+                          <Link
+                            href={`/fighters/${matchup.fighter2_id}`}
+                            className={`font-semibold hover:text-blue-400 text-sm sm:text-base text-center sm:text-right ${
+                              matchup.winner === matchup.fighter2_name
+                                ? "text-green-400"
+                                : "text-white"
+                            }`}
+                          >
+                            {matchup.fighter2_name}
+                          </Link>
+                          <FighterStats
+                            record={matchup.fighter2_record}
+                            age={matchup.fighter2_age}
+                            stance={matchup.fighter2_stance}
+                          />
+                        </div>
                         <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0 order-1 sm:order-2">
                           {matchup.fighter2_image ? (
                             <AvatarImage

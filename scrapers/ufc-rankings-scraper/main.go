@@ -65,8 +65,11 @@ type RankingResponse struct {
 }
 
 type WeightClassRanking struct {
-	WeightClass string    `json:"weightClass"`
-	Rankings    []Fighter `json:"rankings"`
+	WeightClass string `json:"weightClass"`
+	Rankings    []struct {
+		Name     string `json:"name"`
+		Position int    `json:"position"`
+	} `json:"rankings"`
 }
 
 func initializeClient() *http.Client {
@@ -146,7 +149,7 @@ func fetchRankings(client *http.Client, weightClassID int) (*RankingResponse, er
 }
 
 func sendRankingsToAPI(rankings []WeightClassRanking) error {
-	url := "https://introducing-first.onrender.com/api/rankings"
+	url := "https://introducing-first.onrender.com/api/fighters/rankings"
 	jsonData, err := json.Marshal(rankings)
 	if err != nil {
 		return fmt.Errorf("error marshaling rankings: %v", err)
@@ -156,7 +159,6 @@ func sendRankingsToAPI(rankings []WeightClassRanking) error {
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
-
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -192,14 +194,25 @@ func main() {
 				return
 			}
 
-			var fighters []Fighter
+			// Create properly formatted rankings data
+			var formattedRankings []struct {
+				Name     string `json:"name"`
+				Position int    `json:"position"`
+			}
+
 			for _, row := range rankings.RankingRows {
-				fighters = append(fighters, row.Team)
+				formattedRankings = append(formattedRankings, struct {
+					Name     string `json:"name"`
+					Position int    `json:"position"`
+				}{
+					Name:     row.Name, // This contains "LastName, FirstName"
+					Position: row.Position,
+				})
 			}
 
 			weightClassRanking := WeightClassRanking{
 				WeightClass: rankings.RankingType.Name,
-				Rankings:    fighters,
+				Rankings:    formattedRankings,
 			}
 
 			mu.Lock()
