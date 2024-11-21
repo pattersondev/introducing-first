@@ -673,14 +673,24 @@ export class FighterService {
     try {
       await client.query('BEGIN');
 
-      // First, reset all rankings to null
-      await client.query(`
-        UPDATE fighters 
-        SET current_promotion_rank = NULL
-      `);
+      // Get current timestamp for this update batch
+      const timestamp = new Date();
 
       // Process each weight class
       for (const weightClass of rankings) {
+        // Get weight class ID
+        const weightClassResult = await client.query(
+          `SELECT weight_class_id FROM weight_classes WHERE name = $1`,
+          [weightClass.weightClass]
+        );
+        
+        if (weightClassResult.rows.length === 0) {
+          console.warn(`Weight class not found: ${weightClass.weightClass}`);
+          continue;
+        }
+        
+        const weightClassId = weightClassResult.rows[0].weight_class_id;
+
         for (const rank of weightClass.rankings) {
           // Split the name into first and last name
           const nameParts = rank.name.split(', ');
@@ -689,15 +699,26 @@ export class FighterService {
           const lastName = nameParts[0];
           const firstName = nameParts[1];
 
-          // Update the fighter's rank and weight class
-          await client.query(`
-            UPDATE fighters 
-            SET 
-              current_promotion_rank = $1,
-              weight_class = $2
-            WHERE LOWER(first_name) = LOWER($3) 
-            AND LOWER(last_name) = LOWER($4)
-          `, [rank.position, weightClass.weightClass, firstName, lastName]);
+          // Find fighter ID
+          const fighterResult = await client.query(
+            `SELECT fighter_id 
+             FROM fighters 
+             WHERE LOWER(first_name) = LOWER($1) 
+             AND LOWER(last_name) = LOWER($2)`,
+            [firstName, lastName]
+          );
+
+          if (fighterResult.rows.length > 0) {
+            const fighterId = fighterResult.rows[0].fighter_id;
+            
+            // Insert new ranking
+            await client.query(
+              `INSERT INTO promotion_rankings 
+               (fighter_id, weight_class_id, rank, last_updated)
+               VALUES ($1, $2, $3, $4)`,
+              [fighterId, weightClassId, rank.position, timestamp]
+            );
+          }
         }
       }
 

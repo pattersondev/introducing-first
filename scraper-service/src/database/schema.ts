@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS fighters (
     sub_record VARCHAR(255),
     country VARCHAR(255),
     reach VARCHAR(255),
-    image_url VARCHAR(255)
+    image_url VARCHAR(255),
+    current_promotion_rank INT,
+    weight_class VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS fights (
@@ -213,4 +215,19 @@ CREATE INDEX IF NOT EXISTS idx_community_rankings_weight_class ON community_rank
 CREATE INDEX IF NOT EXISTS idx_fight_predictions_matchup ON fight_predictions(matchup_id);
 CREATE INDEX IF NOT EXISTS idx_fight_predictions_created_at ON fight_predictions(created_at);
 CREATE INDEX IF NOT EXISTS idx_fighter_attributes_fighter ON fighter_attributes(fighter_id);
+
+-- Add this new table after the existing tables
+CREATE TABLE IF NOT EXISTS promotion_rankings (
+    ranking_id SERIAL PRIMARY KEY,
+    fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
+    weight_class_id INT REFERENCES weight_classes(weight_class_id),
+    rank INT NOT NULL,
+    previous_rank INT,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(fighter_id, weight_class_id, last_updated)
+);
+
+-- Add index for performance
+CREATE INDEX IF NOT EXISTS idx_promotion_rankings_weight_class ON promotion_rankings(weight_class_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_rankings_fighter ON promotion_rankings(fighter_id);
 `; 
