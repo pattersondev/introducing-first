@@ -40,6 +40,10 @@ export interface Matchup {
 export interface DetailedMatchup extends Matchup {
   fighter1_stats?: FighterStats;
   fighter2_stats?: FighterStats;
+  fighter1_country?: string;
+  fighter2_country?: string;
+  fighter1_recent_fights?: RecentFight[];
+  fighter2_recent_fights?: RecentFight[];
 }
 
 export interface FighterStats {
@@ -70,6 +74,7 @@ export interface Fighter {
   image_url?: string;
   weight_class?: string;
   current_promotion_rank?: number;
+  
 }
 
 // export interface FighterAnalytics {
