@@ -29,27 +29,16 @@ function FighterStats({
   record,
   age,
   stance,
-  rank,
-  weightClass,
 }: {
   record?: string;
   age?: number;
   stance?: string;
-  rank?: number;
-  weightClass?: string;
 }) {
   return (
-    <div className="flex flex-col items-center sm:items-start">
-      <div className="flex gap-2 justify-center text-xs text-gray-400">
-        {record && <span>{record}</span>}
-        {age && <span>• {age} years</span>}
-        {stance && <span>• {stance}</span>}
-      </div>
-      {rank !== undefined && weightClass && (
-        <div className="text-xs text-blue-400 mt-1">
-          {rank === 0 ? "Champion" : `#${rank} ${weightClass}`}
-        </div>
-      )}
+    <div className="flex gap-2 justify-center text-xs text-gray-400">
+      {record && <span>{record}</span>}
+      {age && <span>• {age} years</span>}
+      {stance && <span>• {stance}</span>}
     </div>
   );
 }
@@ -150,22 +139,39 @@ export function MatchupList({
                   <div className="flex justify-between items-start sm:items-center gap-1 sm:gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-                        <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0">
-                          {matchup.fighter1_image ? (
-                            <AvatarImage
-                              src={matchup.fighter1_image}
-                              alt={matchup.fighter1_name}
-                              className="object-cover object-center"
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
-                              {matchup.fighter1_name
-                                ?.split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0">
+                            {matchup.fighter1_image ? (
+                              <AvatarImage
+                                src={matchup.fighter1_image}
+                                alt={matchup.fighter1_name}
+                                className="object-cover object-center"
+                              />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
+                                {matchup.fighter1_name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          {typeof matchup.fighter1_rank === "number" && (
+                            <div
+                              className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-full text-xs font-medium ${
+                                matchup.fighter1_rank === 0
+                                  ? "text-yellow-400"
+                                  : matchup.fighter1_rank <= 5
+                                  ? "text-red-400"
+                                  : "text-cyan-400"
+                              }`}
+                            >
+                              {matchup.fighter1_rank === 0
+                                ? "C"
+                                : `#${matchup.fighter1_rank}`}
+                            </div>
                           )}
-                        </Avatar>
+                        </div>
                         <div className="flex flex-col items-center sm:items-start">
                           <Link
                             href={`/fighters/${matchup.fighter1_id}`}
@@ -181,8 +187,6 @@ export function MatchupList({
                             record={matchup.fighter1_record}
                             age={matchup.fighter1_age}
                             stance={matchup.fighter1_stance}
-                            rank={matchup.fighter1_rank}
-                            weightClass={matchup.weight_class}
                           />
                         </div>
                       </div>
@@ -236,26 +240,41 @@ export function MatchupList({
                             record={matchup.fighter2_record}
                             age={matchup.fighter2_age}
                             stance={matchup.fighter2_stance}
-                            rank={matchup.fighter2_rank}
-                            weightClass={matchup.weight_class}
                           />
                         </div>
-                        <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0 order-1 sm:order-2">
-                          {matchup.fighter2_image ? (
-                            <AvatarImage
-                              src={matchup.fighter2_image}
-                              alt={matchup.fighter2_name}
-                              className="object-cover object-center"
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
-                              {matchup.fighter2_name
-                                ?.split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
+                        <div className="relative order-1 sm:order-2">
+                          <Avatar className="h-12 w-12 sm:h-16 sm:w-16 border-2 border-gray-700 shrink-0">
+                            {matchup.fighter2_image ? (
+                              <AvatarImage
+                                src={matchup.fighter2_image}
+                                alt={matchup.fighter2_name}
+                                className="object-cover object-center"
+                              />
+                            ) : (
+                              <AvatarFallback className="bg-gray-800 text-xs sm:text-base">
+                                {matchup.fighter2_name
+                                  ?.split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          {typeof matchup.fighter2_rank === "number" && (
+                            <div
+                              className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-full text-xs font-medium ${
+                                matchup.fighter2_rank === 0
+                                  ? "text-yellow-400"
+                                  : matchup.fighter2_rank <= 5
+                                  ? "text-red-400"
+                                  : "text-cyan-400"
+                              }`}
+                            >
+                              {matchup.fighter2_rank === 0
+                                ? "C"
+                                : `#${matchup.fighter2_rank}`}
+                            </div>
                           )}
-                        </Avatar>
+                        </div>
                       </div>
                       {isEventInFuture(eventDate) && (
                         <MatchupPick

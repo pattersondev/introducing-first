@@ -20,40 +20,30 @@ export interface Matchup {
   fighter2_name: string;
   fighter1_image?: string;
   fighter2_image?: string;
-  result: string;
-  winner: string;
-  display_order: number;
   fighter1_record?: string;
-  fighter1_age?: number;
-  fighter1_stance?: string;
-  fighter1_reach?: string;
   fighter2_record?: string;
+  fighter1_age?: number;
   fighter2_age?: number;
+  fighter1_stance?: string;
   fighter2_stance?: string;
+  fighter1_reach?: string;
   fighter2_reach?: string;
-  fighter1_country?: string;
-  fighter2_country?: string;
-  fighter1_recent_fights?: Fight[];
-  fighter2_recent_fights?: Fight[];
-  fighter1_rank?: number;
-  fighter2_rank?: number;
+  fighter1_rank?: number | null;
+  fighter2_rank?: number | null;
   weight_class?: string;
-  prediction?: {
-    fighter1_win_probability: number;
-    fighter2_win_probability: number;
-    fighter1_ko_tko_probability: number;
-    fighter1_submission_probability: number;
-    fighter1_decision_probability: number;
-    fighter2_ko_tko_probability: number;
-    fighter2_submission_probability: number;
-    fighter2_decision_probability: number;
-    confidence_score: number;
-  };
+  result?: string;
+  winner?: string;
+  display_order: number;
+  prediction?: MatchupPrediction;
 }
 
 export interface DetailedMatchup extends Matchup {
   fighter1_stats?: FighterStats;
   fighter2_stats?: FighterStats;
+  fighter1_country?: string;
+  fighter2_country?: string;
+  fighter1_recent_fights?: RecentFight[];
+  fighter2_recent_fights?: RecentFight[];
 }
 
 export interface FighterStats {
@@ -84,6 +74,7 @@ export interface Fighter {
   image_url?: string;
   weight_class?: string;
   current_promotion_rank?: number;
+  
 }
 
 // export interface FighterAnalytics {
@@ -167,4 +158,17 @@ export interface Pick {
   pick_result: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface MatchupPrediction {
+  matchup_id: string;
+  fighter1_win_probability: number;
+  fighter2_win_probability: number;
+  fighter1_ko_tko_probability: number;
+  fighter1_submission_probability: number;
+  fighter1_decision_probability: number;
+  fighter2_ko_tko_probability: number;
+  fighter2_submission_probability: number;
+  fighter2_decision_probability: number;
+  confidence_score: number;
 }
