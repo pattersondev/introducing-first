@@ -217,15 +217,37 @@ CREATE INDEX IF NOT EXISTS idx_fight_predictions_created_at ON fight_predictions
 CREATE INDEX IF NOT EXISTS idx_fighter_attributes_fighter ON fighter_attributes(fighter_id);
 
 -- Add this new table after the existing tables
+CREATE TABLE IF NOT EXISTS promotion_weight_classes (
+    weight_class_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    display_order INT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS promotion_rankings (
     ranking_id SERIAL PRIMARY KEY,
     fighter_id VARCHAR(32) REFERENCES fighters(fighter_id),
-    weight_class_id INT REFERENCES weight_classes(weight_class_id),
+    weight_class_id INT REFERENCES promotion_weight_classes(weight_class_id),
     rank INT NOT NULL,
     previous_rank INT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(fighter_id, weight_class_id, last_updated)
 );
+
+-- Insert UFC weight classes
+INSERT INTO promotion_weight_classes (name, display_order) 
+VALUES 
+    ('UFC Heavyweight', 1),
+    ('UFC Light Heavyweight', 2),
+    ('UFC Middleweight', 3),
+    ('UFC Welterweight', 4),
+    ('UFC Lightweight', 5),
+    ('UFC Featherweight', 6),
+    ('UFC Bantamweight', 7),
+    ('UFC Flyweight', 8),
+    ('UFC Women''s Bantamweight', 9),
+    ('UFC Women''s Flyweight', 10),
+    ('UFC Women''s Strawweight', 11)
+ON CONFLICT (name) DO NOTHING;
 
 -- Add index for performance
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_weight_class ON promotion_rankings(weight_class_id);

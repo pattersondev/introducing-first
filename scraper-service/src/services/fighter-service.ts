@@ -680,7 +680,9 @@ export class FighterService {
       for (const weightClass of rankings) {
         // Get weight class ID
         const weightClassResult = await client.query(
-          `SELECT weight_class_id FROM weight_classes WHERE name = $1`,
+          `SELECT weight_class_id 
+           FROM promotion_weight_classes 
+           WHERE name = $1`,
           [weightClass.weightClass]
         );
         
@@ -718,6 +720,8 @@ export class FighterService {
                VALUES ($1, $2, $3, $4)`,
               [fighterId, weightClassId, rank.position, timestamp]
             );
+          } else {
+            console.warn(`Fighter not found: ${firstName} ${lastName}`);
           }
         }
       }
