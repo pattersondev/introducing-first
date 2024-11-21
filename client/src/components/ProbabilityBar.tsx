@@ -10,7 +10,7 @@ export function ProbabilityBar({ probability }: ProbabilityBarProps) {
   };
 
   return (
-    <div className="w-full bg-gray-700 h-2 rounded-full mt-2">
+    <div className="w-full bg-gray-700 h-2 rounded-full mt-3">
       <div
         className={`${getBarColor(probability)} h-full rounded-full`}
         style={{ width: `${probability * 100}%` }}
