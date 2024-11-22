@@ -350,9 +350,6 @@ func getRandomUserAgent() string {
 func updateMatchupsInDatabase(matches []MatchData) error {
 	// Construct the URL for the scraper service
 	baseURL := os.Getenv("SCRAPER_SERVICE_URL")
-	if baseURL == "" {
-		baseURL = "http://localhost:3001" // Default to localhost if not set
-	}
 
 	for _, match := range matches {
 		// Create request body
