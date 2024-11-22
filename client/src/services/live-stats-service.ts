@@ -37,7 +37,7 @@ export class LiveStatsClient {
   }
 
   private connect() {
-    const wsUrl = process.env.REACT_APP_WS_URL || 'wss://your-server:3002';
+    const wsUrl = process.env.LIVE_STATS_WS_URL || 'localhost:3002';
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
