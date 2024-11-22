@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -350,6 +351,9 @@ func getRandomUserAgent() string {
 func updateMatchupsInDatabase(matches []MatchData) error {
 	// Construct the URL for the scraper service
 	baseURL := os.Getenv("SCRAPER_SERVICE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:3001" // Default to localhost if not set
+	}
 
 	for _, match := range matches {
 		// Create request body
@@ -358,6 +362,9 @@ func updateMatchupsInDatabase(matches []MatchData) error {
 			fmt.Printf("Error marshaling match data: %v\n", err)
 			continue
 		}
+
+		// Log the request body
+		fmt.Printf("Sending request body: %s\n", string(body))
 
 		// Send POST request to update matchup
 		resp, err := http.Post(
@@ -369,6 +376,15 @@ func updateMatchupsInDatabase(matches []MatchData) error {
 			fmt.Printf("Error updating matchup in database: %v\n", err)
 			continue
 		}
+
+		// Read and log response body
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("Error reading response body: %v\n", err)
+		} else {
+			fmt.Printf("Response from server: %s\n", string(respBody))
+		}
+
 		resp.Body.Close()
 
 		fmt.Printf("Updated live data for matchup: %s vs %s\n",
