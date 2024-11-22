@@ -80,6 +80,16 @@ export function setupEventRoutes(eventService: EventService) {
       res.status(500).json({ error: 'Error fetching event' });
     }
   });
+  
+  router.post('/matchup/live-data', async (req: Request, res: Response) => {
+    try {
+      await eventService.updateMatchupLiveData(req.body);
+      res.status(200).json({ message: 'Matchup live data updated successfully' });
+    } catch (error) {
+      console.error('Error updating matchup live data:', error);
+      res.status(500).json({ error: 'Failed to update matchup live data' });
+    }
+  });
 
   router.get('/matchups/:id/details', async (req: Request, res: Response) => {
     try {

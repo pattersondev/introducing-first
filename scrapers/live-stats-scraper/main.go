@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -25,7 +26,7 @@ import (
 const (
 	baseURL      = "https://www.sofascore.com/api/v1"
 	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-	startEventID = 12965000
+	startEventID = 12966000
 	batchSize    = 100
 )
 
@@ -34,13 +35,14 @@ type APIResponse struct {
 }
 
 type EventDetails struct {
-	ID          int64      `json:"id"`
-	Tournament  Tournament `json:"tournament"`
-	HomeTeam    Fighter    `json:"homeTeam"`
-	AwayTeam    Fighter    `json:"awayTeam"`
-	WeightClass string     `json:"weightClass"`
-	FightType   string     `json:"fightType"`
-	WinType     string     `json:"winType"`
+	ID             int64      `json:"id"`
+	Tournament     Tournament `json:"tournament"`
+	HomeTeam       Fighter    `json:"homeTeam"`
+	AwayTeam       Fighter    `json:"awayTeam"`
+	WeightClass    string     `json:"weightClass"`
+	FightType      string     `json:"fightType"`
+	WinType        string     `json:"winType"`
+	StartTimestamp int64      `json:"startTimestamp"`
 }
 
 type Tournament struct {
@@ -70,6 +72,7 @@ type MatchData struct {
 	WeightClass string `json:"weight_class"`
 	FightType   string `json:"fight_type"`
 	Date        string `json:"date"`
+	StartTime   string `json:"start_time"`
 }
 
 var userAgents = []string{
@@ -242,6 +245,9 @@ func main() {
 
 	if len(matches) > 0 {
 		saveMatches(matches)
+		if err := updateMatchupsInDatabase(matches); err != nil {
+			log.Printf("Error updating matchups in database: %v", err)
+		}
 	}
 }
 
@@ -295,6 +301,9 @@ func isUFCEvent(event *EventDetails) bool {
 }
 
 func processUFCEvent(event *EventDetails) *MatchData {
+	// Convert Unix timestamp to time.Time
+	startTime := time.Unix(event.StartTimestamp, 0)
+
 	match := &MatchData{
 		LiveID:      event.ID,
 		EventName:   event.Tournament.Name,
@@ -303,13 +312,15 @@ func processUFCEvent(event *EventDetails) *MatchData {
 		Fighter2:    event.AwayTeam.Name,
 		WeightClass: event.WeightClass,
 		FightType:   event.FightType,
-		Date:        time.Now().Format("2006-01-02"),
+		Date:        startTime.Format("2006-01-02"),
+		StartTime:   startTime.Format("15:04:05"),
 	}
 
-	fmt.Printf("Found UFC Event: %s vs %s at %s\n",
+	fmt.Printf("Found UFC Event: %s vs %s at %s (Start time: %s)\n",
 		match.Fighter1,
 		match.Fighter2,
-		match.EventName)
+		match.EventName,
+		match.StartTime)
 
 	return match
 }
@@ -334,4 +345,39 @@ func saveMatches(matches []MatchData) {
 func getRandomUserAgent() string {
 	rand.Seed(time.Now().UnixNano())
 	return userAgents[rand.Intn(len(userAgents))]
+}
+
+func updateMatchupsInDatabase(matches []MatchData) error {
+	// Construct the URL for the scraper service
+	baseURL := os.Getenv("SCRAPER_SERVICE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:3001" // Default to localhost if not set
+	}
+
+	for _, match := range matches {
+		// Create request body
+		body, err := json.Marshal(match)
+		if err != nil {
+			fmt.Printf("Error marshaling match data: %v\n", err)
+			continue
+		}
+
+		// Send POST request to update matchup
+		resp, err := http.Post(
+			fmt.Sprintf("%s/api/events/matchup/live-data", baseURL),
+			"application/json",
+			bytes.NewBuffer(body),
+		)
+		if err != nil {
+			fmt.Printf("Error updating matchup in database: %v\n", err)
+			continue
+		}
+		resp.Body.Close()
+
+		fmt.Printf("Updated live data for matchup: %s vs %s\n",
+			match.Fighter1,
+			match.Fighter2,
+		)
+	}
+	return nil
 }
