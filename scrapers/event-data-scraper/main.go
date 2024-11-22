@@ -277,12 +277,13 @@ func cleanFighterName(name string) string {
 	// Remove any text in parentheses
 	name = regexp.MustCompile(`\(.*?\)`).ReplaceAllString(name, "")
 
-	// Split the name by spaces
+	// Split the name by spaces and join all parts
 	parts := strings.Fields(name)
-
-	// Take the first two parts (assuming they are the first and last name)
 	if len(parts) >= 2 {
-		return strings.Join(parts[:2], " ")
+		if len(parts) <= 3 {
+			return strings.Join(parts, " ")
+		}
+		return strings.Join(parts[:3], " ") // If more than 3 parts, take first 3
 	}
 
 	return strings.TrimSpace(name)

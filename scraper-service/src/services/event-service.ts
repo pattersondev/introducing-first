@@ -548,4 +548,47 @@ export class EventService {
       client.release();
     }
   }
+
+  async updateMatchupLiveData(matchData: any) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Find matching matchup based on fighter names and event date
+      const result = await client.query(`
+        SELECT m.matchup_id 
+        FROM matchups m
+        JOIN events e ON m.event_id = e.event_id
+        WHERE 
+          (
+            (LOWER(m.fighter1_name) = LOWER($1) AND LOWER(m.fighter2_name) = LOWER($2))
+            OR 
+            (LOWER(m.fighter1_name) = LOWER($2) AND LOWER(m.fighter2_name) = LOWER($1))
+          )
+          AND DATE(e.date) = DATE($3)
+      `, [matchData.fighter1, matchData.fighter2, matchData.date]);
+
+      if (result.rows.length > 0) {
+        // Update the matchup with live data
+        await client.query(`
+          UPDATE matchups 
+          SET 
+            live_id = $1,
+            start_time = $2
+          WHERE matchup_id = $3
+        `, [matchData.live_id, matchData.start_time, result.rows[0].matchup_id]);
+
+        console.log(`Updated live data for matchup between ${matchData.fighter1} and ${matchData.fighter2}`);
+      } else {
+        console.log(`No matching matchup found for ${matchData.fighter1} vs ${matchData.fighter2} on ${matchData.date}`);
+      }
+
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
 } 
