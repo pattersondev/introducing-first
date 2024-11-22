@@ -554,9 +554,11 @@ export class EventService {
     try {
       await client.query('BEGIN');
 
+      console.log('Received match data:', matchData);
+
       // Find matching matchup based on fighter names and event date
       const result = await client.query(`
-        SELECT m.matchup_id 
+        SELECT m.matchup_id, m.fighter1_name, m.fighter2_name, e.date
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE 
@@ -568,24 +570,33 @@ export class EventService {
           AND DATE(e.date) = DATE($3)
       `, [matchData.fighter1, matchData.fighter2, matchData.date]);
 
+      console.log('Query result:', result.rows);
+
       if (result.rows.length > 0) {
         // Update the matchup with live data
-        await client.query(`
+        const updateResult = await client.query(`
           UPDATE matchups 
           SET 
             live_id = $1,
-            start_time = $2
+            start_time = $2::TIME
           WHERE matchup_id = $3
+          RETURNING matchup_id, live_id, start_time
         `, [matchData.live_id, matchData.start_time, result.rows[0].matchup_id]);
 
+        console.log('Update result:', updateResult.rows[0]);
         console.log(`Updated live data for matchup between ${matchData.fighter1} and ${matchData.fighter2}`);
       } else {
-        console.log(`No matching matchup found for ${matchData.fighter1} vs ${matchData.fighter2} on ${matchData.date}`);
+        console.log('No match found with query params:', {
+          fighter1: matchData.fighter1,
+          fighter2: matchData.fighter2,
+          date: matchData.date
+        });
       }
 
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');
+      console.error('Error in updateMatchupLiveData:', e);
       throw e;
     } finally {
       client.release();
