@@ -556,9 +556,14 @@ export class EventService {
 
       console.log('Received match data:', matchData);
 
-      // Find matching matchup based on fighter names and event date
+      // Find matching matchup based on fighter names and event date with a 3-day window
       const result = await client.query(`
-        SELECT m.matchup_id, m.fighter1_name, m.fighter2_name, e.date
+        SELECT 
+          m.matchup_id, 
+          m.fighter1_name, 
+          m.fighter2_name, 
+          e.date,
+          e.name as event_name
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE 
@@ -567,8 +572,14 @@ export class EventService {
             OR 
             (LOWER(m.fighter1_name) = LOWER($2) AND LOWER(m.fighter2_name) = LOWER($1))
           )
-          AND DATE(e.date) = DATE($3)
-      `, [matchData.fighter1, matchData.fighter2, matchData.date]);
+          AND e.date BETWEEN DATE($3) - INTERVAL '3 days' AND DATE($3) + INTERVAL '3 days'
+          AND LOWER(e.name) LIKE LOWER($4)
+      `, [
+        matchData.fighter1, 
+        matchData.fighter2, 
+        matchData.date,
+        `%${matchData.event_name.split(':')[0]}%` // Match event name up to the colon
+      ]);
 
       console.log('Query result:', result.rows);
 
@@ -580,16 +591,28 @@ export class EventService {
             live_id = $1,
             start_time = $2::TIME
           WHERE matchup_id = $3
-          RETURNING matchup_id, live_id, start_time
+          RETURNING matchup_id, live_id, start_time, fighter1_name, fighter2_name
         `, [matchData.live_id, matchData.start_time, result.rows[0].matchup_id]);
 
         console.log('Update result:', updateResult.rows[0]);
         console.log(`Updated live data for matchup between ${matchData.fighter1} and ${matchData.fighter2}`);
       } else {
-        console.log('No match found with query params:', {
+        // Log more details about the failed match
+        const eventCheck = await client.query(`
+          SELECT e.date, e.name, m.fighter1_name, m.fighter2_name
+          FROM events e
+          JOIN matchups m ON e.event_id = m.event_id
+          WHERE 
+            e.date BETWEEN DATE($1) - INTERVAL '7 days' AND DATE($1) + INTERVAL '7 days'
+            AND LOWER(e.name) LIKE LOWER($2)
+        `, [matchData.date, `%${matchData.event_name.split(':')[0]}%`]);
+
+        console.log('No match found. Nearby events and matchups:', eventCheck.rows);
+        console.log('Search parameters:', {
           fighter1: matchData.fighter1,
           fighter2: matchData.fighter2,
-          date: matchData.date
+          date: matchData.date,
+          eventName: matchData.event_name
         });
       }
 
