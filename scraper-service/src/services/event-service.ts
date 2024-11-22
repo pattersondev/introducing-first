@@ -556,7 +556,12 @@ export class EventService {
 
       console.log('Received match data:', matchData);
 
-      // Find matching matchup based on fighter names and event date with a 3-day window
+      // Normalize names by removing spaces and converting to lowercase
+      const normalizeNames = (name: string) => name.toLowerCase().replace(/\s+/g, '');
+      const fighter1Normalized = normalizeNames(matchData.fighter1);
+      const fighter2Normalized = normalizeNames(matchData.fighter2);
+
+      // Find matching matchup with normalized name comparison
       const result = await client.query(`
         SELECT 
           m.matchup_id, 
@@ -568,23 +573,22 @@ export class EventService {
         JOIN events e ON m.event_id = e.event_id
         WHERE 
           (
-            (LOWER(m.fighter1_name) = LOWER($1) AND LOWER(m.fighter2_name) = LOWER($2))
+            (REPLACE(LOWER(m.fighter1_name), ' ', '') = $1 AND REPLACE(LOWER(m.fighter2_name), ' ', '') = $2)
             OR 
-            (LOWER(m.fighter1_name) = LOWER($2) AND LOWER(m.fighter2_name) = LOWER($1))
+            (REPLACE(LOWER(m.fighter1_name), ' ', '') = $2 AND REPLACE(LOWER(m.fighter2_name), ' ', '') = $1)
           )
           AND e.date BETWEEN DATE($3) - INTERVAL '3 days' AND DATE($3) + INTERVAL '3 days'
           AND LOWER(e.name) LIKE LOWER($4)
       `, [
-        matchData.fighter1, 
-        matchData.fighter2, 
+        fighter1Normalized,
+        fighter2Normalized,
         matchData.date,
-        `%${matchData.event_name.split(':')[0]}%` // Match event name up to the colon
+        `%${matchData.event_name.split(':')[0]}%`
       ]);
 
       console.log('Query result:', result.rows);
 
       if (result.rows.length > 0) {
-        // Update the matchup with live data
         const updateResult = await client.query(`
           UPDATE matchups 
           SET 
@@ -597,9 +601,15 @@ export class EventService {
         console.log('Update result:', updateResult.rows[0]);
         console.log(`Updated live data for matchup between ${matchData.fighter1} and ${matchData.fighter2}`);
       } else {
-        // Log more details about the failed match
+        // Log more details about the failed match with normalized names
         const eventCheck = await client.query(`
-          SELECT e.date, e.name, m.fighter1_name, m.fighter2_name
+          SELECT 
+            e.date, 
+            e.name, 
+            m.fighter1_name,
+            m.fighter2_name,
+            REPLACE(LOWER(m.fighter1_name), ' ', '') as fighter1_normalized,
+            REPLACE(LOWER(m.fighter2_name), ' ', '') as fighter2_normalized
           FROM events e
           JOIN matchups m ON e.event_id = m.event_id
           WHERE 
@@ -611,6 +621,8 @@ export class EventService {
         console.log('Search parameters:', {
           fighter1: matchData.fighter1,
           fighter2: matchData.fighter2,
+          fighter1Normalized,
+          fighter2Normalized,
           date: matchData.date,
           eventName: matchData.event_name
         });
