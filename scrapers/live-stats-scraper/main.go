@@ -21,13 +21,14 @@ import (
 // 12948654
 // 12967105
 // 13114222
+// 12967102
 
 // REAL IDS ^^
 
 const (
 	baseURL      = "https://www.sofascore.com/api/v1"
 	userAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-	startEventID = 12966000
+	startEventID = 13087000
 	batchSize    = 100
 )
 
@@ -160,7 +161,7 @@ func main() {
 
 	// Add progress tracking
 	processedCount := 0
-	totalEvents := 2000 // Total events to process
+	totalEvents := 9000 // Total events to process
 	startTime := time.Now()
 
 	// Start worker goroutines

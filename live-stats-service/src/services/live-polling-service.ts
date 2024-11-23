@@ -197,10 +197,6 @@ export class LivePollingService {
         WHERE 
           m.live_id IS NOT NULL
           AND e.date = CURRENT_DATE
-          AND m.start_time BETWEEN 
-            (CURRENT_TIME - INTERVAL '30 minutes')
-            AND 
-            (CURRENT_TIME + INTERVAL '5 minutes')
           AND m.result IS NULL
       `);
 
