@@ -122,7 +122,7 @@ func scrapeData(c *colly.Collector) []Event {
 	}
 
 	// Send initial URL
-	urlChan <- "https://www.espn.com/mma/"
+	urlChan <- "https://www.espn.com/mma/fightcenter"
 
 	// Close channel after all URLs have been sent
 	go func() {
