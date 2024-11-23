@@ -41,7 +41,9 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://www.antiballsniffer.club',
   'https://antiballsniffer.club',
-  'https://introducing-first.onrender.com'
+  'https://introducing-first.onrender.com',
+  'https://merab.gay',
+  'https://introducingfirst.io'
 ];
 
 app.use(cors({

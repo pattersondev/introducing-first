@@ -25,6 +25,8 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 			"https://antiballsniffer.club":         true,
 			"https://www.antiballsniffer.club":     true,
 			"https://introducing-first.vercel.app": true,
+			"https://introducingfirst.io":          true,
+			"https://merab.gay":                    true,
 		}
 
 		if allowedOrigins[origin] {
