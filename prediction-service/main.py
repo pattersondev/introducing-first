@@ -2,8 +2,17 @@ from sqlalchemy import create_engine
 import pandas as pd
 from flask import Flask, request, jsonify
 import os
+from sklearn.ensemble import RandomForestClassifier
+import joblib
 
 app = Flask(__name__)
+
+# Load trained model
+try:
+    model = joblib.load('trained_model.joblib')
+except:
+    print("Warning: No trained model found. Please run train_model.py first")
+    model = None
 
 def get_db_connection():
     return create_engine(
@@ -274,6 +283,54 @@ def predict_victory_method(winner_stats):
     
     return max(methods.items(), key=lambda x: x[1])[0]
 
+def clean_measurement(value):
+    """Clean measurement values by removing units and converting to float"""
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not value or value == 'None':
+        return 0.0
+    # Remove units and convert to float
+    try:
+        return float(value.replace('"', '').replace("'", ''))
+    except:
+        return 0.0
+
+def create_feature_vector(f1_stats, f2_stats):
+    """Convert two fighters' stats into a single feature vector"""
+    features = []
+    
+    # Basic stats differences
+    features.extend([
+        float(f1_stats['age'] or 0) - float(f2_stats['age'] or 0),
+        clean_measurement(f1_stats['height']) - clean_measurement(f2_stats['height']),
+        clean_measurement(f1_stats['reach']) - clean_measurement(f2_stats['reach'])
+    ])
+    
+    # Striking stats differences
+    features.extend([
+        float(f1_stats['avg_strikes_landed'] or 0) - float(f2_stats['avg_strikes_landed'] or 0),
+        float(f1_stats['head_strike_pct'] or 0) - float(f2_stats['head_strike_pct'] or 0),
+        float(f1_stats['avg_knockdowns'] or 0) - float(f2_stats['avg_knockdowns'] or 0)
+    ])
+    
+    # Grappling stats differences
+    features.extend([
+        float(f1_stats['takedown_accuracy'] or 0) - float(f2_stats['takedown_accuracy'] or 0),
+        float(f1_stats['avg_submission_attempts'] or 0) - float(f2_stats['avg_submission_attempts'] or 0)
+    ])
+    
+    # Fighter attributes differences
+    features.extend([
+        float(f1_stats['striking_offense'] or 0) - float(f2_stats['striking_offense'] or 0),
+        float(f1_stats['striking_defense'] or 0) - float(f2_stats['striking_defense'] or 0),
+        float(f1_stats['takedown_offense'] or 0) - float(f2_stats['takedown_offense'] or 0),
+        float(f1_stats['takedown_defense'] or 0) - float(f2_stats['takedown_defense'] or 0),
+        float(f1_stats['cardio'] or 0) - float(f2_stats['cardio'] or 0),
+        float(f1_stats['chin'] or 0) - float(f2_stats['chin'] or 0)
+    ])
+    
+    return features
+
 @app.route('/predict', methods=['POST'])
 def predict_matchup():
     try:
@@ -296,10 +353,7 @@ def predict_matchup():
         f1_stats = f1_features.to_dict('records')[0]
         f2_stats = f2_features.to_dict('records')[0]
         
-        # Calculate win probability
-        f1_win_prob = calculate_win_probability(f1_stats, f2_stats)
-        
-        # Format fighter names with nickname if available
+        # Format fighter names
         def format_fighter_name(stats):
             if stats.get('nickname'):
                 return f"{stats['first_name']} '{stats['nickname']}' {stats['last_name']}"
@@ -307,6 +361,13 @@ def predict_matchup():
         
         f1_name = format_fighter_name(f1_stats)
         f2_name = format_fighter_name(f2_stats)
+        
+        # Get prediction from trained model if available, otherwise use rule-based
+        if model is not None:
+            features = create_feature_vector(f1_stats, f2_stats)
+            f1_win_prob = model.predict_proba([features])[0][1]
+        else:
+            f1_win_prob = calculate_win_probability(f1_stats, f2_stats)
         
         # Determine winner and method
         if f1_win_prob > 0.5:
@@ -319,7 +380,8 @@ def predict_matchup():
             underdog = {
                 'fighter_id': fighter2_id,
                 'name': f2_name,
-                'win_probability': round((1 - f1_win_prob) * 100, 1)
+                'win_probability': round((1 - f1_win_prob) * 100, 1),
+                'method': predict_victory_method(f2_stats)
             }
         else:
             winner = {
@@ -331,14 +393,16 @@ def predict_matchup():
             underdog = {
                 'fighter_id': fighter1_id,
                 'name': f1_name,
-                'win_probability': round(f1_win_prob * 100, 1)
+                'win_probability': round(f1_win_prob * 100, 1),
+                'method': predict_victory_method(f1_stats)
             }
         
         return jsonify({
             'prediction': {
                 'winner': winner,
                 'underdog': underdog,
-                'weight_class': f1_stats['weight_class']
+                'weight_class': f1_stats['weight_class'],
+                'model_type': 'machine_learning' if model else 'rule_based'
             }
         })
         
