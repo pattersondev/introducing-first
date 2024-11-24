@@ -1,183 +1,210 @@
+from sqlalchemy import create_engine
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-import psycopg2
 from flask import Flask, request, jsonify
 import os
 
 app = Flask(__name__)
 
 def get_db_connection():
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "mma_stats"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "postgres")
+    return create_engine(
+        f'postgresql+pg8000://{os.getenv("DB_USER", "postgres")}:'
+        f'{os.getenv("DB_PASSWORD", "jackcameron")}@'
+        f'{os.getenv("DB_HOST", "localhost")}/'
+        f'{os.getenv("DB_NAME", "local_copy")}'
     )
 
-def prepare_fighter_features(conn, fighter_id):
-    """Get fighter stats and convert to model features"""
+def get_fighter_stats(engine, fighter_id):
     query = """
         SELECT 
-            wins, losses, draws, height, weight, reach, stance,
-            sig_strikes_landed_per_min, sig_strikes_accuracy, 
-            sig_strikes_absorbed_per_min, sig_strikes_def,
-            takedown_avg, takedown_accuracy, takedown_defense,
-            sub_avg
-        FROM fighters 
-        WHERE id = %s
+            fighter_id,
+            height,
+            weight,
+            age,
+            reach,
+            win_loss_record,
+            tko_record,
+            sub_record,
+            first_name,
+            last_name,
+            nickname,
+            stance,
+            weight_class
+        FROM fighters
+        WHERE fighter_id = %s
     """
-    df = pd.read_sql_query(query, conn, params=[fighter_id])
-    return df
+    return pd.read_sql_query(query, engine, params=(fighter_id,))
 
-def get_historical_matchups(conn):
-    """Get historical matchup data for training"""
-    query = """
-        SELECT 
-            m.fighter1_id, m.fighter2_id,
-            m.winner_id, m.win_method
-        FROM matchups m
-        WHERE m.winner_id IS NOT NULL
-    """
-    return pd.read_sql_query(query, conn)
-def get_fighter_stats(conn, fighter_id):
-    """Get detailed fighter statistics"""
-    query = """
-        SELECT 
-            f.fighter_id,
-            f.first_name,
-            f.last_name,
-            f.height_and_weight,
-            f.birthdate,
-            f.team,
-            f.nickname,
-            f.stance,
-            f.win_loss_record,
-            f.tko_record,
-            f.sub_record,
-            s.sig_strikes_landed,
-            s.sig_strikes_attempted,
-            s.takedowns_landed,
-            s.takedowns_attempted,
-            s.knockdowns,
-            s.submissions_attempted,
-            s.reversals,
-            s.control_time
-        FROM fighters f
-        LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id
-        WHERE f.fighter_id = %s
-    """
-    return pd.read_sql_query(query, conn, params=[fighter_id])
+def calculate_win_probability(f1_stats, f2_stats):
+    """Calculate win probability based on fighter stats comparison"""
+    
+    # Parse win-loss records
+    def parse_record(record):
+        if not record:
+            return 0, 0, 0
+        parts = record.split('-')
+        return int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0
+    
+    # Parse records
+    f1_wins, f1_losses, f1_draws = parse_record(f1_stats['win_loss_record'])
+    f2_wins, f2_losses, f2_draws = parse_record(f2_stats['win_loss_record'])
+    
+    # Calculate win rates
+    f1_win_rate = f1_wins / (f1_wins + f1_losses) if (f1_wins + f1_losses) > 0 else 0
+    f2_win_rate = f2_wins / (f2_wins + f2_losses) if (f2_wins + f2_losses) > 0 else 0
+    
+    # Parse finish rates
+    def parse_finish_record(record):
+        if not record:
+            return 0, 0
+        wins, losses = record.split('-')
+        return int(wins), int(losses)
+    
+    f1_ko_wins, _ = parse_finish_record(f1_stats['tko_record'])
+    f1_sub_wins, _ = parse_finish_record(f1_stats['sub_record'])
+    f2_ko_wins, _ = parse_finish_record(f2_stats['tko_record'])
+    f2_sub_wins, _ = parse_finish_record(f2_stats['sub_record'])
+    
+    # Calculate finish rates
+    f1_finish_rate = (f1_ko_wins + f1_sub_wins) / f1_wins if f1_wins > 0 else 0
+    f2_finish_rate = (f2_ko_wins + f2_sub_wins) / f2_wins if f2_wins > 0 else 0
+    
+    # Calculate physical advantages
+    height_advantage = (float(f1_stats['height']) - float(f2_stats['height'])) / 10
+    reach_advantage = (float(f1_stats['reach'].replace('"', '')) - float(f2_stats['reach'].replace('"', ''))) / 10
+    age_advantage = (float(f2_stats['age']) - float(f1_stats['age'])) / 10  # younger fighter advantage
+    
+    # Combine factors
+    f1_score = (
+        f1_win_rate * 0.4 +
+        f1_finish_rate * 0.3 +
+        height_advantage * 0.1 +
+        reach_advantage * 0.1 +
+        age_advantage * 0.1
+    )
+    
+    f2_score = (
+        f2_win_rate * 0.4 +
+        f2_finish_rate * 0.3 +
+        -height_advantage * 0.1 +
+        -reach_advantage * 0.1 +
+        -age_advantage * 0.1
+    )
+    
+    # Convert to probability
+    total = f1_score + f2_score
+    if total == 0:
+        return 0.5
+    
+    # Normalize to 0.3-0.7 range to avoid extreme predictions
+    raw_prob = f1_score / total if total > 0 else 0.5
+    normalized_prob = 0.3 + (raw_prob * 0.4)
+    
+    return normalized_prob
 
-def process_fighter_data(stats_df):
-    """Process raw fighter stats into model features"""
-    features = {}
+def predict_victory_method(winner_stats):
+    """Predict most likely method of victory based on fighter's stats"""
     
-    # Basic stats
-    record = stats_df['win_loss_record'].iloc[0].split('-')
-    features['wins'] = int(record[0])
-    features['losses'] = int(record[1])
-    features['draws'] = int(record[2]) if len(record) > 2 else 0
+    # Parse finish records
+    ko_wins, _ = winner_stats['tko_record'].split('-')
+    sub_wins, _ = winner_stats['sub_record'].split('-')
+    wins, losses, _ = winner_stats['win_loss_record'].split('-')
     
-    # Height and weight
-    hw = stats_df['height_and_weight'].iloc[0].split()
-    features['height'] = float(hw[0].replace("'","."))
-    features['weight'] = float(hw[-2])
+    ko_wins = int(ko_wins)
+    sub_wins = int(sub_wins)
+    total_wins = int(wins)
     
-    # Fighting stats
-    features['sig_strikes_accuracy'] = stats_df['sig_strikes_landed'].iloc[0] / stats_df['sig_strikes_attempted'].iloc[0] if stats_df['sig_strikes_attempted'].iloc[0] > 0 else 0
-    features['takedown_accuracy'] = stats_df['takedowns_landed'].iloc[0] / stats_df['takedowns_attempted'].iloc[0] if stats_df['takedowns_attempted'].iloc[0] > 0 else 0
-    features['knockdown_rate'] = stats_df['knockdowns'].iloc[0] / stats_df['sig_strikes_landed'].iloc[0] if stats_df['sig_strikes_landed'].iloc[0] > 0 else 0
-    features['submission_rate'] = stats_df['submissions_attempted'].iloc[0] / stats_df['control_time'].iloc[0] if stats_df['control_time'].iloc[0] > 0 else 0
+    # Calculate decision wins
+    dec_wins = total_wins - (ko_wins + sub_wins)
     
-    return pd.DataFrame([features])
-
-def prepare_matchup_features(conn, fighter1_id, fighter2_id):
-    """Prepare features for a matchup between two fighters"""
-    # Get stats for both fighters
-    f1_stats = get_fighter_stats(conn, fighter1_id)
-    f2_stats = get_fighter_stats(conn, fighter2_id)
-    
-    # Process stats into features
-    f1_features = process_fighter_data(f1_stats)
-    f2_features = process_fighter_data(f2_stats)
-    
-    # Combine features
-    matchup_features = pd.concat([f1_features, f2_features], axis=1)
-    matchup_features.columns = [f'f1_{c}' for c in f1_features.columns] + [f'f2_{c}' for c in f2_features.columns]
-    
-    return matchup_features
-
-
-def train_models():
-    """Train winner and method prediction models"""
-    conn = get_db_connection()
-    
-    # Get historical matchup data
-    matchups = get_historical_matchups(conn)
-    
-    # Prepare features for each fighter in matchups
-    features = []
-    for _, row in matchups.iterrows():
-        f1_features = prepare_fighter_features(conn, row['fighter1_id'])
-        f2_features = prepare_fighter_features(conn, row['fighter2_id'])
+    # Calculate percentages
+    total = total_wins
+    if total == 0:
+        return "Decision"  # Default to decision if no wins
         
-        # Combine features
-        matchup_features = pd.concat([f1_features, f2_features], axis=1)
-        features.append(matchup_features)
+    ko_rate = ko_wins / total
+    sub_rate = sub_wins / total
+    dec_rate = dec_wins / total
     
-    X = pd.concat(features, axis=0)
+    # Return highest percentage method
+    methods = {
+        'KO/TKO': ko_rate,
+        'Submission': sub_rate,
+        'Decision': dec_rate
+    }
     
-    # Prepare labels
-    y_winner = (matchups['winner_id'] == matchups['fighter1_id']).astype(int)
-    y_method = matchups['win_method']
-    
-    # Train winner prediction model
-    X_train, X_test, y_train, y_test = train_test_split(X, y_winner, test_size=0.2)
-    winner_model = RandomForestClassifier(n_estimators=100)
-    winner_model.fit(X_train, y_train)
-    
-    # Train method prediction model
-    method_model = RandomForestClassifier(n_estimators=100)
-    method_model.fit(X_train, y_method)
-    
-    return winner_model, method_model
+    return max(methods.items(), key=lambda x: x[1])[0]
 
 @app.route('/predict', methods=['POST'])
 def predict_matchup():
-    data = request.get_json()
-    fighter1_id = data.get('fighter1_id')
-    fighter2_id = data.get('fighter2_id')
-    
-    if not fighter1_id or not fighter2_id:
-        return jsonify({'error': 'Missing fighter IDs'}), 400
-    
-    conn = get_db_connection()
-    
-    # Get fighter features
-    f1_features = prepare_fighter_features(conn, fighter1_id)
-    f2_features = prepare_fighter_features(conn, fighter2_id)
-    
-    # Combine features
-    matchup_features = pd.concat([f1_features, f2_features], axis=1)
-    
-    # Make predictions
-    winner_model, method_model = train_models()
-    
-    win_prob = winner_model.predict_proba(matchup_features)[0]
-    method_probs = method_model.predict_proba(matchup_features)[0]
-    
-    return jsonify({
-        'fighter1_win_probability': float(win_prob[1]),
-        'fighter2_win_probability': float(win_prob[0]),
-        'win_method_probabilities': {
-            'KO/TKO': float(method_probs[0]),
-            'Submission': float(method_probs[1]), 
-            'Decision': float(method_probs[2])
-        }
-    })
+    try:
+        data = request.get_json()
+        fighter1_id = data.get('fighter1_id')
+        fighter2_id = data.get('fighter2_id')
+        
+        if not fighter1_id or not fighter2_id:
+            return jsonify({'error': 'Missing fighter IDs'}), 400
+            
+        engine = get_db_connection()
+        
+        # Get fighter stats
+        f1_features = get_fighter_stats(engine, fighter1_id)
+        f2_features = get_fighter_stats(engine, fighter2_id)
+        
+        if f1_features.empty or f2_features.empty:
+            return jsonify({'error': 'One or both fighters not found'}), 404
+            
+        f1_stats = f1_features.to_dict('records')[0]
+        f2_stats = f2_features.to_dict('records')[0]
+        
+        # Calculate win probability
+        f1_win_prob = calculate_win_probability(f1_stats, f2_stats)
+        
+        # Format fighter names with nickname if available
+        def format_fighter_name(stats):
+            if stats.get('nickname'):
+                return f"{stats['first_name']} '{stats['nickname']}' {stats['last_name']}"
+            return f"{stats['first_name']} {stats['last_name']}"
+        
+        f1_name = format_fighter_name(f1_stats)
+        f2_name = format_fighter_name(f2_stats)
+        
+        # Determine winner and method
+        if f1_win_prob > 0.5:
+            winner = {
+                'fighter_id': fighter1_id,
+                'name': f1_name,
+                'win_probability': round(f1_win_prob * 100, 1),
+                'method': predict_victory_method(f1_stats)
+            }
+            underdog = {
+                'fighter_id': fighter2_id,
+                'name': f2_name,
+                'win_probability': round((1 - f1_win_prob) * 100, 1)
+            }
+        else:
+            winner = {
+                'fighter_id': fighter2_id,
+                'name': f2_name,
+                'win_probability': round((1 - f1_win_prob) * 100, 1),
+                'method': predict_victory_method(f2_stats)
+            }
+            underdog = {
+                'fighter_id': fighter1_id,
+                'name': f1_name,
+                'win_probability': round(f1_win_prob * 100, 1)
+            }
+        
+        return jsonify({
+            'prediction': {
+                'winner': winner,
+                'underdog': underdog,
+                'weight_class': f1_stats['weight_class']
+            }
+        })
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
