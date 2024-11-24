@@ -331,6 +331,48 @@ def create_feature_vector(f1_stats, f2_stats):
     
     return features
 
+def predict_fight_details(f1_stats, f2_stats):
+    """Predict round and time details of the fight"""
+    
+    # Parse records for finish rates
+    f1_wins, f1_losses, _ = parse_record(f1_stats['win_loss_record'])
+    f2_wins, f2_losses, _ = parse_record(f2_stats['win_loss_record'])
+    
+    # Calculate average fight duration for both fighters
+    f1_finish_rate = (float(f1_stats.get('avg_knockdowns', 0)) + 
+                     float(f1_stats.get('avg_submission_attempts', 0))) / max(f1_wins, 1)
+    f2_finish_rate = (float(f2_stats.get('avg_knockdowns', 0)) + 
+                     float(f2_stats.get('avg_submission_attempts', 0))) / max(f2_wins, 1)
+    
+    # Predict round probabilities
+    round_probs = {
+        "round_1": 0.4 * (f1_finish_rate + f2_finish_rate),
+        "round_2": 0.3 * (f1_finish_rate + f2_finish_rate),
+        "round_3": 0.2 * (f1_finish_rate + f2_finish_rate),
+        "distance": 1.0 - (0.9 * (f1_finish_rate + f2_finish_rate))
+    }
+    
+    # Normalize probabilities
+    total = sum(round_probs.values())
+    round_probs = {k: round(v/total * 100, 1) for k, v in round_probs.items()}
+    
+    # Predict most likely time window
+    early_round_prob = 0.6
+    mid_round_prob = 0.3
+    late_round_prob = 0.1
+    
+    time_probs = {
+        "early": round(early_round_prob * 100, 1),
+        "middle": round(mid_round_prob * 100, 1),
+        "late": round(late_round_prob * 100, 1)
+    }
+    
+    return {
+        "round_probabilities": round_probs,
+        "time_probabilities": time_probs,
+        "likely_duration": "Quick" if f1_finish_rate + f2_finish_rate > 1.5 else "Normal" if f1_finish_rate + f2_finish_rate > 0.8 else "Long"
+    }
+
 @app.route('/predict', methods=['POST'])
 def predict_matchup():
     try:
@@ -397,12 +439,16 @@ def predict_matchup():
                 'method': predict_victory_method(f1_stats)
             }
         
+        # Add matchup details
+        matchup_details = predict_fight_details(f1_stats, f2_stats)
+        
         return jsonify({
             'prediction': {
                 'winner': winner,
                 'underdog': underdog,
                 'weight_class': f1_stats['weight_class'],
-                'model_type': 'machine_learning' if model else 'rule_based'
+                'model_type': 'machine_learning' if model else 'rule_based',
+                'matchup_details': matchup_details
             }
         })
         
