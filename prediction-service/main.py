@@ -16,90 +16,230 @@ def get_db_connection():
 def get_fighter_stats(engine, fighter_id):
     query = """
         SELECT 
-            fighter_id,
-            height,
-            weight,
-            age,
-            reach,
-            win_loss_record,
-            tko_record,
-            sub_record,
-            first_name,
-            last_name,
-            nickname,
-            stance,
-            weight_class
-        FROM fighters
-        WHERE fighter_id = %s
+            f.fighter_id,
+            f.first_name,
+            f.last_name,
+            f.height,
+            f.weight,
+            f.age,
+            f.reach,
+            f.nickname,
+            f.stance,
+            f.win_loss_record,
+            f.tko_record,
+            f.sub_record,
+            f.weight_class,
+            -- Striking stats aggregates
+            AVG(COALESCE(s.tsl, 0)) as avg_strikes_landed,
+            AVG(COALESCE(s.tsa, 0)) as avg_strikes_attempted,
+            AVG(COALESCE(s.ssl, 0)) as avg_sig_strikes_landed,
+            AVG(COALESCE(s.ssa, 0)) as avg_sig_strikes_attempted,
+            AVG(COALESCE(s.kd, 0)) as avg_knockdowns,
+            AVG(COALESCE(s.head_perc, 0)) as head_strike_pct,
+            AVG(COALESCE(s.body_perc, 0)) as body_strike_pct,
+            -- Clinch stats aggregates
+            AVG(COALESCE(c.tdl, 0)) as avg_takedowns_landed,
+            AVG(COALESCE(c.tda, 0)) as avg_takedowns_attempted,
+            AVG(COALESCE(c.tk_acc_perc, 0)) as takedown_accuracy,
+            -- Ground stats aggregates
+            AVG(COALESCE(g.sm, 0)) as avg_submission_attempts,
+            -- Fighter attributes
+            COALESCE(fa.striking_offense_rating, 0) as striking_offense,
+            COALESCE(fa.striking_defense_rating, 0) as striking_defense,
+            COALESCE(fa.takedown_offense_rating, 0) as takedown_offense,
+            COALESCE(fa.takedown_defense_rating, 0) as takedown_defense,
+            COALESCE(fa.submission_offense_rating, 0) as submission_offense,
+            COALESCE(fa.submission_defense_rating, 0) as submission_defense,
+            COALESCE(fa.cardio_rating, 0) as cardio,
+            COALESCE(fa.chin_rating, 0) as chin,
+            -- Recent form (last 3 fights)
+            (
+                SELECT string_agg(
+                    CASE 
+                        WHEN (m.fighter1_id = f.fighter_id AND m.winner = m.fighter1_name) 
+                        OR (m.fighter2_id = f.fighter_id AND m.winner = m.fighter2_name)
+                        THEN 'W'
+                        WHEN m.winner IS NULL THEN 'N'
+                        ELSE 'L'
+                    END,
+                    ''
+                    ORDER BY e.date DESC
+                )
+                FROM matchups m
+                JOIN events e ON m.event_id = e.event_id
+                WHERE (m.fighter1_id = f.fighter_id OR m.fighter2_id = f.fighter_id)
+                AND m.result IS NOT NULL
+                LIMIT 3
+            ) as recent_form
+        FROM fighters f
+        LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id
+        LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id
+        LEFT JOIN ground_stats g ON f.fighter_id = g.fighter_id
+        LEFT JOIN fighter_attributes fa ON f.fighter_id = fa.fighter_id
+        WHERE f.fighter_id = %s
+        GROUP BY 
+            f.fighter_id, 
+            f.first_name,
+            f.last_name,
+            f.height,
+            f.weight,
+            f.age,
+            f.reach,
+            f.nickname,
+            f.stance,
+            f.win_loss_record,
+            f.tko_record,
+            f.sub_record,
+            f.weight_class,
+            fa.striking_offense_rating,
+            fa.striking_defense_rating,
+            fa.takedown_offense_rating,
+            fa.takedown_defense_rating,
+            fa.submission_offense_rating,
+            fa.submission_defense_rating,
+            fa.cardio_rating,
+            fa.chin_rating
     """
     return pd.read_sql_query(query, engine, params=(fighter_id,))
 
 def calculate_win_probability(f1_stats, f2_stats):
-    """Calculate win probability based on fighter stats comparison"""
+    """Enhanced prediction model including style, recent form, and detailed stats"""
     
-    # Parse win-loss records
-    def parse_record(record):
-        if not record:
-            return 0, 0, 0
-        parts = record.split('-')
-        return int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0
+    # === Basic Stats (30%) ===
+    # Win rate and finish rate (as before)
+    f1_basic = calculate_basic_stats(f1_stats)
+    f2_basic = calculate_basic_stats(f2_stats)
     
-    # Parse records
-    f1_wins, f1_losses, f1_draws = parse_record(f1_stats['win_loss_record'])
-    f2_wins, f2_losses, f2_draws = parse_record(f2_stats['win_loss_record'])
+    # === Recent Form (20%) ===
+    f1_form = calculate_form_score(f1_stats.get('recent_form', ''))
+    f2_form = calculate_form_score(f2_stats.get('recent_form', ''))
     
-    # Calculate win rates
-    f1_win_rate = f1_wins / (f1_wins + f1_losses) if (f1_wins + f1_losses) > 0 else 0
-    f2_win_rate = f2_wins / (f2_wins + f2_losses) if (f2_wins + f2_losses) > 0 else 0
+    # === Striking Effectiveness (20%) ===
+    f1_striking = calculate_striking_score(f1_stats)
+    f2_striking = calculate_striking_score(f2_stats)
     
-    # Parse finish rates
-    def parse_finish_record(record):
-        if not record:
-            return 0, 0
-        wins, losses = record.split('-')
-        return int(wins), int(losses)
+    # === Grappling Effectiveness (20%) ===
+    f1_grappling = calculate_grappling_score(f1_stats)
+    f2_grappling = calculate_grappling_score(f2_stats)
     
-    f1_ko_wins, _ = parse_finish_record(f1_stats['tko_record'])
-    f1_sub_wins, _ = parse_finish_record(f1_stats['sub_record'])
-    f2_ko_wins, _ = parse_finish_record(f2_stats['tko_record'])
-    f2_sub_wins, _ = parse_finish_record(f2_stats['sub_record'])
+    # === Style Matchup (10%) ===
+    style_advantage = calculate_style_matchup(f1_stats, f2_stats)
     
-    # Calculate finish rates
-    f1_finish_rate = (f1_ko_wins + f1_sub_wins) / f1_wins if f1_wins > 0 else 0
-    f2_finish_rate = (f2_ko_wins + f2_sub_wins) / f2_wins if f2_wins > 0 else 0
-    
-    # Calculate physical advantages
-    height_advantage = (float(f1_stats['height']) - float(f2_stats['height'])) / 10
-    reach_advantage = (float(f1_stats['reach'].replace('"', '')) - float(f2_stats['reach'].replace('"', ''))) / 10
-    age_advantage = (float(f2_stats['age']) - float(f1_stats['age'])) / 10  # younger fighter advantage
-    
-    # Combine factors
+    # Combine all factors
     f1_score = (
-        f1_win_rate * 0.4 +
-        f1_finish_rate * 0.3 +
-        height_advantage * 0.1 +
-        reach_advantage * 0.1 +
-        age_advantage * 0.1
+        f1_basic * 0.3 +
+        f1_form * 0.2 +
+        f1_striking * 0.2 +
+        f1_grappling * 0.2 +
+        style_advantage * 0.1
     )
     
     f2_score = (
-        f2_win_rate * 0.4 +
-        f2_finish_rate * 0.3 +
-        -height_advantage * 0.1 +
-        -reach_advantage * 0.1 +
-        -age_advantage * 0.1
+        f2_basic * 0.3 +
+        f2_form * 0.2 +
+        f2_striking * 0.2 +
+        f2_grappling * 0.2 +
+        -style_advantage * 0.1
     )
     
-    # Convert to probability
+    # Normalize to probability
     total = f1_score + f2_score
     if total == 0:
         return 0.5
     
-    # Normalize to 0.3-0.7 range to avoid extreme predictions
-    raw_prob = f1_score / total if total > 0 else 0.5
-    normalized_prob = 0.3 + (raw_prob * 0.4)
+    raw_prob = f1_score / total
+    # Constrain to 0.25-0.75 range to avoid extreme predictions
+    return 0.25 + (raw_prob * 0.5)
+
+def parse_record(record):
+    """Parse a win-loss-draw record string into numbers"""
+    if not record:
+        return 0, 0, 0
+    parts = record.split('-')
+    return (
+        int(parts[0]),  # wins
+        int(parts[1]),  # losses
+        int(parts[2]) if len(parts) > 2 else 0  # draws
+    )
+
+def parse_finish_record(record):
+    """Parse a finish record string (e.g., "7-0" for 7 KO wins, 0 KO losses)"""
+    if not record:
+        return 0, 0
+    wins, losses = record.split('-')
+    return int(wins), int(losses)
+
+def calculate_basic_stats(stats):
+    """Calculate basic stats score"""
+    wins, losses, draws = parse_record(stats['win_loss_record'])
+    win_rate = wins / (wins + losses) if (wins + losses) > 0 else 0
     
-    return normalized_prob
+    ko_wins, _ = parse_finish_record(stats['tko_record'])
+    sub_wins, _ = parse_finish_record(stats['sub_record'])
+    finish_rate = (ko_wins + sub_wins) / wins if wins > 0 else 0
+    
+    return (win_rate * 0.6 + finish_rate * 0.4)
+
+def calculate_form_score(recent_form):
+    """Calculate score based on recent form"""
+    if not recent_form:
+        return 0.5
+    
+    scores = {'W': 1, 'L': 0, 'N': 0.5}
+    total = 0
+    weight = 1.0
+    
+    for result in recent_form:
+        total += scores.get(result, 0.5) * weight
+        weight *= 0.7  # More recent fights count more
+        
+    return total / (1 + 0.7 + 0.49)  # Normalize by weight sum
+
+def calculate_striking_score(stats):
+    """Calculate striking effectiveness score"""
+    strikes_landed = float(stats.get('strikes_landed', 0))
+    strikes_attempted = float(stats.get('strikes_attempted', 0))
+    sig_strikes_landed = float(stats.get('sig_strikes_landed', 0))
+    sig_strikes_attempted = float(stats.get('sig_strikes_attempted', 0))
+    knockdowns = float(stats.get('knockdowns', 0))
+    
+    accuracy = strikes_landed / strikes_attempted if strikes_attempted > 0 else 0
+    sig_accuracy = sig_strikes_landed / sig_strikes_attempted if sig_strikes_attempted > 0 else 0
+    
+    return (accuracy * 0.3 + sig_accuracy * 0.4 + (knockdowns/10) * 0.3)
+
+def calculate_grappling_score(stats):
+    """Calculate grappling effectiveness score"""
+    takedowns_landed = float(stats.get('takedowns_landed', 0))
+    takedowns_attempted = float(stats.get('takedowns_attempted', 0))
+    submission_attempts = float(stats.get('submission_attempts', 0))
+    top_positions = float(stats.get('top_positions', 0))
+    
+    td_accuracy = takedowns_landed / takedowns_attempted if takedowns_attempted > 0 else 0
+    
+    return (td_accuracy * 0.4 + (submission_attempts/10) * 0.3 + (top_positions/10) * 0.3)
+
+def calculate_style_matchup(f1_stats, f2_stats):
+    """Calculate style matchup advantage"""
+    # Define style matchup matrix
+    style_advantages = {
+        'Orthodox': {'Orthodox': 0, 'Southpaw': -0.1, 'Switch': 0.1},
+        'Southpaw': {'Orthodox': 0.1, 'Southpaw': 0, 'Switch': -0.1},
+        'Switch': {'Orthodox': -0.1, 'Southpaw': 0.1, 'Switch': 0}
+    }
+    
+    f1_stance = f1_stats.get('stance', 'Orthodox')
+    f2_stance = f2_stats.get('stance', 'Orthodox')
+    
+    stance_advantage = style_advantages.get(f1_stance, {}).get(f2_stance, 0)
+    
+    # Add grappler vs striker dynamics
+    f1_grappling_bias = calculate_grappling_score(f1_stats) - calculate_striking_score(f1_stats)
+    f2_grappling_bias = calculate_grappling_score(f2_stats) - calculate_striking_score(f2_stats)
+    
+    style_clash = (f1_grappling_bias - f2_grappling_bias) * 0.2
+    
+    return stance_advantage + style_clash
 
 def predict_victory_method(winner_stats):
     """Predict most likely method of victory based on fighter's stats"""
