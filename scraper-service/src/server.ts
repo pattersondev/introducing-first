@@ -43,7 +43,9 @@ const allowedOrigins = [
   'https://antiballsniffer.club',
   'https://introducing-first.onrender.com',
   'https://merab.gay',
-  'https://introducingfirst.io'
+  'https://introducingfirst.io',
+  'https://www.merab.gay',
+  'https://www.introducingfirst.io'
 ];
 
 app.use(cors({

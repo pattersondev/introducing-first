@@ -14,7 +14,9 @@ const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000',
   'https://www.antiballsniffer.club',
   'https://antiballsniffer.club',
+  'https://www.introducingfirst.io',
   'https://introducingfirst.io',
+  'https://www.merab.gay',
   'https://merab.gay'
 ];
 
