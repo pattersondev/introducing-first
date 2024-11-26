@@ -8,8 +8,15 @@ export function setupAnalyticsRoutes(analyticsService: FighterAnalytics) {
   router.get('/fighter/:fighterId/style', async (req, res) => {
     try {
       const { fighterId } = req.params;
-      const styleAnalysis = await analyticsService.calculateFighterStyle(fighterId);
-      res.json(styleAnalysis);
+      const [styleAnalysis, rates] = await Promise.all([
+        analyticsService.calculateFighterStyle(fighterId),
+        analyticsService.calculateFighterRates(fighterId)
+      ]);
+
+      res.json({
+        ...styleAnalysis,
+        ...rates
+      });
     } catch (error) {
       res.status(500).json({ error: 'Failed to analyze fighter style' });
     }
