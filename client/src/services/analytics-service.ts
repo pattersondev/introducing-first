@@ -2,6 +2,7 @@ import { API_BASE_URL } from "@/config/api";
 
 export interface FighterAnalytics {
   styleAnalysis: {
+    winRate: number | string;
     primaryStyle: string;
     strikePercentage: number;
     wrestlingPercentage: number;
