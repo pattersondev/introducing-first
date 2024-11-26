@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { Fight } from '../types/types';
 
 export class FighterAnalytics {
   private pool: Pool;
@@ -511,7 +512,7 @@ export class FighterAnalytics {
       let recentPerformances: number[] = [];
 
       for (const fight of fights.rows) {
-        if (fight.result === 'Win') {
+        if (fight.result.toLowerCase() === 'w') {
           currentWinStreak++;
           wins++;
           
@@ -1123,10 +1124,9 @@ export class FighterAnalytics {
     return ((recentAvg - historicalAvg) / historicalAvg) * 100;
   }
 
-  private calculateFinishRate(fights: any[]): number {
+  private calculateFinishRate(fights: Fight[]): number {
     const finishes = fights.filter(f => 
-      f.result === 'Win' && 
-      f.decision && 
+      f.result.toLowerCase() === 'w' &&  
       !f.decision.toLowerCase().includes('decision')
     ).length;
     
