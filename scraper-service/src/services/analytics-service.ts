@@ -1337,9 +1337,9 @@ export class FighterAnalytics {
         ),
         totals AS (
           SELECT 
-            SUM(CASE WHEN result = 'w' THEN count ELSE 0 END) as total_wins,
+            SUM(CASE WHEN result = 'W' THEN count ELSE 0 END) as total_wins,
             SUM(CASE 
-              WHEN result = 'w' 
+              WHEN result = 'W' 
               AND (
                 decision ILIKE '%KO%' 
                 OR decision ILIKE '%TKO%' 
@@ -1352,16 +1352,16 @@ export class FighterAnalytics {
           FROM fight_stats
         )
         SELECT 
-          ROUND((total_wins::float / NULLIF(total_fights, 0) * 100)::numeric, 1) as win_rate,
-          ROUND((total_finishes::float / NULLIF(total_wins, 0) * 100)::numeric, 1) as finish_rate
+          ROUND((COALESCE(total_wins, 0)::float / NULLIF(total_fights, 0) * 100)::numeric, 1) as win_rate,
+          ROUND((COALESCE(total_finishes, 0)::float / NULLIF(total_wins, 0) * 100)::numeric, 1) as finish_rate
         FROM totals
       `, [fighterId]);
 
-      const { win_rate, finish_rate } = results.rows[0];
+      const { win_rate, finish_rate } = results.rows[0] || { win_rate: 0, finish_rate: 0 };
 
       return {
-        winRate: win_rate || 0,
-        finishRate: finish_rate || 0
+        winRate: Number(win_rate) || 0,
+        finishRate: Number(finish_rate) || 0
       };
     } finally {
       client.release();
