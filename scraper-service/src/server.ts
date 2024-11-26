@@ -15,6 +15,7 @@ import { limiter } from './middleware/rateLimiter';
 import cron from 'node-cron';
 import { setupPredictionRoutes } from './routes/prediction-routes';
 import { PredictionService } from './services/prediction-service';
+import { FighterAnalytics } from './services/analytics-service';
 
 dotenv.config();
 
@@ -69,7 +70,7 @@ app.use(express.json());
 // Routes
 app.use('/api/events', setupEventRoutes(eventService));
 app.use('/api/fighters', setupFighterRoutes(fighterService));
-app.use('/api/analytics', setupAnalyticsRoutes(dbService.getPool()));
+app.use('/api/analytics', setupAnalyticsRoutes(new FighterAnalytics(dbService.getPool())));
 app.use('/api/rankings', setupRankingsRoutes(rankingsService));
 app.use('/api/predictions', setupPredictionRoutes(predictionService));
 
