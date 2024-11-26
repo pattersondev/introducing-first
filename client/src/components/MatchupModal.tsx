@@ -219,7 +219,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="text-center p-4 bg-gray-700 rounded-lg">
                             <div className="text-sm text-gray-400">
-                              Fighter 1
+                              {matchup.fighter1_name}
                             </div>
                             <div className="text-lg font-semibold text-white">
                               {
@@ -230,7 +230,7 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
                           </div>
                           <div className="text-center p-4 bg-gray-700 rounded-lg">
                             <div className="text-sm text-gray-400">
-                              Fighter 2
+                              {matchup.fighter2_name}
                             </div>
                             <div className="text-lg font-semibold text-white">
                               {
