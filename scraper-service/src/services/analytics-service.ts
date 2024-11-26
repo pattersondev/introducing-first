@@ -462,7 +462,7 @@ export class FighterAnalytics {
           totalKnockdowns += knockdowns;
           
           // If they won despite being knocked down
-          if (fight.result === 'Win') {
+          if (fight.result.toLowerCase() === 'w') {
             winsAfterKnockdown++;
             knockdownsRecovered += knockdowns;
           }
@@ -924,7 +924,7 @@ export class FighterAnalytics {
   }
 
   private calculateWinRate(fights: any[]): number {
-    const wins = fights.filter(f => f.result === 'Win').length;
+    const wins = fights.filter(f => f.result.toLowerCase() === 'w').length;
     return fights.length > 0 ? wins / fights.length : 0;
   }
 
@@ -1314,7 +1314,7 @@ export class FighterAnalytics {
       return acc + (
         (fight.strike_accuracy || 0) +
         (fight.takedown_accuracy || 0) +
-        (fight.result === 'Win' ? 1 : 0)
+        (fight.result.toLowerCase() === 'w' ? 1 : 0)
       ) / 3;
     }, 0) / fights.length;
   }
@@ -1337,9 +1337,9 @@ export class FighterAnalytics {
         ),
         totals AS (
           SELECT 
-            SUM(CASE WHEN result = 'Win' THEN count ELSE 0 END) as total_wins,
+            SUM(CASE WHEN result = 'w' THEN count ELSE 0 END) as total_wins,
             SUM(CASE 
-              WHEN result = 'Win' 
+              WHEN result = 'w' 
               AND (
                 decision ILIKE '%KO%' 
                 OR decision ILIKE '%TKO%' 
