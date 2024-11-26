@@ -12,6 +12,10 @@ import { ProbabilityBar } from "./ProbabilityBar";
 import { RecentFights } from "./RecentFights";
 import { getCountryCode } from "@/utils/country-codes";
 import Link from "next/link";
+import { useFighterAnalytics } from "@/hooks/useFighterAnalytics";
+import { StyleComparison } from "./analytics/StyleComparison";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface FighterStatsProps {
   name: string;
@@ -82,6 +86,16 @@ interface MatchupModalProps {
 
 export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
   const { detailedMatchup, isLoading, error } = useMatchupDetails(matchup);
+
+  const { data: fighter1Analytics, isLoading: isLoadingAnalytics1 } =
+    useFighterAnalytics(matchup?.fighter1_id ?? "", {
+      enabled: isOpen && !!matchup?.fighter1_id,
+    });
+
+  const { data: fighter2Analytics, isLoading: isLoadingAnalytics2 } =
+    useFighterAnalytics(matchup?.fighter2_id ?? "", {
+      enabled: isOpen && !!matchup?.fighter2_id,
+    });
 
   if (!matchup) return null;
 
@@ -182,12 +196,205 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
             </TabsContent>
 
             <TabsContent value="advanced" className="mt-4">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Advanced Statistics</h3>
-                <p className="text-gray-400">
-                  Advanced statistics and analysis will be shown here.
-                </p>
-              </div>
+              {isLoadingAnalytics1 || isLoadingAnalytics2 ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+                </div>
+              ) : fighter1Analytics && fighter2Analytics ? (
+                <div className="space-y-6">
+                  <StyleComparison
+                    title="Fighting Style Analysis"
+                    fighter1Style={fighter1Analytics.styleAnalysis}
+                    fighter2Style={fighter2Analytics.styleAnalysis}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-white">
+                          Career Phase
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center p-4 bg-gray-700 rounded-lg">
+                            <div className="text-sm text-gray-400">
+                              Fighter 1
+                            </div>
+                            <div className="text-lg font-semibold text-white">
+                              {
+                                fighter1Analytics.careerPhases.peakPerformance
+                                  .currentPhase
+                              }
+                            </div>
+                          </div>
+                          <div className="text-center p-4 bg-gray-700 rounded-lg">
+                            <div className="text-sm text-gray-400">
+                              Fighter 2
+                            </div>
+                            <div className="text-lg font-semibold text-white">
+                              {
+                                fighter2Analytics.careerPhases.peakPerformance
+                                  .currentPhase
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-white">
+                          Career Sustainability
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-blue-400">
+                              {matchup.fighter1_name}
+                            </span>
+                            <span>
+                              {
+                                fighter1Analytics.careerPhases
+                                  .sustainabilityScore
+                              }
+                              %
+                            </span>
+                          </div>
+                          <Progress
+                            value={
+                              fighter1Analytics.careerPhases.sustainabilityScore
+                            }
+                            className="text-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-red-400">
+                              {matchup.fighter2_name}
+                            </span>
+                            <span>
+                              {
+                                fighter2Analytics.careerPhases
+                                  .sustainabilityScore
+                              }
+                              %
+                            </span>
+                          </div>
+                          <Progress
+                            value={
+                              fighter2Analytics.careerPhases.sustainabilityScore
+                            }
+                            className="text-red-500"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-white">
+                          Technical Evolution
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {[fighter1Analytics, fighter2Analytics].map(
+                            (analytics, index) => (
+                              <div key={index} className="space-y-2">
+                                <div className="text-sm text-gray-400">
+                                  {index === 0
+                                    ? matchup.fighter1_name
+                                    : matchup.fighter2_name}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div className="bg-gray-700 p-2 rounded">
+                                    <span className="text-gray-400">
+                                      Early Style:
+                                    </span>{" "}
+                                    <span className="text-white">
+                                      {
+                                        analytics.styleEvolution
+                                          .styleTransitions.earlyCareerStyle
+                                      }
+                                    </span>
+                                  </div>
+                                  <div className="bg-gray-700 p-2 rounded">
+                                    <span className="text-gray-400">
+                                      Current Style:
+                                    </span>{" "}
+                                    <span className="text-white">
+                                      {
+                                        analytics.styleEvolution
+                                          .styleTransitions.currentStyle
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-gray-800 border-gray-700">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-semibold text-white">
+                          Performance Trends
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {[fighter1Analytics, fighter2Analytics].map(
+                            (analytics, index) => (
+                              <div key={index} className="space-y-2">
+                                <div className="text-sm text-gray-400">
+                                  {index === 0
+                                    ? matchup.fighter1_name
+                                    : matchup.fighter2_name}
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div className="bg-gray-700 p-2 rounded">
+                                    <span className="text-gray-400">
+                                      Win Rate:
+                                    </span>{" "}
+                                    <span className="text-white">
+                                      {analytics.careerPhases.careerTrajectory.winRateProgression.recent.toFixed(
+                                        1
+                                      )}
+                                      %
+                                    </span>
+                                  </div>
+                                  <div className="bg-gray-700 p-2 rounded">
+                                    <span className="text-gray-400">
+                                      Finish Rate:
+                                    </span>{" "}
+                                    <span className="text-white">
+                                      {analytics.careerPhases.careerTrajectory.performanceMetrics.finishRate.toFixed(
+                                        1
+                                      )}
+                                      %
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-red-400 p-4 text-center">
+                  Failed to load analytics data
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}

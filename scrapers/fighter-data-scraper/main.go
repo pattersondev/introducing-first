@@ -344,7 +344,7 @@ func main() {
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/fightcenter")
+	c.Visit("https://www.espn.com/mma/fighter/_/id/5212856/talisson-teixeira")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice
