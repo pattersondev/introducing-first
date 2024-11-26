@@ -372,20 +372,18 @@ export class FighterAnalytics {
     const client = await this.pool.connect();
     try {
       const stats = await client.query(`
-        WITH defense_stats AS (
-          SELECT 
-            s.tsl as strikes_landed,
-            s.tsa as strikes_attempted,
-            c.tdl as takedowns_landed,
-            c.tda as takedowns_attempted,
-            f.decision,
-            f.result
-          FROM fights f
-          LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id AND f.opponent = s.opponent
-          LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id AND f.opponent = c.opponent
-          WHERE f.fighter_id = $1
-        )
-        SELECT * FROM defense_stats
+        SELECT 
+          s.tsl as strikes_landed,
+          s.tsa as strikes_attempted,
+          c.tdl as takedowns_landed,
+          c.tda as takedowns_attempted,
+          f.decision,
+          f.result,
+          s.kd as knockdowns
+        FROM fights f
+        LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id AND f.opponent = s.opponent
+        LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id AND f.opponent = c.opponent
+        WHERE f.fighter_id = $1
       `, [fighterId]);
 
       let totalStrikesDefended = 0;
@@ -394,6 +392,7 @@ export class FighterAnalytics {
       let totalTakedownsAttempted = 0;
       let submissionAttemptsSurvived = 0;
       let totalFights = stats.rows.length;
+      let totalKnockdowns = 0;
 
       stats.rows.forEach(fight => {
         if (fight.strikes_attempted && fight.strikes_landed) {
@@ -408,6 +407,10 @@ export class FighterAnalytics {
         if (fight.decision && fight.decision.toLowerCase().includes('submission') && fight.result !== 'Loss') {
           submissionAttemptsSurvived++;
         }
+        // Sum up knockdowns received
+        if (fight.knockdowns) {
+          totalKnockdowns += parseInt(fight.knockdowns);
+        }
       });
 
       return {
@@ -420,8 +423,8 @@ export class FighterAnalytics {
         submissionDefenseRate: totalFights > 0 
           ? (submissionAttemptsSurvived / totalFights) * 100 
           : 0,
-        knockdownsReceived: stats.rows.reduce((acc, fight) => acc + (parseInt(fight.kd) || 0), 0),
-        averageDamageAbsorbed: totalStrikesReceived / totalFights
+        knockdownsReceived: totalKnockdowns,
+        averageDamageAbsorbed: totalFights > 0 ? totalStrikesReceived / totalFights : 0
       };
     } finally {
       client.release();
@@ -1314,5 +1317,54 @@ export class FighterAnalytics {
         (fight.result === 'Win' ? 1 : 0)
       ) / 3;
     }, 0) / fights.length;
+  }
+
+  async calculateFighterRates(fighterId: string): Promise<{
+    winRate: number;
+    finishRate: number;
+  }> {
+    const client = await this.pool.connect();
+    try {
+      const results = await client.query(`
+        WITH fight_stats AS (
+          SELECT 
+            result,
+            decision,
+            COUNT(*) as count
+          FROM fights
+          WHERE fighter_id = $1
+          GROUP BY result, decision
+        ),
+        totals AS (
+          SELECT 
+            SUM(CASE WHEN result = 'Win' THEN count ELSE 0 END) as total_wins,
+            SUM(CASE 
+              WHEN result = 'Win' 
+              AND (
+                decision ILIKE '%KO%' 
+                OR decision ILIKE '%TKO%' 
+                OR decision ILIKE '%submission%'
+              ) 
+              THEN count 
+              ELSE 0 
+            END) as total_finishes,
+            SUM(count) as total_fights
+          FROM fight_stats
+        )
+        SELECT 
+          ROUND((total_wins::float / NULLIF(total_fights, 0) * 100)::numeric, 1) as win_rate,
+          ROUND((total_finishes::float / NULLIF(total_wins, 0) * 100)::numeric, 1) as finish_rate
+        FROM totals
+      `, [fighterId]);
+
+      const { win_rate, finish_rate } = results.rows[0];
+
+      return {
+        winRate: win_rate || 0,
+        finishRate: finish_rate || 0
+      };
+    } finally {
+      client.release();
+    }
   }
 } 
