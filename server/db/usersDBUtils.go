@@ -146,22 +146,35 @@ func CreatePasswordResetToken(email string) (string, error) {
 		return "", fmt.Errorf("error querying user: %v", err)
 	}
 
-	// Check for recent reset attempts
+	// Delete expired tokens first
+	_, err = usersDb.Exec(`
+		DELETE FROM password_reset_tokens 
+		WHERE user_id = $1 
+		AND expires_at <= NOW()
+	`, userId)
+	if err != nil {
+		log.Printf("Error deleting expired tokens: %v", err)
+		return "", fmt.Errorf("error deleting expired tokens: %v", err)
+	}
+
+	// Check for recent UNEXPIRED attempts within 24 hours
 	var recentAttempts int
 	err = usersDb.QueryRow(`
 		SELECT COUNT(*) 
 		FROM password_reset_tokens 
 		WHERE user_id = $1 
 		AND created_at > NOW() - INTERVAL '24 hours'
+		AND expires_at > NOW()
+		AND used = false
 	`, userId).Scan(&recentAttempts)
 	if err != nil {
 		log.Printf("Error checking recent attempts: %v", err)
 		return "", fmt.Errorf("error checking recent attempts: %v", err)
 	}
 
-	log.Printf("Recent attempts for user %s: %d", userId, recentAttempts)
+	log.Printf("Recent valid attempts for user %s: %d", userId, recentAttempts)
 
-	// Limit to 3 attempts per 24 hours
+	// Limit to 3 UNEXPIRED attempts per 24 hours
 	if recentAttempts >= 3 {
 		log.Printf("Too many reset attempts for user %s (%d attempts)", userId, recentAttempts)
 		return "", fmt.Errorf("too many reset attempts. Please try again later")
@@ -169,7 +182,9 @@ func CreatePasswordResetToken(email string) (string, error) {
 
 	// Generate a random token
 	token := uuid.New().String()
-	expiresAt := time.Now().UTC().Add(1 * time.Hour)
+	//set to 5 minutes for testing, make 1 hour for production
+	expiresAt := time.Now().UTC().Add(5 * time.Minute)
+	//expiresAt := time.Now().UTC().Add(1 * time.Hour)
 
 	// Insert new token
 	_, err = usersDb.Exec(`
