@@ -16,6 +16,8 @@ import cron from 'node-cron';
 import { setupPredictionRoutes } from './routes/prediction-routes';
 import { PredictionService } from './services/prediction-service';
 import { FighterAnalytics } from './services/analytics-service';
+import { NewsService } from './services/news-service';
+import { setupNewsRoutes } from './routes/news-routes';
 
 dotenv.config();
 
@@ -28,6 +30,7 @@ const eventService = new EventService(dbService.getPool(), new PredictionService
 const fighterService = new FighterService(dbService.getPool());
 const rankingsService = new RankingsService(dbService.getPool());
 const predictionService = new PredictionService(dbService.getPool());
+const newsService = new NewsService(dbService.getPool());
 
 // Initialize database
 dbService.initialize();
@@ -73,6 +76,7 @@ app.use('/api/fighters', setupFighterRoutes(fighterService));
 app.use('/api/analytics', setupAnalyticsRoutes(new FighterAnalytics(dbService.getPool())));
 app.use('/api/rankings', setupRankingsRoutes(rankingsService));
 app.use('/api/predictions', setupPredictionRoutes(predictionService));
+app.use('/api/news', setupNewsRoutes(newsService));
 
 // Run cleanup at 3 AM every day
 cron.schedule('0 3 * * *', async () => {

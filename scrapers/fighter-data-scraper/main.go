@@ -345,7 +345,7 @@ func main() {
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/fighter/_/id/4205093/sean-omalley")
+	c.Visit("https://www.espn.com/mma/fightcenter/_/league/pfl")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice
@@ -1034,7 +1034,7 @@ func sendJsonResultToDB(fighters []FighterStats) {
 }
 
 func sendFighter(fighter FighterStats, maxRetries int, retryDelay time.Duration) SendResult {
-	url := "https://introducing-first.onrender.com/api/fighters"
+	url := os.Getenv("SCRAPER_SERVICE_URL") + "/api/fighters"
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
