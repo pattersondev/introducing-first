@@ -30,6 +30,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2190295271181025"
+          crossOrigin="anonymous"
+        ></script>
+      </head>
       <body
         className={cn(
           "min-h-screen bg-gray-950 font-sans antialiased",

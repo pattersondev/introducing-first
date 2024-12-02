@@ -33,6 +33,10 @@ import {
   User,
   ChevronRight,
   ChartNoAxesCombined,
+  HelpCircle,
+  Mail,
+  Shield,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -81,6 +85,12 @@ export default function AppSidebar() {
     { title: "Standings", icon: ChartNoAxesCombined, path: "/standings" },
   ];
 
+  const supportItems = [
+    { title: "FAQ", icon: HelpCircle, path: "/faq" },
+    { title: "Contact", icon: Mail, path: "/contact" },
+    { title: "Privacy Policy", icon: Shield, path: "/privacy-policy" },
+  ];
+
   return (
     <Sidebar
       className="border-r border-gray-800 w-64 shrink-0 bg-gray-950"
@@ -102,6 +112,33 @@ export default function AppSidebar() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton asChild isActive={isActive(item.path)}>
+                        <Link href={item.path}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
+        <Collapsible className="group/collapsible">
+          <SidebarGroup>
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center">
+                Information & Support
+                <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {supportItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton asChild isActive={isActive(item.path)}>
                         <Link href={item.path}>

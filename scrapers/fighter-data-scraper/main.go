@@ -120,6 +120,7 @@ func shouldVisitURL(url string) bool {
 }
 
 func standardizeName(name string) string {
+	name = strings.ReplaceAll(name, "'", "")
 	name = strings.ReplaceAll(name, "-", " ")
 	words := strings.Fields(strings.ToLower(name))
 	for i, word := range words {
@@ -344,7 +345,7 @@ func main() {
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/fighter/_/id/5212856/talisson-teixeira")
+	c.Visit("https://www.espn.com/mma/fighter/_/id/4205093/sean-omalley")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice
