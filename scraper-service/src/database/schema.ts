@@ -256,10 +256,10 @@ CREATE INDEX IF NOT EXISTS idx_promotion_rankings_weight_class ON promotion_rank
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_fighter ON promotion_rankings(fighter_id);
 
 CREATE TABLE IF NOT EXISTS news_articles (
-    article_id VARCHAR(32) PRIMARY KEY,
-    headline TEXT NOT NULL,
-    source_url TEXT NOT NULL,
+    id VARCHAR(32) PRIMARY KEY,
     tweet_id VARCHAR(255) UNIQUE NOT NULL,
+    content TEXT NOT NULL,
+    url TEXT NOT NULL,
     published_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
