@@ -254,4 +254,16 @@ ON CONFLICT (name) DO NOTHING;
 -- Add index for performance
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_weight_class ON promotion_rankings(weight_class_id);
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_fighter ON promotion_rankings(fighter_id);
+
+CREATE TABLE IF NOT EXISTS news_articles (
+    article_id VARCHAR(32) PRIMARY KEY,
+    headline TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    tweet_id VARCHAR(255) UNIQUE NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add index for performance
+CREATE INDEX IF NOT EXISTS idx_news_articles_published_at ON news_articles(published_at);
 `; 
