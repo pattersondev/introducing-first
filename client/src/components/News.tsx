@@ -45,20 +45,40 @@ function processContent(article: NewsArticle): LinkedContent {
   const linkedParts: LinkedContent["linkedParts"] = [];
 
   // Sort fighters by name length (longest first) to avoid partial matches
-  const fighters = [...(article.fighters || [])].sort(
-    (a, b) => b.name.length - a.name.length
-  );
+  // Remove duplicate fighter names while preserving the first occurrence
+  const uniqueFighters =
+    article.fighters
+      ?.reduce<NewsArticleFighter[]>((acc, current) => {
+        const exists = acc.find(
+          (f) => f.name.toLowerCase() === current.name.toLowerCase()
+        );
+        if (!exists) {
+          acc.push(current);
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => b.name.length - a.name.length) || [];
 
   // Find all fighter name occurrences
-  fighters.forEach((fighter) => {
+  uniqueFighters.forEach((fighter) => {
     let position = content.toLowerCase().indexOf(fighter.name.toLowerCase());
     while (position !== -1) {
-      linkedParts.push({
-        text: content.slice(position, position + fighter.name.length),
-        fighter_id: fighter.fighter_id,
-        start: position,
-        end: position + fighter.name.length,
-      });
+      // Check if this position overlaps with any existing linked parts
+      const overlaps = linkedParts.some(
+        (part) =>
+          (position >= part.start && position < part.end) ||
+          (position + fighter.name.length > part.start &&
+            position + fighter.name.length <= part.end)
+      );
+
+      if (!overlaps) {
+        linkedParts.push({
+          text: content.slice(position, position + fighter.name.length),
+          fighter_id: fighter.fighter_id,
+          start: position,
+          end: position + fighter.name.length,
+        });
+      }
       position = content
         .toLowerCase()
         .indexOf(fighter.name.toLowerCase(), position + 1);
