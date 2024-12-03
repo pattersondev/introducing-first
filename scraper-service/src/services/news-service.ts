@@ -58,6 +58,7 @@ export class NewsService {
                 SELECT 
                     event_id,
                     name,
+                    length(name) as name_length,
                     CASE 
                         -- Exact match
                         WHEN lower($1) LIKE '%' || lower(name) || '%' THEN 1.0
@@ -80,20 +81,26 @@ export class NewsService {
                         $1 ~* ('UFC\\s*' || split_part(name, ' ', 2) || '\\b')
                     )
             )
-            SELECT DISTINCT 
+            SELECT DISTINCT ON (event_id)
                 event_id, 
                 name,
-                similarity
+                similarity,
+                name_length
             FROM event_matches
             WHERE similarity >= 0.8  -- Only return high confidence matches
             ORDER BY 
+                event_id,
                 similarity DESC,
-                length(name) DESC  -- Prefer longer names for same similarity
+                name_length DESC  -- Prefer longer names for same similarity
             LIMIT 1  -- Only get the best match
         `;
         
         const result = await this.pool.query(query, [content]);
-        return result.rows;
+        return result.rows.map(({ event_id, name, similarity }) => ({
+            event_id,
+            name,
+            similarity
+        }));
     }
 
     async addNewsArticle(article: NewsArticle): Promise<void> {
