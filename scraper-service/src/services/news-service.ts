@@ -81,62 +81,17 @@ export class NewsService {
         return result.rows;
     }
 
-    private async linkArticleToEntities(
-        articleId: string,
-        fighters: Array<{ fighter_id: string; similarity: number }>,
-        events: Array<{ event_id: string; similarity: number }>
-    ): Promise<void> {
-        const client = await this.pool.connect();
-        try {
-            await client.query('BEGIN');
-
-            // Link fighters with confidence scores
-            if (fighters.length > 0) {
-                const fighterValues = fighters
-                    .map((f, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
-                    .join(',');
-                const fighterParams = [articleId, ...fighters.flatMap(f => [f.fighter_id, f.similarity])];
-                await client.query(
-                    `INSERT INTO news_article_fighters (article_id, fighter_id, confidence_score)
-                     VALUES ${fighterValues}
-                     ON CONFLICT DO NOTHING`,
-                    fighterParams
-                );
-            }
-
-            // Link events with confidence scores
-            if (events.length > 0) {
-                const eventValues = events
-                    .map((e, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
-                    .join(',');
-                const eventParams = [articleId, ...events.flatMap(e => [e.event_id, e.similarity])];
-                await client.query(
-                    `INSERT INTO news_article_events (article_id, event_id, confidence_score)
-                     VALUES ${eventValues}
-                     ON CONFLICT DO NOTHING`,
-                    eventParams
-                );
-            }
-
-            await client.query('COMMIT');
-        } catch (error) {
-            await client.query('ROLLBACK');
-            throw error;
-        } finally {
-            client.release();
-        }
-    }
-
     async addNewsArticle(article: NewsArticle): Promise<void> {
         const client = await this.pool.connect();
         try {
             await client.query('BEGIN');
 
             // First, insert the article
-            await client.query(`
+            const result = await client.query(`
                 INSERT INTO news_articles (id, tweet_id, content, url, published_at, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (tweet_id) DO NOTHING
+                RETURNING id
             `, [
                 article.id,
                 article.tweet_id,
@@ -146,36 +101,49 @@ export class NewsService {
                 article.created_at
             ]);
 
-            // Then link fighters if they exist
-            if (article.fighters && article.fighters.length > 0) {
-                const fighterValues = article.fighters
-                    .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
-                    .join(',');
-                const fighterParams = [
-                    article.id,
-                    ...article.fighters.flatMap(f => [f.fighter_id, f.similarity])
-                ];
-                await client.query(`
-                    INSERT INTO news_article_fighters (article_id, fighter_id, confidence_score)
-                    VALUES ${fighterValues}
-                    ON CONFLICT DO NOTHING
-                `, fighterParams);
-            }
+            // If article was inserted (not a duplicate), find and link entities
+            if (result.rowCount && result.rowCount > 0) {
+                // Find entities in content
+                const [fighters, events] = await Promise.all([
+                    this.findFightersInContent(article.content),
+                    this.findEventsInContent(article.content)
+                ]);
 
-            // Then link events if they exist
-            if (article.events && article.events.length > 0) {
-                const eventValues = article.events
-                    .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
-                    .join(',');
-                const eventParams = [
-                    article.id,
-                    ...article.events.flatMap(e => [e.event_id, e.similarity])
-                ];
-                await client.query(`
-                    INSERT INTO news_article_events (article_id, event_id, confidence_score)
-                    VALUES ${eventValues}
-                    ON CONFLICT DO NOTHING
-                `, eventParams);
+                // Link fighters if found
+                if (fighters.length > 0) {
+                    const fighterValues = fighters
+                        .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
+                        .join(',');
+                    const fighterParams = [
+                        article.id,
+                        ...fighters.flatMap(f => [f.fighter_id, f.similarity])
+                    ];
+                    await client.query(`
+                        INSERT INTO news_article_fighters (article_id, fighter_id, confidence_score)
+                        VALUES ${fighterValues}
+                        ON CONFLICT DO NOTHING
+                    `, fighterParams);
+                }
+
+                // Link events if found
+                if (events.length > 0) {
+                    const eventValues = events
+                        .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
+                        .join(',');
+                    const eventParams = [
+                        article.id,
+                        ...events.flatMap(e => [e.event_id, e.similarity])
+                    ];
+                    await client.query(`
+                        INSERT INTO news_article_events (article_id, event_id, confidence_score)
+                        VALUES ${eventValues}
+                        ON CONFLICT DO NOTHING
+                    `, eventParams);
+                }
+
+                // Update the article object with found entities
+                article.fighters = fighters;
+                article.events = events;
             }
 
             await client.query('COMMIT');
