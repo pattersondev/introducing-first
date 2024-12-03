@@ -172,3 +172,12 @@ export interface MatchupPrediction {
   fighter2_decision_probability: number;
   confidence_score: number;
 }
+
+export interface NewsArticle {
+  id: string;
+  tweet_id: string;
+  content: string;
+  url: string;
+  published_at: string;
+  created_at: string;
+}
