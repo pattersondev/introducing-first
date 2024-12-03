@@ -142,8 +142,11 @@ func handleRateLimitWithRetry(resp *http.Response, retryCount int, userID string
 		waitTime = time.Duration(retryCount+1) * 30 * time.Second
 	}
 
+	fmt.Println(userID)
+
 	// Only attempt scraping if we have a valid userID and tracker
 	if userID != "" {
+		fmt.Println("Falling back to web scraping for", userID)
 		if tracker, exists := trackers[userID]; exists {
 			scrapeTwitterFallback(tracker.username)
 		}
@@ -265,6 +268,7 @@ func monitorTweets(bearerToken, userID string) {
 			log.Printf("No new tweets for user ID: %s", userID)
 			return
 		case 429:
+			scrapeTwitterFallback(trackers[userID].username)
 			if retryCount == maxRetries-1 {
 				// On last retry, attempt web scraping fallback
 				log.Printf("API rate limited, falling back to web scraping for %s", trackers[userID].username)
