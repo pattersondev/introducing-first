@@ -15,6 +15,7 @@ export class NewsService {
     constructor(private pool: Pool) {}
 
     private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string; similarity: number }>> {
+        console.log('Searching for fighters in content:', content);
         const query = `
             WITH fighter_names AS (
                 SELECT 
@@ -45,6 +46,7 @@ export class NewsService {
         `;
         
         const result = await this.pool.query(query, [content]);
+        console.log('Found fighters:', result.rows);
         return result.rows;
     }
 
@@ -86,6 +88,7 @@ export class NewsService {
         try {
             await client.query('BEGIN');
 
+            console.log('Inserting article:', article.id);
             // First, insert the article
             const result = await client.query(`
                 INSERT INTO news_articles (id, tweet_id, content, url, published_at, created_at)
@@ -101,16 +104,22 @@ export class NewsService {
                 article.created_at
             ]);
 
+            console.log('Insert result rowCount:', result.rowCount);
             // If article was inserted (not a duplicate), find and link entities
             if (result.rowCount && result.rowCount > 0) {
+                console.log('Article inserted, finding entities...');
                 // Find entities in content
                 const [fighters, events] = await Promise.all([
                     this.findFightersInContent(article.content),
                     this.findEventsInContent(article.content)
                 ]);
 
+                console.log('Found fighters:', fighters);
+                console.log('Found events:', events);
+
                 // Link fighters if found
                 if (fighters.length > 0) {
+                    console.log('Linking fighters...');
                     const fighterValues = fighters
                         .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
                         .join(',');
@@ -127,6 +136,7 @@ export class NewsService {
 
                 // Link events if found
                 if (events.length > 0) {
+                    console.log('Linking events...');
                     const eventValues = events
                         .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
                         .join(',');
@@ -144,10 +154,13 @@ export class NewsService {
                 // Update the article object with found entities
                 article.fighters = fighters;
                 article.events = events;
+            } else {
+                console.log('Article already exists, skipping entity detection');
             }
 
             await client.query('COMMIT');
         } catch (error) {
+            console.error('Error in addNewsArticle:', error);
             await client.query('ROLLBACK');
             throw error;
         } finally {
