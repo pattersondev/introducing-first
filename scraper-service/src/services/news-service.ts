@@ -131,15 +131,12 @@ export class NewsService {
         try {
             await client.query('BEGIN');
 
-            // Insert the article
-            const articleQuery = `
+            // First, insert the article
+            await client.query(`
                 INSERT INTO news_articles (id, tweet_id, content, url, published_at, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT (tweet_id) DO NOTHING
-                RETURNING id
-            `;
-
-            const result = await client.query(articleQuery, [
+            `, [
                 article.id,
                 article.tweet_id,
                 article.content,
@@ -148,20 +145,36 @@ export class NewsService {
                 article.created_at
             ]);
 
-            // If article was inserted (not a duplicate), process entities
-            if (result.rowCount && result.rowCount > 0) {
-                // Find entities in content
-                const [fighters, events] = await Promise.all([
-                    this.findFightersInContent(article.content),
-                    this.findEventsInContent(article.content)
-                ]);
+            // Then link fighters if they exist
+            if (article.fighters && article.fighters.length > 0) {
+                const fighterValues = article.fighters
+                    .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
+                    .join(',');
+                const fighterParams = [
+                    article.id,
+                    ...article.fighters.flatMap(f => [f.fighter_id, f.similarity])
+                ];
+                await client.query(`
+                    INSERT INTO news_article_fighters (article_id, fighter_id, confidence_score)
+                    VALUES ${fighterValues}
+                    ON CONFLICT DO NOTHING
+                `, fighterParams);
+            }
 
-                // Link entities to the article
-                await this.linkArticleToEntities(article.id, fighters, events);
-
-                // Add the found entities to the article object
-                article.fighters = fighters;
-                article.events = events;
+            // Then link events if they exist
+            if (article.events && article.events.length > 0) {
+                const eventValues = article.events
+                    .map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
+                    .join(',');
+                const eventParams = [
+                    article.id,
+                    ...article.events.flatMap(e => [e.event_id, e.similarity])
+                ];
+                await client.query(`
+                    INSERT INTO news_article_events (article_id, event_id, confidence_score)
+                    VALUES ${eventValues}
+                    ON CONFLICT DO NOTHING
+                `, eventParams);
             }
 
             await client.query('COMMIT');
