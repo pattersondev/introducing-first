@@ -15,31 +15,32 @@ export class NewsService {
     constructor(private pool: Pool) {}
 
     private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string; similarity: number }>> {
-        // Use trigram similarity for fuzzy matching of fighter names
         const query = `
             WITH fighter_names AS (
                 SELECT 
                     fighter_id,
                     first_name || ' ' || last_name as full_name,
-                    similarity(first_name || ' ' || last_name, word) as name_similarity
+                    first_name,
+                    last_name
                 FROM fighters
-                CROSS JOIN (
-                    SELECT unnest(regexp_split_to_array($1, E'\\s+|[.,!?;]\\s*')) as word
-                ) as words
                 WHERE 
-                    length(word) > 3 AND
-                    (
-                        similarity(first_name || ' ' || last_name, word) > 0.3 OR
-                        first_name || ' ' || last_name ILIKE '%' || word || '%'
+                    -- Check for exact full name match
+                    position(lower(first_name || ' ' || last_name) in lower($1)) > 0
+                    -- Or check for exact first and last name separately
+                    OR (
+                        position(lower(first_name) in lower($1)) > 0 
+                        AND position(lower(last_name) in lower($1)) > 0
                     )
             )
             SELECT DISTINCT 
                 fighter_id, 
                 full_name as name,
-                max(name_similarity) as similarity
+                CASE 
+                    WHEN position(lower(full_name) in lower($1)) > 0 THEN 1.0
+                    ELSE similarity(full_name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
+                END as similarity
             FROM fighter_names
-            GROUP BY fighter_id, full_name
-            ORDER BY max(name_similarity) DESC
+            ORDER BY similarity DESC
             LIMIT 5
         `;
         
