@@ -7,26 +7,39 @@ export interface NewsArticle {
     url: string;
     published_at: Date;
     created_at: Date;
-    fighters?: Array<{ fighter_id: string; name: string }>;
-    events?: Array<{ event_id: string; name: string }>;
+    fighters?: Array<{ fighter_id: string; name: string; similarity: number }>;
+    events?: Array<{ event_id: string; name: string; similarity: number }>;
 }
 
 export class NewsService {
     constructor(private pool: Pool) {}
 
-    private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string }>> {
-        // Efficient query to match fighter names in content
+    private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string; similarity: number }>> {
+        // Use trigram similarity for fuzzy matching of fighter names
         const query = `
             WITH fighter_names AS (
                 SELECT 
                     fighter_id,
-                    first_name || ' ' || last_name as full_name
+                    first_name || ' ' || last_name as full_name,
+                    similarity(first_name || ' ' || last_name, word) as name_similarity
                 FROM fighters
-                WHERE position($1 ILIKE '%' || first_name || ' ' || last_name || '%') > 0
+                CROSS JOIN (
+                    SELECT unnest(regexp_split_to_array($1, E'\\s+|[.,!?;]\\s*')) as word
+                ) as words
+                WHERE 
+                    length(word) > 3 AND
+                    (
+                        similarity(first_name || ' ' || last_name, word) > 0.3 OR
+                        first_name || ' ' || last_name ILIKE '%' || word || '%'
+                    )
             )
-            SELECT DISTINCT fighter_id, full_name as name
+            SELECT DISTINCT 
+                fighter_id, 
+                full_name as name,
+                max(name_similarity) as similarity
             FROM fighter_names
-            ORDER BY length(full_name) DESC
+            GROUP BY fighter_id, full_name
+            ORDER BY max(name_similarity) DESC
             LIMIT 5
         `;
         
@@ -34,13 +47,32 @@ export class NewsService {
         return result.rows;
     }
 
-    private async findEventsInContent(content: string): Promise<Array<{ event_id: string; name: string }>> {
-        // Efficient query to match event names in content
+    private async findEventsInContent(content: string): Promise<Array<{ event_id: string; name: string; similarity: number }>> {
+        // Use trigram similarity for fuzzy matching of event names
         const query = `
-            SELECT DISTINCT event_id, name
-            FROM events
-            WHERE position($1 ILIKE '%' || name || '%') > 0
-            ORDER BY length(name) DESC
+            WITH event_matches AS (
+                SELECT 
+                    event_id,
+                    name,
+                    similarity(name, word) as name_similarity
+                FROM events
+                CROSS JOIN (
+                    SELECT unnest(regexp_split_to_array($1, E'\\s+|[.,!?;]\\s*')) as word
+                ) as words
+                WHERE 
+                    length(word) > 3 AND
+                    (
+                        similarity(name, word) > 0.3 OR
+                        name ILIKE '%' || word || '%'
+                    )
+            )
+            SELECT DISTINCT 
+                event_id, 
+                name,
+                max(name_similarity) as similarity
+            FROM event_matches
+            GROUP BY event_id, name
+            ORDER BY max(name_similarity) DESC
             LIMIT 3
         `;
         
@@ -50,36 +82,35 @@ export class NewsService {
 
     private async linkArticleToEntities(
         articleId: string,
-        fighters: Array<{ fighter_id: string }>,
-        events: Array<{ event_id: string }>
+        fighters: Array<{ fighter_id: string; similarity: number }>,
+        events: Array<{ event_id: string; similarity: number }>
     ): Promise<void> {
-        // Use a transaction to ensure all links are created atomically
         const client = await this.pool.connect();
         try {
             await client.query('BEGIN');
 
-            // Link fighters
+            // Link fighters with confidence scores
             if (fighters.length > 0) {
                 const fighterValues = fighters
-                    .map((f, i) => `($1, $${i + 2})`)
+                    .map((f, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
                     .join(',');
-                const fighterParams = [articleId, ...fighters.map(f => f.fighter_id)];
+                const fighterParams = [articleId, ...fighters.flatMap(f => [f.fighter_id, f.similarity])];
                 await client.query(
-                    `INSERT INTO news_article_fighters (article_id, fighter_id)
+                    `INSERT INTO news_article_fighters (article_id, fighter_id, confidence_score)
                      VALUES ${fighterValues}
                      ON CONFLICT DO NOTHING`,
                     fighterParams
                 );
             }
 
-            // Link events
+            // Link events with confidence scores
             if (events.length > 0) {
                 const eventValues = events
-                    .map((e, i) => `($1, $${i + 2})`)
+                    .map((e, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`)
                     .join(',');
-                const eventParams = [articleId, ...events.map(e => e.event_id)];
+                const eventParams = [articleId, ...events.flatMap(e => [e.event_id, e.similarity])];
                 await client.query(
-                    `INSERT INTO news_article_events (article_id, event_id)
+                    `INSERT INTO news_article_events (article_id, event_id, confidence_score)
                      VALUES ${eventValues}
                      ON CONFLICT DO NOTHING`,
                     eventParams
