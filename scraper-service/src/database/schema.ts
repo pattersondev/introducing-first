@@ -1,4 +1,7 @@
 export const createTablesQuery = `
+-- Enable pg_trgm extension for text similarity
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS events (
     event_id VARCHAR(32) PRIMARY KEY,
     name VARCHAR(255),

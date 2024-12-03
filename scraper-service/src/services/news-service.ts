@@ -178,14 +178,20 @@ export class NewsService {
             WITH article_data AS (
                 SELECT 
                     na.*,
-                    json_agg(DISTINCT jsonb_build_object(
-                        'fighter_id', f.fighter_id,
-                        'name', f.first_name || ' ' || f.last_name
-                    )) FILTER (WHERE f.fighter_id IS NOT NULL) as fighters,
-                    json_agg(DISTINCT jsonb_build_object(
-                        'event_id', e.event_id,
-                        'name', e.name
-                    )) FILTER (WHERE e.event_id IS NOT NULL) as events
+                    COALESCE(
+                        json_agg(DISTINCT jsonb_build_object(
+                            'fighter_id', f.fighter_id,
+                            'name', f.first_name || ' ' || f.last_name
+                        )) FILTER (WHERE f.fighter_id IS NOT NULL),
+                        '[]'::json
+                    ) as fighters,
+                    COALESCE(
+                        json_agg(DISTINCT jsonb_build_object(
+                            'event_id', e.event_id,
+                            'name', e.name
+                        )) FILTER (WHERE e.event_id IS NOT NULL),
+                        '[]'::json
+                    ) as events
                 FROM news_articles na
                 LEFT JOIN news_article_fighters naf ON na.id = naf.article_id
                 LEFT JOIN fighters f ON naf.fighter_id = f.fighter_id
@@ -197,8 +203,8 @@ export class NewsService {
             )
             SELECT 
                 id, tweet_id, content, url, published_at, created_at,
-                CASE WHEN fighters = '[null]' THEN '[]'::json ELSE fighters END as fighters,
-                CASE WHEN events = '[null]' THEN '[]'::json ELSE events END as events
+                fighters,
+                events
             FROM article_data
         `;
 
