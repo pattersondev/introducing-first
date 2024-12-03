@@ -134,88 +134,86 @@ func scrapeTweets(page *rod.Page, url string) error {
 	log.Printf("Waiting for tweets to load")
 	page.MustWait(`() => document.querySelectorAll('article[data-testid="tweet"]').length > 0`)
 
-	// Get all tweets
-	tweets, err := page.Elements("article[data-testid='tweet']")
+	// Get only the first (most recent) tweet
+	tweet, err := page.Element("article[data-testid='tweet']")
 	if err != nil {
 		return fmt.Errorf("tweet selection error: %v", err)
 	}
 
-	log.Printf("Found %d tweets", len(tweets))
+	log.Printf("Found most recent tweet")
 
-	for _, tweet := range tweets {
-		// Extract tweet content
-		contentElement, err := tweet.Element("div[data-testid='tweetText']")
-		if err != nil {
-			log.Printf("Error finding tweet content: %v", err)
-			continue
-		}
+	// Extract tweet content
+	contentElement, err := tweet.Element("div[data-testid='tweetText']")
+	if err != nil {
+		log.Printf("Error finding tweet content: %v", err)
+		return nil
+	}
 
-		content, err := contentElement.Text()
-		if err != nil {
-			log.Printf("Error getting tweet text: %v", err)
-			continue
-		}
+	content, err := contentElement.Text()
+	if err != nil {
+		log.Printf("Error getting tweet text: %v", err)
+		return nil
+	}
 
-		if content == "" || shouldIgnoreTweet(content) {
-			log.Printf("Skipping tweet: %s", content)
-			continue
-		}
+	if content == "" || shouldIgnoreTweet(content) {
+		log.Printf("Skipping tweet: %s", content)
+		return nil
+	}
 
-		// Get tweet URL and ID
-		timeElement, err := tweet.Element("time")
-		if err != nil {
-			log.Printf("Error finding time element: %v", err)
-			continue
-		}
+	// Get tweet URL and ID
+	timeElement, err := tweet.Element("time")
+	if err != nil {
+		log.Printf("Error finding time element: %v", err)
+		return nil
+	}
 
-		parent, err := timeElement.Parent()
-		if err != nil {
-			log.Printf("Error finding time parent: %v", err)
-			continue
-		}
+	parent, err := timeElement.Parent()
+	if err != nil {
+		log.Printf("Error finding time parent: %v", err)
+		return nil
+	}
 
-		href, err := parent.Attribute("href")
-		if err != nil {
-			log.Printf("Error getting href: %v", err)
-			continue
-		}
+	href, err := parent.Attribute("href")
+	if err != nil {
+		log.Printf("Error getting href: %v", err)
+		return nil
+	}
 
-		tweetURL := fmt.Sprintf("https://twitter.com%s", *href)
-		parts := strings.Split(*href, "/")
-		tweetID := parts[len(parts)-1]
+	tweetURL := fmt.Sprintf("https://twitter.com%s", *href)
+	parts := strings.Split(*href, "/")
+	tweetID := parts[len(parts)-1]
 
-		// Get timestamp
-		timestamp, err := timeElement.Attribute("datetime")
-		if err != nil {
-			log.Printf("Error getting timestamp: %v", err)
-			continue
-		}
+	// Get timestamp
+	timestamp, err := timeElement.Attribute("datetime")
+	if err != nil {
+		log.Printf("Error getting timestamp: %v", err)
+		return nil
+	}
 
-		publishedAt, err := time.Parse(time.RFC3339, *timestamp)
-		if err != nil {
-			log.Printf("Error parsing timestamp: %v", err)
-			publishedAt = time.Now()
-		}
+	publishedAt, err := time.Parse(time.RFC3339, *timestamp)
+	if err != nil {
+		log.Printf("Error parsing timestamp: %v", err)
+		publishedAt = time.Now()
+	}
 
-		article := NewsArticle{
-			ID:          fmt.Sprintf("tw_%s", tweetID),
-			TweetID:     tweetID,
-			Content:     strings.TrimSpace(content),
-			URL:         tweetURL,
-			PublishedAt: publishedAt,
-			CreatedAt:   time.Now(),
-		}
+	article := NewsArticle{
+		ID:          fmt.Sprintf("tw_%s", tweetID),
+		TweetID:     tweetID,
+		Content:     strings.TrimSpace(content),
+		URL:         tweetURL,
+		PublishedAt: publishedAt,
+		CreatedAt:   time.Now(),
+	}
 
-		log.Printf("Processing tweet: %s", content)
-		if err := sendToScraperService(article); err != nil {
-			if strings.Contains(err.Error(), "409") {
-				log.Printf("Duplicate tweet found: %s", tweetID)
-			} else {
-				log.Printf("Error sending article to service: %v", err)
-			}
+	log.Printf("Processing tweet: %s", content)
+	if err := sendToScraperService(article); err != nil {
+		if strings.Contains(err.Error(), "409") {
+			log.Printf("Duplicate tweet found: %s", tweetID)
 		} else {
-			log.Printf("Successfully processed tweet")
+			log.Printf("Error sending article to service: %v", err)
 		}
+	} else {
+		log.Printf("Successfully processed tweet")
 	}
 
 	return nil
