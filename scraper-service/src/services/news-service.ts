@@ -196,7 +196,8 @@ export class NewsService {
                     COALESCE(
                         json_agg(DISTINCT jsonb_build_object(
                             'fighter_id', f.fighter_id,
-                            'name', f.first_name || ' ' || f.last_name
+                            'name', f.first_name || ' ' || f.last_name,
+                            'image_url', f.image_url
                         )) FILTER (WHERE f.fighter_id IS NOT NULL),
                         '[]'::json
                     ) as fighters,

@@ -247,10 +247,7 @@ export default function News() {
                               >
                                 <Avatar className="h-6 w-6">
                                   <AvatarImage
-                                    src={
-                                      fighter.image_url ||
-                                      `/api/fighters/${fighter.fighter_id}/image`
-                                    }
+                                    src={fighter.image_url}
                                     alt={fighter.name}
                                   />
                                   <AvatarFallback>
