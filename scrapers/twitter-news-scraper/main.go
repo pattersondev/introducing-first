@@ -27,8 +27,8 @@ type NewsArticle struct {
 }
 
 const (
-	requestDelay = 2 * time.Minute
-	cycleDelay   = 15 * time.Minute
+	requestDelay = 1 * time.Minute
+	cycleDelay   = 3 * time.Minute
 )
 
 func shouldIgnoreTweet(text string) bool {
