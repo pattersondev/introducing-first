@@ -14,7 +14,7 @@ export interface NewsArticle {
 export class NewsService {
     constructor(private pool: Pool) {}
 
-    private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string; similarity: number }>> {
+    private async findFightersInContent(content: string): Promise<Array<{ fighter_id: string; name: string; similarity: number; image_url?: string }>> {
         console.log('Searching for fighters in content:', content);
         const query = `
             WITH fighter_names AS (
@@ -22,7 +22,8 @@ export class NewsService {
                     fighter_id,
                     first_name || ' ' || last_name as full_name,
                     first_name,
-                    last_name
+                    last_name,
+                    image_url
                 FROM fighters
                 WHERE 
                     -- Check for exact full name match
@@ -36,6 +37,7 @@ export class NewsService {
             SELECT DISTINCT 
                 fighter_id, 
                 full_name as name,
+                image_url,
                 CASE 
                     WHEN position(lower(full_name) in lower($1)) > 0 THEN 1.0
                     ELSE similarity(full_name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
@@ -51,32 +53,43 @@ export class NewsService {
     }
 
     private async findEventsInContent(content: string): Promise<Array<{ event_id: string; name: string; similarity: number }>> {
-        // Use trigram similarity for fuzzy matching of event names
         const query = `
             WITH event_matches AS (
                 SELECT 
                     event_id,
                     name,
-                    similarity(name, word) as name_similarity
+                    CASE 
+                        -- Exact match
+                        WHEN lower($1) LIKE '%' || lower(name) || '%' THEN 1.0
+                        -- Partial match for just the event number (e.g., "UFC 310")
+                        WHEN (
+                            name LIKE 'UFC %' AND 
+                            $1 ~* ('UFC\\s*' || split_part(name, ' ', 2) || '\\b')
+                        ) THEN 0.8
+                        -- Lower similarity for very partial matches
+                        ELSE similarity(name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
+                    END as similarity
                 FROM events
-                CROSS JOIN (
-                    SELECT unnest(regexp_split_to_array($1, E'\\s+|[.,!?;]\\s*')) as word
-                ) as words
                 WHERE 
-                    length(word) > 3 AND
-                    (
-                        similarity(name, word) > 0.3 OR
-                        name ILIKE '%' || word || '%'
+                    -- Only consider events where either:
+                    -- 1. The full event name appears in the content
+                    lower($1) LIKE '%' || lower(name) || '%'
+                    -- 2. For UFC events, match the exact number
+                    OR (
+                        name LIKE 'UFC %' AND 
+                        $1 ~* ('UFC\\s*' || split_part(name, ' ', 2) || '\\b')
                     )
             )
             SELECT DISTINCT 
                 event_id, 
                 name,
-                max(name_similarity) as similarity
+                similarity
             FROM event_matches
-            GROUP BY event_id, name
-            ORDER BY max(name_similarity) DESC
-            LIMIT 3
+            WHERE similarity >= 0.8  -- Only return high confidence matches
+            ORDER BY 
+                similarity DESC,
+                length(name) DESC  -- Prefer longer names for same similarity
+            LIMIT 1  -- Only get the best match
         `;
         
         const result = await this.pool.query(query, [content]);

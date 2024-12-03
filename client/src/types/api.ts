@@ -173,6 +173,19 @@ export interface MatchupPrediction {
   confidence_score: number;
 }
 
+export interface NewsArticleFighter {
+  fighter_id: string;
+  name: string;
+  similarity?: number;
+  image_url?: string;
+}
+
+export interface NewsArticleEvent {
+  event_id: string;
+  name: string;
+  similarity?: number;
+}
+
 export interface NewsArticle {
   id: string;
   tweet_id: string;
@@ -180,4 +193,6 @@ export interface NewsArticle {
   url: string;
   published_at: string;
   created_at: string;
+  fighters?: NewsArticleFighter[];
+  events?: NewsArticleEvent[];
 }
