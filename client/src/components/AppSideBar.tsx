@@ -37,6 +37,7 @@ import {
   Mail,
   Shield,
   FileText,
+  Newspaper,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -78,6 +79,7 @@ export default function AppSidebar() {
 
   const menuItems = [
     { title: "Home", icon: Home, path: "/" },
+    { title: "News", icon: Newspaper, path: "/news" },
     { title: "Events", icon: CalendarDays, path: "/event-search" },
     { title: "Fighters", icon: Users, path: "/fighter-search" },
     { title: "Rankings", icon: BarChart2, path: "/rankings" },

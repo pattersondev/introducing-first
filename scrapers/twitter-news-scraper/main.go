@@ -12,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"regexp"
+
+	"github.com/gocolly/colly/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -32,9 +35,9 @@ type LastTweetTracker struct {
 var trackers = make(map[string]*LastTweetTracker)
 
 const (
-	requestDelay = 40 * time.Second // ~90 requests per hour (well under the 100/hour limit)
+	requestDelay = 1 * time.Minute // Delay between checking different accounts
 	maxRetries   = 3
-	cycleDelay   = 2 * time.Minute // Longer delay between cycles
+	cycleDelay   = 58 * time.Minute // Wait almost an hour between cycles
 )
 
 func shouldIgnoreTweet(text string) bool {
@@ -54,6 +57,7 @@ func shouldIgnoreTweet(text string) bool {
 		"Wednesday",
 		"Thursday",
 		"Sunday",
+		"predictions",
 	}
 
 	text = strings.ToUpper(text)
@@ -102,21 +106,21 @@ func main() {
 		log.Fatal("No valid user IDs found")
 	}
 
-	log.Printf("Starting to monitor tweets from %d accounts", len(userIDs))
-	log.Printf("Using delays: %v between requests, %v between cycles", requestDelay, cycleDelay)
+	log.Printf("Starting to monitor tweets from %d accounts (checking hourly)", len(userIDs))
+	log.Printf("Using delays: %v between accounts, full cycle every %v", requestDelay, cycleDelay+requestDelay)
 
 	// Start monitoring tweets from all accounts
 	for {
 		for _, userID := range userIDs {
 			monitorTweets(bearerToken, userID)
-			time.Sleep(requestDelay) // 40 seconds between each account check
+			time.Sleep(requestDelay) // 1 minute between each account check
 		}
 		log.Println("Completed checking all accounts, waiting before next cycle...")
-		time.Sleep(cycleDelay) // 2 minutes between cycles
+		time.Sleep(cycleDelay) // 58 minutes between cycles
 	}
 }
 
-func handleRateLimitWithRetry(resp *http.Response, retryCount int) bool {
+func handleRateLimitWithRetry(resp *http.Response, retryCount int, userID string) bool {
 	if retryCount >= maxRetries {
 		log.Printf("Max retries reached, giving up")
 		return false
@@ -137,6 +141,14 @@ func handleRateLimitWithRetry(resp *http.Response, retryCount int) bool {
 	if waitTime < 0 {
 		waitTime = time.Duration(retryCount+1) * 30 * time.Second
 	}
+
+	// Only attempt scraping if we have a valid userID and tracker
+	if userID != "" {
+		if tracker, exists := trackers[userID]; exists {
+			scrapeTwitterFallback(tracker.username)
+		}
+	}
+
 	log.Printf("Rate limited, waiting for %v until %v (retry %d/%d)",
 		waitTime, time.Unix(resetTime, 0), retryCount+1, maxRetries)
 	time.Sleep(waitTime)
@@ -161,7 +173,7 @@ func getUserID(bearerToken, username string) (string, error) {
 
 		if resp.StatusCode == 429 {
 			resp.Body.Close()
-			if handleRateLimitWithRetry(resp, retryCount) {
+			if handleRateLimitWithRetry(resp, retryCount, "") {
 				continue
 			}
 			return "", fmt.Errorf("rate limit exceeded after %d retries", maxRetries)
@@ -186,9 +198,45 @@ func getUserID(bearerToken, username string) (string, error) {
 	return "", fmt.Errorf("max retries exceeded")
 }
 
+func scrapeTwitterFallback(username string) error {
+	c := colly.NewCollector()
+	tweetRegex := regexp.MustCompile(`(?s)<article.*?tweet.*?>.*?</article>`)
+
+	fmt.Println("Scraping tweets from", username)
+
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		tweets := tweetRegex.FindAllString(e.Text, -1)
+		for _, tweet := range tweets {
+			if shouldIgnoreTweet(tweet) {
+				log.Printf("Ignoring scraped tweet from %s", username)
+				continue
+			}
+
+			// Create article from scraped tweet
+			article := NewsArticle{
+				ID:          fmt.Sprintf("tw_scrape_%d", time.Now().UnixNano()),
+				Content:     tweet,
+				URL:         fmt.Sprintf("https://twitter.com/%s", username),
+				PublishedAt: time.Now(),
+				CreatedAt:   time.Now(),
+			}
+
+			if err := sendToScraperService(article); err != nil {
+				log.Printf("Error sending scraped article to service: %v", err)
+				continue
+			}
+
+			log.Printf("Saved scraped tweet from %s: %s", username, tweet)
+		}
+	})
+
+	url := fmt.Sprintf("https://twitter.com/%s", username)
+	return c.Visit(url)
+}
+
 func monitorTweets(bearerToken, userID string) {
 	for retryCount := 0; retryCount < maxRetries; retryCount++ {
-		url := fmt.Sprintf("https://api.twitter.com/2/users/%s/tweets?tweet.fields=created_at&exclude=retweets,replies,quote_tweets&max_results=100", userID)
+		url := fmt.Sprintf("https://api.twitter.com/2/users/%s/tweets?tweet.fields=created_at&exclude=retweets,replies&max_results=100", userID)
 		if trackers[userID].lastSeenID != "" {
 			url = fmt.Sprintf("%s&since_id=%s", url, trackers[userID].lastSeenID)
 		}
@@ -207,12 +255,31 @@ func monitorTweets(bearerToken, userID string) {
 			log.Printf("Error making request: %v", err)
 			return
 		}
+		defer resp.Body.Close()
 
-		if resp.StatusCode == 429 {
-			resp.Body.Close()
-			if handleRateLimitWithRetry(resp, retryCount) {
+		// Handle different status codes
+		switch resp.StatusCode {
+		case http.StatusOK:
+			// Continue with processing
+		case http.StatusNoContent:
+			log.Printf("No new tweets for user ID: %s", userID)
+			return
+		case 429:
+			if retryCount == maxRetries-1 {
+				// On last retry, attempt web scraping fallback
+				log.Printf("API rate limited, falling back to web scraping for %s", trackers[userID].username)
+				if err := scrapeTwitterFallback(trackers[userID].username); err != nil {
+					log.Printf("Fallback scraping failed: %v", err)
+				}
+				return
+			}
+			if handleRateLimitWithRetry(resp, retryCount, userID) {
 				continue
 			}
+			return
+		default:
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("Unexpected status code %d: %s", resp.StatusCode, string(body))
 			return
 		}
 
@@ -235,14 +302,19 @@ func monitorTweets(bearerToken, userID string) {
 			return
 		}
 
+		// Log when we find tweets
 		if len(tweets.Data) > 0 {
+			log.Printf("Found %d tweets for user ID: %s", len(tweets.Data), userID)
 			trackers[userID].lastSeenID = tweets.Data[0].ID
+		} else {
+			log.Printf("No new tweets found for user ID: %s", userID)
 		}
 
 		// Process tweets in reverse order (oldest first)
 		for i := len(tweets.Data) - 1; i >= 0; i-- {
 			tweet := tweets.Data[i]
 			if shouldIgnoreTweet(tweet.Text) {
+				log.Printf("Ignoring tweet: %s", tweet.Text)
 				continue
 			}
 
@@ -252,7 +324,7 @@ func monitorTweets(bearerToken, userID string) {
 				ID:          fmt.Sprintf("tw_%s", tweet.ID),
 				TweetID:     tweet.ID,
 				Content:     tweet.Text,
-				URL:         fmt.Sprintf("https://twitter.com/mmafighting/status/%s", tweet.ID),
+				URL:         fmt.Sprintf("https://twitter.com/%s/status/%s", trackers[userID].username, tweet.ID),
 				PublishedAt: createdAt,
 				CreatedAt:   time.Now(),
 			}
