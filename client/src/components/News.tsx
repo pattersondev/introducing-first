@@ -158,15 +158,19 @@ export default function News() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCached, setIsCached] = useState(false);
 
   const fetchNews = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setIsRefreshing(true);
       }
-      const articles = await NewsService.getLatestNews();
+      const articles = await NewsService.getLatestNews(20, isRefresh);
       setNews(articles);
       setError(null);
+      setIsCached(
+        !isRefresh && NewsService.getCachedNews()?.timestamp === Date.now()
+      );
     } catch (err) {
       setError(
         err instanceof NewsServiceError ? err.message : "Failed to load news"
@@ -231,7 +235,9 @@ export default function News() {
     <div className="p-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Latest News</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Latest News</CardTitle>
+          </div>
           <Button
             onClick={handleRefresh}
             variant="outline"
