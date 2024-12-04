@@ -14,6 +14,7 @@ import {
   Timer,
   AlertCircle,
   Crown,
+  Newspaper,
 } from "lucide-react";
 import {
   Table,
@@ -35,12 +36,42 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
+import { NewsService } from "@/services/news-service";
+import { NewsArticle } from "@/types/api";
+import NextLink from "next/link";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
 }
 
 export function FighterProfile({ fighter }: FighterProfileProps) {
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      if (!fighter?.first_name || !fighter?.last_name) return;
+
+      setLoading(true);
+      setError(null);
+      try {
+        const articles = await NewsService.getNewsByFighter(
+          `${fighter.first_name} ${fighter.last_name}`
+        );
+        setNews(articles);
+      } catch (err) {
+        setError("Failed to load news articles");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, [fighter?.first_name, fighter?.last_name]);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -247,6 +278,61 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="bg-gray-800 border-gray-700">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Newspaper className="h-5 w-5" />
+            <CardTitle>Recent News</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading && (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          )}
+
+          {error && <p className="text-destructive py-4">{error}</p>}
+
+          {!loading && !error && news.length === 0 && (
+            <p className="text-gray-400 py-4">
+              No recent news found for {fighter?.first_name}{" "}
+              {fighter?.last_name}.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {news.map((article) => (
+              <div
+                key={article.id}
+                className={cn(
+                  "p-4 rounded-lg border border-gray-700 bg-gray-900",
+                  "transition-all duration-200 hover:-translate-y-1",
+                  "hover:bg-gray-800"
+                )}
+              >
+                <NextLink
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary"
+                >
+                  <h3 className="font-semibold text-gray-100">
+                    {article.content.split("\n")[0]}
+                  </h3>
+                </NextLink>
+                <p className="text-sm text-gray-400 mt-1">
+                  {new Date(article.published_at).toLocaleDateString()}
+                </p>
+                <p className="text-sm text-gray-400 mt-2 line-clamp-2">
+                  {article.content}
+                </p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="bg-gray-800 border-gray-700 col-span-2">
         <CardHeader>

@@ -53,5 +53,18 @@ export function setupNewsRoutes(newsService: NewsService) {
         }
     });
 
+    // Get news by fighter
+    router.get('/fighter/:name', async (req, res) => {
+        try {
+            const { name } = req.params;
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+            const articles = await newsService.getNewsByFighter(name, limit);
+            res.json(articles);
+        } catch (error) {
+            console.error('Error fetching fighter news:', error);
+            res.status(500).json({ error: 'Failed to fetch fighter news' });
+        }
+    });
+
     return router;
 } 
