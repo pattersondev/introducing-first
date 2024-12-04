@@ -74,7 +74,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	accounts := []string{"mmafighting", "mmajunkie", "UFCNews"}
+	accounts := []string{"arielhelwani", "mmafighting", "mmajunkie", "UFCNews", "espnmma"}
 	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
 
 	// Launch browser
