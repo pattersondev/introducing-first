@@ -15,6 +15,11 @@ import {
   AlertCircle,
   Crown,
   Newspaper,
+  Clock,
+  ClipboardList,
+  Dumbbell,
+  History,
+  Medal,
 } from "lucide-react";
 import {
   Table,
@@ -189,8 +194,8 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row gap-8">
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row gap-6">
         <Card className="bg-gray-800 border-gray-700 w-full md:w-64">
           <CardContent className="p-6">
             <div className="aspect-square rounded-lg bg-gray-700 overflow-hidden">
@@ -212,7 +217,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </CardContent>
         </Card>
 
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-4">
           <div>
             <h1 className="text-3xl font-bold">
               {fighter.first_name} {fighter.last_name}
@@ -242,10 +247,13 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle>Fighter Details</CardTitle>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="bg-gray-800 border-gray-700 md:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              <CardTitle>Fighter Details</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -263,17 +271,26 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
         </Card>
 
         <Card className="bg-gray-800 border-gray-700">
-          <CardHeader>
-            <CardTitle>Fight Style</CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5" />
+              <CardTitle>Fight Style</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-400">Stance</p>
-              <p className="font-medium">{fighter.stance || "Unknown"}</p>
-              <p className="text-sm text-gray-400 mt-4">Team</p>
-              <p className="font-medium">{fighter.team || "Unknown"}</p>
-              <p className="text-sm text-gray-400 mt-4">Reach</p>
-              <p className="font-medium">{fighter.reach || "Unknown"}</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-400">Stance</p>
+                <p className="font-medium">{fighter.stance || "Unknown"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Team</p>
+                <p className="font-medium">{fighter.team || "Unknown"}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-400">Reach</p>
+                <p className="font-medium">{fighter.reach || "Unknown"}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -281,9 +298,16 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
 
       <Card className="bg-gray-800 border-gray-700">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Newspaper className="h-5 w-5" />
-            <CardTitle>Recent News</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Newspaper className="h-5 w-5" />
+              <CardTitle>Recent News</CardTitle>
+            </div>
+            {news.length > 0 && (
+              <p className="text-sm text-gray-400">
+                {news.length} article{news.length !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -302,14 +326,24 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
             </p>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div
+            className={cn(
+              "grid gap-4",
+              news.length === 1
+                ? "grid-cols-1 max-w-2xl mx-auto"
+                : news.length === 2
+                ? "grid-cols-1 md:grid-cols-2"
+                : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+            )}
+          >
             {news.map((article) => (
               <div
                 key={article.id}
                 className={cn(
                   "p-4 rounded-lg border border-gray-700 bg-gray-900",
                   "transition-all duration-200 hover:-translate-y-1",
-                  "hover:bg-gray-800"
+                  "hover:bg-gray-800",
+                  news.length === 1 ? "md:p-6" : ""
                 )}
               >
                 <NextLink
@@ -322,10 +356,18 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                     {article.content.split("\n")[0]}
                   </h3>
                 </NextLink>
-                <p className="text-sm text-gray-400 mt-1">
-                  {new Date(article.published_at).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-gray-400 mt-2 line-clamp-2">
+                <div className="flex items-center gap-2 mt-2">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  <p className="text-sm text-gray-400">
+                    {new Date(article.published_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    "text-sm text-gray-400 mt-3",
+                    news.length === 1 ? "line-clamp-4" : "line-clamp-2"
+                  )}
+                >
                   {article.content}
                 </p>
               </div>
@@ -336,7 +378,10 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
 
       <Card className="bg-gray-800 border-gray-700 col-span-2">
         <CardHeader>
-          <CardTitle>Fight History</CardTitle>
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            <CardTitle>Fight History</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[400px]">
@@ -436,7 +481,10 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
 
       <Card className="bg-gray-800 border-gray-700 col-span-2">
         <CardHeader>
-          <CardTitle>Fighter Rankings</CardTitle>
+          <div className="flex items-center gap-2">
+            <Medal className="h-5 w-5" />
+            <CardTitle>Fighter Rankings</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           <p>Coming Soon</p>
