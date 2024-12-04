@@ -196,3 +196,11 @@ export interface NewsArticle {
   fighters?: NewsArticleFighter[];
   events?: NewsArticleEvent[];
 }
+
+export interface TeammateFighter {
+  fighter_id: string;
+  first_name: string;
+  last_name: string;
+  win_loss_record: string;
+  image_url: string;
+}

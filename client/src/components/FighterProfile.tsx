@@ -45,6 +45,9 @@ import { useEffect, useState } from "react";
 import { NewsService } from "@/services/news-service";
 import { NewsArticle } from "@/types/api";
 import NextLink from "next/link";
+import { TeammatesList } from "./TeammatesList";
+import { FighterService } from "@/services/fighter-service";
+import { TeammateFighter, ApiResponse } from "@/types/api";
 
 interface FighterProfileProps {
   fighter: DetailedFighter;
@@ -54,6 +57,8 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [teammates, setTeammates] = useState<TeammateFighter[]>([]);
+  const [isLoadingTeammates, setIsLoadingTeammates] = useState(false);
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -76,6 +81,26 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
 
     fetchNews();
   }, [fighter?.first_name, fighter?.last_name]);
+
+  useEffect(() => {
+    const loadTeammates = async () => {
+      if (!fighter.fighter_id) return;
+
+      setIsLoadingTeammates(true);
+      try {
+        const response = await FighterService.getTeammates(fighter.fighter_id);
+        if (response.data) {
+          setTeammates(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading teammates:", error);
+      } finally {
+        setIsLoadingTeammates(false);
+      }
+    };
+
+    loadTeammates();
+  }, [fighter.fighter_id]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -194,8 +219,8 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-6">
+    <div className="space-y-8">
+      <div className="flex flex-col md:flex-row gap-8">
         <Card className="bg-gray-800 border-gray-700 w-full md:w-64">
           <CardContent className="p-6">
             <div className="aspect-square rounded-lg bg-gray-700 overflow-hidden">
@@ -217,7 +242,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </CardContent>
         </Card>
 
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-6">
           <div>
             <h1 className="text-3xl font-bold">
               {fighter.first_name} {fighter.last_name}
@@ -247,7 +272,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Card className="bg-gray-800 border-gray-700 md:col-span-2">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
@@ -490,6 +515,8 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           <p>Coming Soon</p>
         </CardContent>
       </Card>
+
+      <TeammatesList teammates={teammates} isLoading={isLoadingTeammates} />
     </div>
   );
 }
