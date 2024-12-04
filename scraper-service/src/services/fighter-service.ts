@@ -789,4 +789,42 @@ export class FighterService {
       client.release();
     }
   }
+
+  async getTeammates(fighterId: string): Promise<any[]> {
+    const client = await this.pool.connect();
+    try {
+      // First get the fighter's team
+      const teamQuery = await client.query(
+        'SELECT team FROM fighters WHERE fighter_id = $1',
+        [fighterId]
+      );
+
+      if (!teamQuery.rows[0]?.team) {
+        return [];
+      }
+
+      // Get all fighters from the same team, excluding the current fighter
+      const teammatesQuery = await client.query(
+        `SELECT 
+          fighter_id,
+          first_name,
+          last_name,
+          win_loss_record,
+          image_url
+        FROM fighters 
+        WHERE team = $1 
+        AND fighter_id != $2 
+        AND team != ''
+        ORDER BY last_name, first_name`,
+        [teamQuery.rows[0].team, fighterId]
+      );
+
+      return teammatesQuery.rows;
+    } catch (error) {
+      console.error('Error fetching teammates:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 } 

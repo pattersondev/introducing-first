@@ -16,6 +16,14 @@ interface SearchResponse {
   };
 }
 
+interface TeammateFighter {
+  fighter_id: string;
+  first_name: string;
+  last_name: string;
+  win_loss_record: string;
+  image_url: string;
+}
+
 export const FighterService = {
   async getFighter(fighterId: string): Promise<ApiResponse<DetailedFighter>> {
     return apiClient<DetailedFighter>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}`);
@@ -39,5 +47,9 @@ export const FighterService = {
 
   async getFightersByRank(): Promise<ApiResponse<Fighter[]>> {
     return apiClient<Fighter[]>(`${API_ENDPOINTS.FIGHTERS}/promotion-rankings`);
+  },
+
+  async getTeammates(fighterId: string): Promise<ApiResponse<TeammateFighter[]>> {
+    return apiClient<TeammateFighter[]>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}/teammates`);
   }
 }; 

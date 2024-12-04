@@ -166,5 +166,17 @@ export function setupFighterRoutes(fighterService: FighterService) {
       });
     }
   });
+
+  router.get('/:fighterId/teammates', async (req: Request, res: Response) => {
+    try {
+      const { fighterId } = req.params;
+      const teammates = await fighterService.getTeammates(fighterId);
+      res.json({ success: true, data: teammates });
+    } catch (error) {
+      console.error('Error fetching teammates:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch teammates' });
+    }
+  });
+
   return router;
 } 
