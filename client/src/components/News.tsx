@@ -257,8 +257,8 @@ export default function News() {
                   >
                     <CardContent className="pt-6">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm text-gray-400">
                               {formatDistanceToNow(
                                 new Date(article.published_at),
@@ -267,7 +267,9 @@ export default function News() {
                                 }
                               )}
                             </p>
-                            <span className="text-gray-600">•</span>
+                            <span className="text-gray-600 hidden sm:inline">
+                              •
+                            </span>
                             <p className="text-sm text-gray-400">
                               via{" "}
                               {(() => {
