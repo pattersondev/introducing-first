@@ -77,5 +77,34 @@ export const NewsService = {
                 error instanceof Error ? error.message : 'Failed to fetch news'
             );
         }
+    },
+
+    async getNewsByFighter(fighterName: string, limit: number = 10): Promise<NewsArticle[]> {
+        try {
+            const response = await fetch(`${API_BASE_URL}/news/fighter/${encodeURIComponent(fighterName)}?limit=${limit}`);
+            
+            if (!response.ok) {
+                throw new NewsServiceError(
+                    `Failed to fetch fighter news: ${response.statusText}`,
+                    response.status
+                );
+            }
+
+            const data = await response.json();
+            
+            if (!Array.isArray(data)) {
+                throw new NewsServiceError('Invalid response format: expected an array of news articles');
+            }
+
+            return data;
+        } catch (error) {
+            if (error instanceof NewsServiceError) {
+                throw error;
+            }
+            
+            throw new NewsServiceError(
+                error instanceof Error ? error.message : 'Failed to fetch fighter news'
+            );
+        }
     }
 }

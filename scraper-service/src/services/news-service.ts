@@ -227,4 +227,16 @@ export class NewsService {
         const result = await this.pool.query(query, [limit]);
         return result.rows;
     }
+
+    async getNewsByFighter(fighterName: string, limit: number = 10): Promise<NewsArticle[]> {
+        const query = `
+            SELECT * FROM news_articles 
+            WHERE LOWER(content) LIKE LOWER($1)
+            ORDER BY published_at DESC
+            LIMIT $2
+        `;
+        
+        const result = await this.pool.query(query, [`%${fighterName}%`, limit]);
+        return result.rows;
+    }
 } 
