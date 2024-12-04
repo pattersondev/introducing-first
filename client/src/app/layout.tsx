@@ -19,8 +19,11 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Introducing First",
-  description: "Advanced MMA Stats and Predictions",
+  title: "Introducing First - MMA Fighter Stats and Analytics",
+  description:
+    "Comprehensive MMA fighter statistics, rankings, and analytics. Track fighter records, matchups, and performance metrics.",
+  keywords:
+    "MMA, UFC, fighter stats, MMA analytics, fighter rankings, Bellator, PFL, ONE Championship, kickboxing, boxing, grappling, MMA predictions, MMA betting, Introducing First",
 };
 
 export default function RootLayout({
