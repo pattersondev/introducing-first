@@ -202,5 +202,5 @@ export interface TeammateFighter {
   first_name: string;
   last_name: string;
   win_loss_record: string;
-  image_url: string;
+  image_url: string | null;
 }

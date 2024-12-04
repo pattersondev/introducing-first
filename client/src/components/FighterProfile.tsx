@@ -20,6 +20,7 @@ import {
   Dumbbell,
   History,
   Medal,
+  Users,
 } from "lucide-react";
 import {
   Table,
@@ -85,15 +86,23 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
   useEffect(() => {
     const loadTeammates = async () => {
       if (!fighter.fighter_id) return;
+      console.log("Loading teammates for fighter:", fighter.fighter_id);
 
       setIsLoadingTeammates(true);
       try {
         const response = await FighterService.getTeammates(fighter.fighter_id);
-        if (response.data) {
-          setTeammates(response.data);
+        console.log("Teammates response:", response);
+
+        if (response.data?.success && Array.isArray(response.data.data)) {
+          console.log("Setting teammates array:", response.data.data);
+          setTeammates(response.data.data);
+        } else {
+          console.log("No valid teammates array found in response");
+          setTeammates([]);
         }
       } catch (error) {
         console.error("Error loading teammates:", error);
+        setTeammates([]);
       } finally {
         setIsLoadingTeammates(false);
       }
@@ -273,7 +282,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className="bg-gray-800 border-gray-700 md:col-span-2">
+        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5" />
@@ -281,7 +290,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               {details.map((detail, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <detail.icon className="w-5 h-5 text-gray-400" />
@@ -295,7 +304,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700">
+        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Dumbbell className="h-5 w-5" />
@@ -317,6 +326,21 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
                 <p className="font-medium">{fighter.reach || "Unknown"}</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              <CardTitle>Teammates</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <TeammatesList
+              teammates={teammates}
+              isLoading={isLoadingTeammates}
+            />
           </CardContent>
         </Card>
       </div>
@@ -515,8 +539,6 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           <p>Coming Soon</p>
         </CardContent>
       </Card>
-
-      <TeammatesList teammates={teammates} isLoading={isLoadingTeammates} />
     </div>
   );
 }
