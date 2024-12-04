@@ -137,6 +137,22 @@ function LinkedText({ content, linkedParts }: LinkedContent) {
   return <>{elements}</>;
 }
 
+function getSourceFromUrl(url: string): { handle: string; url: string } | null {
+  try {
+    // Extract username from Twitter URL
+    const match = url.match(/twitter\.com\/([^\/]+)/);
+    if (match && match[1]) {
+      return {
+        handle: `@${match[1].toLowerCase()}`,
+        url: `https://twitter.com/${match[1]}`,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function News() {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,14 +258,35 @@ export default function News() {
                     <CardContent className="pt-6">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-400">
-                            {formatDistanceToNow(
-                              new Date(article.published_at),
-                              {
-                                addSuffix: true,
-                              }
-                            )}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-gray-400">
+                              {formatDistanceToNow(
+                                new Date(article.published_at),
+                                {
+                                  addSuffix: true,
+                                }
+                              )}
+                            </p>
+                            <span className="text-gray-600">•</span>
+                            <p className="text-sm text-gray-400">
+                              via{" "}
+                              {(() => {
+                                const source = getSourceFromUrl(article.url);
+                                return source ? (
+                                  <a
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:text-blue-400 hover:underline"
+                                  >
+                                    {source.handle}
+                                  </a>
+                                ) : (
+                                  "Unknown Source"
+                                );
+                              })()}
+                            </p>
+                          </div>
                           {article.url && (
                             <a
                               href={article.url}
