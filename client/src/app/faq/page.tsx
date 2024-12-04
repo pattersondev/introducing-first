@@ -1,62 +1,79 @@
 import { Metadata } from "next";
+import { HelpCircle, MessageCircle, ChevronDown } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 export const metadata: Metadata = {
   title: "FAQ - Introducing First",
-  description:
-    "Frequently asked questions about Introducing First's predictions and services",
+  description: "Frequently Asked Questions about Introducing First",
 };
 
 export default function FAQPage() {
-  const faqs = [
+  const faqSections = [
     {
-      category: "About the Platform",
+      title: "General Questions",
       items: [
         {
           question: "What is Introducing First?",
           answer:
-            "Introducing First is a platform meant to provide the best and most up to date MMA data.",
+            "Introducing First is a platform dedicated to MMA fight predictions and analytics. We provide detailed fighter statistics, matchup analysis, and a community-driven prediction system.",
+        },
+        {
+          question: "Is Introducing First free to use?",
+          answer:
+            "Yes, our core features are free to use. We may introduce premium features in the future, but our basic prediction and analytics tools will always be accessible to all users.",
+        },
+        {
+          question: "How accurate are the predictions?",
+          answer:
+            "Our predictions are based on comprehensive data analysis, historical fight data, and advanced algorithms. While we strive for accuracy, MMA is inherently unpredictable, and our predictions should be used as one of many tools in making informed decisions.",
         },
       ],
     },
     {
-      category: "About Our Predictions",
+      title: "Account & Features",
       items: [
         {
-          question: "How are your predictions generated?",
+          question: "How do I create an account?",
           answer:
-            "Our predictions are generated using a sophisticated analysis system that considers multiple factors including historical fight data, fighter statistics, and recent performance trends. We utilize advanced algorithms to process this data and generate accurate predictions while maintaining the proprietary nature of our specific methodologies.",
+            "Click the 'Sign Up' button in the top right corner, fill in your details, and verify your email address. Once verified, you'll have full access to all our features.",
         },
         {
-          question: "How accurate are your predictions?",
+          question: "Can I track my prediction accuracy?",
           answer:
-            "Our predictions are designed to be as accurate as possible, but no prediction system can be 100% accurate. We work everyday to improve our predictions and are always looking for ways to make them more accurate.",
+            "Yes, once you've made predictions, you can view your accuracy statistics in your profile dashboard, including overall accuracy and performance by weight class.",
         },
         {
-          question: "What factors do you consider?",
+          question: "How often is fighter data updated?",
           answer:
-            "We analyze numerous factors including but not limited to: fighter statistics, historical performance, style matchups, recent form, and various other data points that our system has identified as significant predictors.",
+            "Fighter statistics and rankings are updated within 24 hours after each event. News and fight announcements are updated in real-time.",
         },
       ],
     },
     {
-      category: "Using the Platform",
+      title: "Technical Support",
       items: [
         {
-          question: "How do I track my prediction accuracy?",
+          question: "What browsers are supported?",
           answer:
-            "You can track your prediction accuracy through your personal dashboard. After creating an account and making predictions, your statistics will be automatically calculated and displayed on the leaderboard.",
+            "Introducing First works best on modern browsers like Chrome, Firefox, Safari, and Edge. We recommend keeping your browser updated for the best experience.",
         },
         {
-          question: "How do I make predictions?",
+          question: "Is my data secure?",
           answer:
-            "Once you've created an account, you can navigate to the Events page and click on any upcoming event. From there, you can make predictions for individual fights up until the event starts.",
+            "Yes, we use industry-standard encryption and security measures to protect your data. You can read more about our security practices in our Privacy Policy.",
+        },
+        {
+          question: "How can I report a bug?",
+          answer:
+            "If you encounter any issues, please use our Contact form or email support directly. Include as much detail as possible about the problem you're experiencing.",
         },
       ],
     },
@@ -64,45 +81,62 @@ export default function FAQPage() {
 
   return (
     <ScrollArea className="h-[calc(100vh-64px)]">
-      <div className="pb-6">
-        <div className="container max-w-7xl mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto space-y-2 text-center mb-12">
-            <h1 className="text-4xl font-bold tracking-tight">
-              Frequently Asked Questions
-            </h1>
-            <p className="text-gray-400">
-              Everything you need to know about Introducing First
-            </p>
+      <div className="container max-w-4xl mx-auto px-4 py-12">
+        {/* Header */}
+        <div className="space-y-4 mb-12">
+          <div className="flex items-center justify-center gap-3 text-primary">
+            <HelpCircle className="h-8 w-8" />
+            <h1 className="text-3xl font-bold">FAQ</h1>
           </div>
+          <p className="text-center text-gray-400 max-w-2xl mx-auto">
+            Find answers to commonly asked questions about Introducing First.
+            Can't find what you're looking for? Feel free to contact us.
+          </p>
+        </div>
 
-          <div className="max-w-3xl mx-auto space-y-6">
-            {faqs.map((category, idx) => (
-              <div
-                key={idx}
-                className="bg-gray-800 rounded-lg p-6 border border-gray-700"
-              >
-                <h2 className="text-2xl font-semibold mb-4">
-                  {category.category}
-                </h2>
-                <Accordion type="single" collapsible className="space-y-2">
-                  {category.items.map((item, itemIdx) => (
-                    <AccordionItem
-                      key={itemIdx}
-                      value={`item-${idx}-${itemIdx}`}
-                      className="border border-gray-700 rounded-lg px-4 data-[state=open]:bg-gray-750"
-                    >
-                      <AccordionTrigger className="text-lg hover:no-underline py-4">
-                        {item.question}
-                      </AccordionTrigger>
-                      <AccordionContent className="text-gray-400 pb-4">
-                        {item.answer}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
-              </div>
-            ))}
-          </div>
+        {/* FAQ Sections */}
+        <div className="space-y-8">
+          {faqSections.map((section, idx) => (
+            <div key={idx} className="space-y-4">
+              <h2 className="text-xl font-semibold text-gray-100 px-2">
+                {section.title}
+              </h2>
+              <Card className="bg-gray-900 border-gray-800">
+                <CardContent className="pt-6">
+                  <Accordion type="single" collapsible className="space-y-4">
+                    {section.items.map((item, itemIdx) => (
+                      <AccordionItem
+                        key={itemIdx}
+                        value={`${idx}-${itemIdx}`}
+                        className="border-gray-800"
+                      >
+                        <AccordionTrigger className="text-gray-100 hover:text-primary hover:no-underline">
+                          {item.question}
+                        </AccordionTrigger>
+                        <AccordionContent className="text-gray-400">
+                          {item.answer}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </CardContent>
+              </Card>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 text-center">
+          <Separator className="mb-8" />
+          <p className="text-sm text-gray-400">
+            Still have questions?{" "}
+            <a
+              href="/contact"
+              className="text-primary hover:text-primary/80 hover:underline"
+            >
+              Get in touch with our team
+            </a>
+          </p>
         </div>
       </div>
     </ScrollArea>
