@@ -3,7 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { NewsArticle, NewsArticleFighter, NewsArticleEvent } from "@/types/api";
 import { NewsService, NewsServiceError } from "@/services/news-service";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw, ExternalLink } from "lucide-react";
@@ -13,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 function NewsCardSkeleton() {
   return (
@@ -258,31 +266,99 @@ export default function News() {
                           <LinkedText {...processedContent} />
                         </div>
                         {article.fighters && article.fighters.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {article.fighters.map((fighter) => (
-                              <Link
-                                key={fighter.fighter_id}
-                                href={`/fighters/${fighter.fighter_id}`}
-                                className="inline-flex items-center gap-2 bg-gray-800 rounded-full p-1 pl-1 pr-3 hover:bg-gray-700 transition-colors"
-                              >
-                                <Avatar className="h-6 w-6">
-                                  <AvatarImage
-                                    src={fighter.image_url}
-                                    alt={fighter.name}
-                                  />
-                                  <AvatarFallback>
-                                    {fighter.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm text-gray-200">
-                                  {fighter.name}
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
+                          <>
+                            <Separator className="my-4" />
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-medium text-gray-400">
+                                Featured Fighters
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                {article.fighters
+                                  .reduce<NewsArticleFighter[]>(
+                                    (acc, current) => {
+                                      const exists = acc.find(
+                                        (f) =>
+                                          f.name.toLowerCase() ===
+                                          current.name.toLowerCase()
+                                      );
+                                      if (!exists) {
+                                        acc.push(current);
+                                      }
+                                      return acc;
+                                    },
+                                    []
+                                  )
+                                  .map((fighter) => (
+                                    <Link
+                                      key={fighter.fighter_id}
+                                      href={`/fighters/${fighter.fighter_id}`}
+                                    >
+                                      <div className="group relative bg-gray-800 rounded-lg p-3 hover:bg-gray-700 transition-all duration-200 flex items-center space-x-3">
+                                        <div className="relative">
+                                          <Avatar className="h-12 w-12 border-2 border-transparent group-hover:border-blue-500 transition-all duration-200">
+                                            <AvatarImage
+                                              src={
+                                                fighter.image_url ||
+                                                `/api/fighters/${fighter.fighter_id}/image`
+                                              }
+                                              alt={fighter.name}
+                                              className="object-cover"
+                                            />
+                                            <AvatarFallback className="bg-gray-700">
+                                              {fighter.name
+                                                .split(" ")
+                                                .map((n) => n[0])
+                                                .join("")}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <div className="absolute -bottom-1 -right-1">
+                                            <Badge
+                                              variant="secondary"
+                                              className="h-5 w-5 rounded-full p-0 flex items-center justify-center"
+                                            >
+                                              <ExternalLink className="h-3 w-3" />
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium text-gray-100 truncate group-hover:text-blue-400 transition-colors">
+                                            {fighter.name}
+                                          </p>
+                                          <p className="text-xs text-gray-400 truncate">
+                                            View Profile
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </Link>
+                                  ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {article.events && article.events.length > 0 && (
+                          <>
+                            <Separator className="my-4" />
+                            <div className="space-y-2">
+                              <h4 className="text-sm font-medium text-gray-400">
+                                Related Events
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {article.events.map((event) => (
+                                  <Link
+                                    key={event.event_id}
+                                    href={`/events/${event.event_id}`}
+                                  >
+                                    <Badge
+                                      variant="secondary"
+                                      className="hover:bg-gray-700 transition-colors cursor-pointer"
+                                    >
+                                      {event.name}
+                                    </Badge>
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </CardContent>
