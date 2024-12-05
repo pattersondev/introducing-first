@@ -21,29 +21,19 @@ export class NewsService {
                 SELECT 
                     fighter_id,
                     first_name || ' ' || last_name as full_name,
-                    first_name,
-                    last_name,
                     image_url
                 FROM fighters
                 WHERE 
-                    -- Check for exact full name match
+                    -- Only check for exact full name match
                     position(lower(first_name || ' ' || last_name) in lower($1)) > 0
-                    -- Or check for exact first and last name separately
-                    OR (
-                        position(lower(first_name) in lower($1)) > 0 
-                        AND position(lower(last_name) in lower($1)) > 0
-                    )
             )
             SELECT DISTINCT 
                 fighter_id, 
                 full_name as name,
                 image_url,
-                CASE 
-                    WHEN position(lower(full_name) in lower($1)) > 0 THEN 1.0
-                    ELSE similarity(full_name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
-                END as similarity
+                1.0 as similarity  -- Always 1.0 since we only use exact matches
             FROM fighter_names
-            ORDER BY similarity DESC
+            ORDER BY length(name) DESC  -- Prefer longer names to avoid substring matches
             LIMIT 5
         `;
         
@@ -54,53 +44,69 @@ export class NewsService {
 
     private async findEventsInContent(content: string): Promise<Array<{ event_id: string; name: string; similarity: number }>> {
         const query = `
-            WITH event_matches AS (
+            WITH normalized_content AS (
                 SELECT 
-                    event_id,
-                    name,
-                    length(name) as name_length,
+                    -- Replace #UFC123 with UFC 123
+                    regexp_replace(
+                        regexp_replace(lower($1), '#ufc(\\d+)', 'ufc \\1', 'g'),
+                        'ufc(\\d+)', 'ufc \\1', 'g'
+                    ) as content
+            ),
+            event_matches AS (
+                SELECT 
+                    e.event_id,
+                    e.name,
+                    length(e.name) as name_length,
                     CASE 
                         -- Exact match
-                        WHEN lower($1) LIKE '%' || lower(name) || '%' THEN 1.0
-                        -- Partial match for just the event number (e.g., "UFC 310")
-                        WHEN (
-                            name LIKE 'UFC %' AND 
-                            $1 ~* ('UFC\\s*' || split_part(name, ' ', 2) || '\\b')
-                        ) THEN 0.8
-                        -- Lower similarity for very partial matches
-                        ELSE similarity(name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
+                        WHEN (SELECT content FROM normalized_content) LIKE '%' || lower(e.name) || '%' THEN 1.0
+                        -- Match base event name (e.g., "UFC 310" matches "UFC 310: Fighter vs Fighter")
+                        WHEN e.name LIKE 'UFC %' AND (
+                            -- Match both "UFC 310" and "UFC310" formats
+                            (SELECT content FROM normalized_content) ~* (
+                                'ufc\\s*' || split_part(e.name, ' ', 2) || '\\b'
+                            )
+                        ) THEN 1.0
+                        ELSE 0.0
                     END as similarity
-                FROM events
+                FROM events e
                 WHERE 
                     -- Only consider events where either:
                     -- 1. The full event name appears in the content
-                    lower($1) LIKE '%' || lower(name) || '%'
-                    -- 2. For UFC events, match the exact number
+                    (SELECT content FROM normalized_content) LIKE '%' || lower(e.name) || '%'
+                    -- 2. For UFC events, match the event number
                     OR (
-                        name LIKE 'UFC %' AND 
-                        $1 ~* ('UFC\\s*' || split_part(name, ' ', 2) || '\\b')
+                        e.name LIKE 'UFC %' AND 
+                        (SELECT content FROM normalized_content) ~* (
+                            'ufc\\s*' || split_part(e.name, ' ', 2) || '\\b'
+                        )
                     )
             )
-            SELECT DISTINCT ON (event_id)
+            SELECT DISTINCT ON (
+                -- Group by the base event name (e.g., "UFC 310")
+                CASE 
+                    WHEN name LIKE 'UFC %' THEN 
+                        'UFC ' || split_part(name, ' ', 2)
+                    ELSE name 
+                END
+            )
                 event_id, 
                 name,
-                similarity,
-                name_length
+                similarity
             FROM event_matches
-            WHERE similarity >= 0.8  -- Only return high confidence matches
+            WHERE similarity > 0
             ORDER BY 
-                event_id,
-                similarity DESC,
-                name_length DESC  -- Prefer longer names for same similarity
-            LIMIT 1  -- Only get the best match
+                CASE 
+                    WHEN name LIKE 'UFC %' THEN 
+                        'UFC ' || split_part(name, ' ', 2)
+                    ELSE name 
+                END,
+                name_length DESC  -- Prefer the full event name (with fighters)
+            LIMIT 1
         `;
         
         const result = await this.pool.query(query, [content]);
-        return result.rows.map(({ event_id, name, similarity }) => ({
-            event_id,
-            name,
-            similarity
-        }));
+        return result.rows;
     }
 
     async addNewsArticle(article: NewsArticle): Promise<void> {
