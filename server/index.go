@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/resend/resend-go/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -86,11 +87,24 @@ const (
 
 func main() {
 
+	//load env variables
 	_ = godotenv.Load()
 	fmt.Printf("Environment variables present: JWT_SECRET=%v\n", os.Getenv("JWT_SECRET") != "")
 	jwtKey = []byte(getEnvWithFallback("JWT_SECRET", "your-default-secret-key"))
 	if len(jwtKey) == 0 {
 		log.Fatal("JWT_SECRET not set in environment")
+	}
+
+	// initialize resend client with api key from env
+	resendApiKey := os.Getenv("RESEND_API_KEY")
+	if resendApiKey == "" {
+		log.Fatal("RESEND_API_KEY not set in environment")
+	}
+	client := resend.NewClient(resendApiKey)
+
+	// Test email sending
+	if err := sendTestEmail(client); err != nil {
+		log.Printf("Email test failed: %v", err)
 	}
 
 	db.StartUsersDbConnection()
@@ -119,8 +133,9 @@ func main() {
 	http.HandleFunc("/register", enableCORS(registerHandler))
 	http.HandleFunc("/logout", enableCORS(logoutHandler))
 
-	//test endpoint. hidden behind authentication. Delete later
+	//test endpoints. hidden behind authentication. Delete later
 	http.HandleFunc("/protected", authenticate(protectedHandler))
+	http.HandleFunc("/api/test-email", enableCORS(authenticate(testEmailHandler)))
 
 	// Add this with your other http.HandleFunc calls in main()
 	http.HandleFunc("/api/auth/status", enableCORS(authenticate(authStatusHandler)))
@@ -134,6 +149,47 @@ func main() {
 	fmt.Printf("Server starting on :%s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 
+}
+
+// send test email
+func sendTestEmail(client *resend.Client) error {
+	params := &resend.SendEmailRequest{
+		From:    "Introducing First <onboarding@resend.dev>",
+		To:      []string{"jackmcameron2@gmail.com"},
+		Subject: "Test Email from Introducing First",
+		Html: `
+            <h1>Test Email</h1>
+            <p>This is a test email from your Introducing First application.</p>
+            <p>If you're seeing this, email sending is working correctly!</p>
+        `,
+	}
+
+	sent, err := client.Emails.Send(params)
+	if err != nil {
+		return fmt.Errorf("failed to send email: %v", err)
+	}
+
+	log.Printf("Email sent successfully! ID: %s", sent.Id)
+	return nil
+}
+
+// test email handler delete later
+func testEmailHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	client := resend.NewClient(os.Getenv("RESEND_API_KEY"))
+	if err := sendTestEmail(client); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to send test email: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Test email sent successfully",
+	})
 }
 
 // generates JWT
