@@ -33,7 +33,7 @@ export class NewsService {
                 image_url,
                 1.0 as similarity  -- Always 1.0 since we only use exact matches
             FROM fighter_names
-            ORDER BY length(name) DESC  -- Prefer longer names to avoid substring matches
+            ORDER BY length(full_name) DESC  -- Prefer longer names to avoid substring matches
             LIMIT 5
         `;
         
