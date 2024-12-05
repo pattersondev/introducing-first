@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 
@@ -21,6 +22,7 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 
 		// Allow specific origins
 		allowedOrigins := map[string]bool{
+			"http://localhost:8080":                true,
 			"http://localhost:3000":                true,
 			"https://antiballsniffer.club":         true,
 			"https://www.antiballsniffer.club":     true,
@@ -151,7 +153,6 @@ func getPicksForMatchupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func insertPickHandler(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
 		return
@@ -162,14 +163,24 @@ func insertPickHandler(w http.ResponseWriter, r *http.Request) {
 	eventId := r.FormValue("eventId")
 	selectionId := r.FormValue("selectionId")
 
+	log.Printf("Attempting to upsert pick - userId: %s, matchupId: %s, eventId: %s, selectionId: %s",
+		userId, matchupId, eventId, selectionId)
+
 	err := db.UpsertPick(userId, matchupId, eventId, selectionId)
 	if err != nil {
-		http.Error(w, "Error inserting / updating pick", http.StatusInternalServerError)
+		log.Printf("Error occurred: %v", err)
+
+		if strings.Contains(err.Error(), "rate limit exceeded") {
+			log.Printf("Rate limit error detected")
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+		} else {
+			log.Printf("Other error occurred: %v", err)
+			http.Error(w, "Error inserting / updating pick", http.StatusInternalServerError)
+		}
 		return
 	}
 
-	fmt.Fprintf(w, "Sucessfully inserted pick!")
-
+	fmt.Fprintf(w, "Successfully inserted pick!")
 }
 
 func getEnvWithFallback(key, fallback string) string {

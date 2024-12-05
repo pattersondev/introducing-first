@@ -42,6 +42,7 @@ func enableCORS(handler http.HandlerFunc) http.HandlerFunc {
 
 		// Allow specific origins
 		allowedOrigins := map[string]bool{
+			"http://localhost:8080":                true,
 			"http://localhost:3000":                true,
 			"https://antiballsniffer.club":         true,
 			"https://www.antiballsniffer.club":     true,
@@ -125,6 +126,9 @@ func main() {
 	http.HandleFunc("/api/auth/status", enableCORS(authenticate(authStatusHandler)))
 
 	http.HandleFunc("/api/profile/upload", enableCORS(authenticate(uploadProfilePictureHandler)))
+
+	http.HandleFunc("/api/request-reset", enableCORS(requestPasswordResetHandler))
+	http.HandleFunc("/api/reset-password", enableCORS(resetPasswordHandler))
 
 	port := getEnvWithFallback("PORT", "8080")
 	fmt.Printf("Server starting on :%s\n", port)
@@ -422,7 +426,7 @@ func protectedHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to the Go backend!")
+	fmt.Fprintf(w, "Welcome to the Introducing First Go backend!")
 }
 
 func handleHello(w http.ResponseWriter, r *http.Request) {
@@ -727,5 +731,103 @@ func sendJSONError(w http.ResponseWriter, message string, status int) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{
 		"error": message,
+	})
+}
+
+func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Create reset token
+	token, err := db.CreatePasswordResetToken(req.Email)
+	if err != nil {
+		log.Printf("Password reset attempt error: %v", err) // Add logging
+		if strings.Contains(err.Error(), "too many reset attempts") {
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "Too many reset attempts. Please try again later.",
+			})
+			return
+		}
+		if strings.Contains(err.Error(), "user not found") {
+			// Still return generic message for security
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]string{
+				"message": "If an account exists with this email, a reset link will be sent",
+			})
+			return
+		}
+		// Handle other errors
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "An error occurred processing your request",
+		})
+		return
+	}
+
+	// Success case
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FRONTEND_URL"), token)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message":   "Reset link generated",
+		"resetLink": resetLink,
+	})
+}
+
+func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate password
+	if !isValidPassword(req.Password) {
+		http.Error(w, "Invalid password format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate token and get user ID
+	userId, err := db.ValidateResetToken(req.Token)
+	if err != nil {
+		http.Error(w, "Invalid or expired reset token", http.StatusBadRequest)
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := hashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Error processing password", http.StatusInternalServerError)
+		return
+	}
+
+	// Update password and mark token as used
+	err = db.UpdatePassword(userId, hashedPassword, req.Token)
+	if err != nil {
+		http.Error(w, "Error updating password", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Password successfully reset",
 	})
 }
