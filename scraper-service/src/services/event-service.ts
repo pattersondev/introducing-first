@@ -5,6 +5,15 @@ import { PredictionService } from '../services/prediction-service';
 export class EventService {
   constructor(private pool: Pool, private predictionService: PredictionService) {}
 
+  private normalizeEventName(name: string): string {
+    // Remove common suffixes like ": Fighter1 vs Fighter2"
+    const baseName = name.split(':')[0].trim();
+    
+    // Remove all spaces and special characters, convert to lowercase
+    return baseName.toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+  }
+
   async processEvent(event: any) {
     const client = await this.pool.connect();
     try {
@@ -14,20 +23,26 @@ export class EventService {
       const eventDate = new Date(event.Date);
       eventDate.setDate(eventDate.getDate() + 1);
       
-      const eventId = generateId(event.Name, event.Date);
+      // Find existing event with same date and similar name
+      const existingEvent = await client.query(
+        `SELECT event_id, name 
+         FROM events 
+         WHERE DATE(date) = DATE($1)
+         AND REPLACE(LOWER(SPLIT_PART(name, ':', 1)), ' ', '') = 
+             REPLACE(LOWER(SPLIT_PART($2, ':', 1)), ' ', '')`,
+        [eventDate.toISOString(), event.Name]
+      );
+
+      const eventId = existingEvent.rows.length > 0 
+        ? existingEvent.rows[0].event_id 
+        : generateId(event.Name, event.Date);
       
-      // For future events, delete existing event and its matchups first
-      if (eventDate > new Date()) {
-        await client.query(
-          'DELETE FROM matchups WHERE event_id = $1',
-          [eventId]
-        );
-        await client.query(
-          'DELETE FROM events WHERE event_id = $1',
-          [eventId]
-        );
-      }
-      
+      // Delete existing matchups for the event
+      await client.query(
+        'DELETE FROM matchups WHERE event_id = $1',
+        [eventId]
+      );
+
       // Update or insert event with corrected date
       await client.query(
         `INSERT INTO events (event_id, name, date, location) 
