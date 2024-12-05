@@ -385,53 +385,53 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
             </p>
           )}
 
-          <div
-            className={cn(
-              "grid gap-4",
-              news.length === 1
-                ? "grid-cols-1 max-w-2xl mx-auto"
-                : news.length === 2
-                ? "grid-cols-1 md:grid-cols-2"
-                : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-            )}
-          >
-            {news.map((article) => (
-              <div
-                key={article.id}
-                className={cn(
-                  "p-4 rounded-lg border border-gray-700 bg-gray-900",
-                  "transition-all duration-200 hover:-translate-y-1",
-                  "hover:bg-gray-800",
-                  news.length === 1 ? "md:p-6" : ""
-                )}
-              >
-                <NextLink
-                  href={article.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-primary"
-                >
-                  <h3 className="font-semibold text-gray-100">
-                    {article.content.split("\n")[0]}
-                  </h3>
-                </NextLink>
-                <div className="flex items-center gap-2 mt-2">
-                  <Clock className="h-4 w-4 text-gray-400" />
-                  <p className="text-sm text-gray-400">
-                    {new Date(article.published_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <p
+          <ScrollArea className={news.length > 6 ? "h-[440px]" : undefined}>
+            <div
+              className={cn(
+                "grid gap-4",
+                news.length === 1
+                  ? "grid-cols-1 max-w-2xl mx-auto"
+                  : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 auto-rows-[220px]"
+              )}
+            >
+              {news.map((article) => (
+                <div
+                  key={article.id}
                   className={cn(
-                    "text-sm text-gray-400 mt-3",
-                    news.length === 1 ? "line-clamp-4" : "line-clamp-2"
+                    "p-4 rounded-lg border border-gray-700 bg-gray-900",
+                    "transition-all duration-200 hover:-translate-y-1",
+                    "hover:bg-gray-800",
+                    news.length === 1 ? "md:p-6" : ""
                   )}
                 >
-                  {article.content}
-                </p>
-              </div>
-            ))}
-          </div>
+                  <NextLink
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-primary"
+                  >
+                    <h3 className="font-semibold text-gray-100">
+                      {article.content.split("\n")[0]}
+                    </h3>
+                  </NextLink>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <p className="text-sm text-gray-400">
+                      {new Date(article.published_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <p
+                    className={cn(
+                      "text-sm text-gray-400 mt-3",
+                      news.length === 1 ? "line-clamp-4" : "line-clamp-2"
+                    )}
+                  >
+                    {article.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </CardContent>
       </Card>
 
