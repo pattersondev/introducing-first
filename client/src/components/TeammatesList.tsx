@@ -35,7 +35,7 @@ export const TeammatesList: React.FC<TeammatesListProps> = ({
   }
 
   if (!teammates?.length) {
-    return <p className="text-muted-foreground">No teammates found</p>;
+    return <p className="text-gray-400">No teammates found</p>;
   }
 
   // Sort teammates by win count (descending)
@@ -49,7 +49,7 @@ export const TeammatesList: React.FC<TeammatesListProps> = ({
 
   return (
     <ScrollArea className="h-[280px] -mx-6">
-      <div className="grid grid-cols-1 gap-3 px-6">
+      <div className="grid grid-cols-2 gap-2 px-6">
         {sortedTeammates.map((teammate) => {
           const [wins, losses, draws] = teammate.win_loss_record.split("-");
           const hasGoodRecord = parseInt(wins) > parseInt(losses);
@@ -60,63 +60,61 @@ export const TeammatesList: React.FC<TeammatesListProps> = ({
               href={`/fighters/${teammate.fighter_id}`}
               className="block"
             >
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-                <Card
-                  className={cn(
-                    "relative p-4 transition-all duration-200",
-                    "bg-card/40 hover:bg-card/60",
-                    "border border-border/50",
-                    "hover:border-border/80",
-                    "hover:shadow-lg hover:shadow-primary/5",
-                    "hover:-translate-y-0.5"
-                  )}
-                >
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
-                      <AvatarImage
-                        src={teammate.image_url || undefined}
-                        alt={`${teammate.first_name} ${teammate.last_name}`}
-                      />
-                      <AvatarFallback>
-                        <User className="h-6 w-6" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-sm text-foreground truncate">
-                          {teammate.first_name} {teammate.last_name}
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              <Card
+                className={cn(
+                  "relative p-3",
+                  "bg-gray-900 hover:bg-gray-800",
+                  "border-gray-700/50",
+                  "transition-colors"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 border border-gray-700">
+                    <AvatarImage
+                      src={teammate.image_url || undefined}
+                      alt={`${teammate.first_name} ${teammate.last_name}`}
+                    />
+                    <AvatarFallback className="bg-gray-800">
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm text-gray-100 truncate">
+                      {teammate.first_name} {teammate.last_name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[11px] px-1.5 h-4",
+                          hasGoodRecord
+                            ? "bg-green-500/10 text-green-400"
+                            : "bg-gray-800 text-gray-400"
+                        )}
+                      >
+                        {teammate.win_loss_record}
+                      </Badge>
+                      {parseInt(wins) > 20 && (
                         <Badge
-                          variant={hasGoodRecord ? "default" : "secondary"}
-                          className="text-[11px] h-5"
+                          variant="secondary"
+                          className="text-[10px] px-1 h-3.5 bg-yellow-500/10 text-yellow-400"
                         >
-                          {teammate.win_loss_record}
+                          Veteran
                         </Badge>
-                        {parseInt(wins) > 20 && (
+                      )}
+                      {parseInt(wins) > parseInt(losses) * 3 &&
+                        parseInt(wins) > 5 && (
                           <Badge
-                            variant="outline"
-                            className="text-[11px] h-5 border-yellow-500/50 text-yellow-500"
+                            variant="secondary"
+                            className="text-[10px] px-1 h-3.5 bg-cyan-500/10 text-cyan-400"
                           >
-                            Veteran
+                            Elite
                           </Badge>
                         )}
-                        {parseInt(wins) > parseInt(losses) * 3 &&
-                          parseInt(wins) > 5 && (
-                            <Badge
-                              variant="outline"
-                              className="text-[11px] h-5 border-green-500/50 text-green-500"
-                            >
-                              Elite
-                            </Badge>
-                          )}
-                      </div>
                     </div>
                   </div>
-                </Card>
-              </div>
+                </div>
+              </Card>
             </Link>
           );
         })}
