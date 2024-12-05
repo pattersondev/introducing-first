@@ -191,6 +191,21 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           : "Unknown",
       icon: Weight,
     },
+    {
+      label: "Stance",
+      value: fighter.stance || "Unknown",
+      icon: Dumbbell,
+    },
+    {
+      label: "Team",
+      value: fighter.team || "Unknown",
+      icon: Users,
+    },
+    {
+      label: "Reach",
+      value: fighter.reach || "Unknown",
+      icon: Ruler,
+    },
   ];
 
   const getMethodIcon = (decision: string) => {
@@ -253,9 +268,29 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
 
         <div className="flex-1 space-y-6">
           <div>
-            <h1 className="text-3xl font-bold">
-              {fighter.first_name} {fighter.last_name}
-            </h1>
+            <div className="flex items-center gap-2 h-[42px]">
+              <h1 className="text-3xl font-bold">
+                {fighter.first_name} {fighter.last_name}
+              </h1>
+              {typeof fighter.current_promotion_rank === "number" && (
+                <div
+                  className={cn(
+                    "px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-full text-sm font-medium mt-1",
+                    {
+                      "text-yellow-400": fighter.current_promotion_rank === 0,
+                      "text-red-400":
+                        fighter.current_promotion_rank > 0 &&
+                        fighter.current_promotion_rank <= 5,
+                      "text-cyan-400": fighter.current_promotion_rank > 5,
+                    }
+                  )}
+                >
+                  {fighter.current_promotion_rank === 0
+                    ? "Champion"
+                    : `#${fighter.current_promotion_rank}`}
+                </div>
+              )}
+            </div>
             {fighter.nickname && (
               <p className="text-xl text-gray-400">"{fighter.nickname}"</p>
             )}
@@ -281,8 +316,8 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-5 w-5" />
@@ -290,7 +325,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               {details.map((detail, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <detail.icon className="w-5 h-5 text-gray-400" />
@@ -304,32 +339,7 @@ export function FighterProfile({ fighter }: FighterProfileProps) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Dumbbell className="h-5 w-5" />
-              <CardTitle>Fight Style</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-400">Stance</p>
-                <p className="font-medium">{fighter.stance || "Unknown"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Team</p>
-                <p className="font-medium">{fighter.team || "Unknown"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Reach</p>
-                <p className="font-medium">{fighter.reach || "Unknown"}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gray-800 border-gray-700 md:col-span-1">
+        <Card className="bg-gray-800 border-gray-700">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5" />
