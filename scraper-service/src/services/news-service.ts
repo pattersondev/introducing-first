@@ -31,15 +31,22 @@ export class NewsService {
                 fighter_id, 
                 full_name as name,
                 image_url,
-                1.0 as similarity  -- Always 1.0 since we only use exact matches
+                1.0 as similarity,  -- Always 1.0 since we only use exact matches
+                length(full_name) as name_length  -- Add this to the SELECT list
             FROM fighter_names
-            ORDER BY length(full_name) DESC  -- Prefer longer names to avoid substring matches
+            ORDER BY name_length DESC  -- Now we can order by it
             LIMIT 5
         `;
         
         const result = await this.pool.query(query, [content]);
         console.log('Found fighters:', result.rows);
-        return result.rows;
+        // Remove the name_length from the returned data
+        return result.rows.map(({ fighter_id, name, similarity, image_url }) => ({
+            fighter_id,
+            name,
+            similarity,
+            image_url
+        }));
     }
 
     private async findEventsInContent(content: string): Promise<Array<{ event_id: string; name: string; similarity: number }>> {
