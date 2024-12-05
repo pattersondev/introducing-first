@@ -34,6 +34,14 @@ export class FighterService {
     this.s3Service = new S3Service();
   }
 
+  private standardizeName(name: string): string {
+    // Remove apostrophes and hyphens
+    return name
+        .replace(/[''-]/g, '')
+        .toLowerCase()
+        .trim();
+  }
+
   private async processAndUploadFighterImage(fighterProfileId: string): Promise<string | null> {
     try {
         const imageUrl = `https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/${fighterProfileId}.png&w=350&h=254`;
@@ -68,11 +76,27 @@ export class FighterService {
     try {
       await client.query('BEGIN');
       
-      const fighterId = generateId(
-        fighter.FirstName || '', 
-        fighter.LastName || '', 
-        fighter.Birthdate || 'unknown'
+      // Standardize first and last names
+      const standardizedFirstName = this.standardizeName(fighter.FirstName || '');
+      const standardizedLastName = this.standardizeName(fighter.LastName || '');
+      
+      // Check for existing fighter with standardized name
+      const existingFighter = await client.query(
+          `SELECT fighter_id 
+           FROM fighters 
+           WHERE LOWER(REPLACE(REPLACE(first_name, '''', ''), '-', '')) = $1 
+           AND LOWER(REPLACE(REPLACE(last_name, '''', ''), '-', '')) = $2`,
+          [standardizedFirstName, standardizedLastName]
       );
+
+      // Use existing fighter_id if found, otherwise generate new one
+      const fighterId = existingFighter.rows.length > 0 
+          ? existingFighter.rows[0].fighter_id
+          : generateId(
+              fighter.FirstName || '', 
+              fighter.LastName || '', 
+              fighter.Birthdate || 'unknown'
+            );
 
       // Extract fighter profile ID from URL using the new method
       const fighterProfileId = fighter.Url ? this.extractFighterProfileId(fighter.Url) : null;
@@ -497,53 +521,55 @@ export class FighterService {
   async searchFighters(query: string, page: number = 1, limit: number = 10) {
     const client = await this.pool.connect();
     try {
-      const offset = (page - 1) * limit;
-      
-      // Get total count for pagination
-      const countResult = await client.query(
-        `SELECT COUNT(*) 
-         FROM fighters 
-         WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)`,
-        [`%${query}%`]
-      );
-      
-      const totalCount = parseInt(countResult.rows[0].count);
+        const standardizedQuery = this.standardizeName(query);
+        const offset = (page - 1) * limit;
+        
+        // Update the search query to use standardized name comparison
+        const countResult = await client.query(
+            `SELECT COUNT(*) 
+             FROM fighters 
+             WHERE LOWER(REPLACE(REPLACE(CONCAT(first_name, ' ', last_name), '''', ''), '-', '')) 
+             LIKE LOWER($1)`,
+            [`%${standardizedQuery}%`]
+        );
+        
+        const totalCount = parseInt(countResult.rows[0].count);
 
-      // Get paginated results with image_url
-      const result = await client.query(
-        `SELECT 
-          fighter_id,
-          first_name,
-          last_name,
-          nickname,
-          team,
-          win_loss_record,
-          weight,
-          height,
-          image_url,
-          current_promotion_rank,
-          weight_class
-         FROM fighters 
-         WHERE LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER($1)
-         ORDER BY 
-           COALESCE(current_promotion_rank, 999),
-           last_name, 
-           first_name
-         LIMIT $2 OFFSET $3`,
-        [`%${query}%`, limit, offset]
-      );
+        const result = await client.query(
+            `SELECT 
+                fighter_id,
+                first_name,
+                last_name,
+                nickname,
+                team,
+                win_loss_record,
+                weight,
+                height,
+                image_url,
+                current_promotion_rank,
+                weight_class
+             FROM fighters 
+             WHERE LOWER(REPLACE(REPLACE(CONCAT(first_name, ' ', last_name), '''', ''), '-', '')) 
+             LIKE LOWER($1)
+             ORDER BY 
+                COALESCE(current_promotion_rank, 999),
+                last_name, 
+                first_name
+             LIMIT $2 OFFSET $3`,
+            [`%${standardizedQuery}%`, limit, offset]
+        );
 
-      return {
-        fighters: result.rows,
-        pagination: {
-          total: totalCount,
-          page,
-          limit,
-          totalPages: Math.ceil(totalCount / limit)
-        }
-      };
+        return {
+            fighters: result.rows,
+            pagination: {
+                total: totalCount,
+                page,
+                limit,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        };
     } finally {
-      client.release();
+        client.release();
     }
   }
 
@@ -759,6 +785,44 @@ export class FighterService {
       `);
 
       return result.rows;
+    } finally {
+      client.release();
+    }
+  }
+
+  async getTeammates(fighterId: string): Promise<any[]> {
+    const client = await this.pool.connect();
+    try {
+      // First get the fighter's team
+      const teamQuery = await client.query(
+        'SELECT team FROM fighters WHERE fighter_id = $1',
+        [fighterId]
+      );
+
+      if (!teamQuery.rows[0]?.team) {
+        return [];
+      }
+
+      // Get all fighters from the same team, excluding the current fighter
+      const teammatesQuery = await client.query(
+        `SELECT 
+          fighter_id,
+          first_name,
+          last_name,
+          win_loss_record,
+          image_url
+        FROM fighters 
+        WHERE team = $1 
+        AND fighter_id != $2 
+        AND team != ''
+        ORDER BY last_name, first_name`,
+        [teamQuery.rows[0].team, fighterId]
+      );
+
+      return teammatesQuery.rows;
+    } catch (error) {
+      console.error('Error fetching teammates:', error);
+      throw error;
     } finally {
       client.release();
     }

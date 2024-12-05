@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api-client';
 import { API_ENDPOINTS } from '@/config/api';
-import { Fighter, DetailedFighter, ApiResponse } from '@/types/api';
+import { Fighter, DetailedFighter, ApiResponse, TeammateFighter } from '@/types/api';
 
 interface PopularFighter extends Fighter {
   search_count: number;
@@ -14,6 +14,11 @@ interface SearchResponse {
     limit: number;
     totalPages: number;
   };
+}
+
+interface TeammatesResponse {
+  success: boolean;
+  data: TeammateFighter[];
 }
 
 export const FighterService = {
@@ -39,5 +44,9 @@ export const FighterService = {
 
   async getFightersByRank(): Promise<ApiResponse<Fighter[]>> {
     return apiClient<Fighter[]>(`${API_ENDPOINTS.FIGHTERS}/promotion-rankings`);
+  },
+
+  async getTeammates(fighterId: string): Promise<ApiResponse<TeammatesResponse>> {
+    return apiClient<TeammatesResponse>(`${API_ENDPOINTS.FIGHTERS}/${fighterId}/teammates`);
   }
 }; 

@@ -12,6 +12,14 @@ import { ProbabilityBar } from "./ProbabilityBar";
 import { RecentFights } from "./RecentFights";
 import { getCountryCode } from "@/utils/country-codes";
 import Link from "next/link";
+import { useFighterAnalytics } from "@/hooks/useFighterAnalytics";
+import { StyleComparison } from "./analytics/StyleComparison";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "./ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FighterStatsProps {
   name: string;
@@ -80,8 +88,27 @@ interface MatchupModalProps {
   onClose: () => void;
 }
 
+function TrendIndicator({ value }: { value: number }) {
+  if (value > 0) {
+    return <ArrowUpIcon className="w-4 h-4 text-green-500" />;
+  } else if (value < 0) {
+    return <ArrowDownIcon className="w-4 h-4 text-red-500" />;
+  }
+  return <MinusIcon className="w-4 h-4 text-gray-500" />;
+}
+
 export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
   const { detailedMatchup, isLoading, error } = useMatchupDetails(matchup);
+
+  const { data: fighter1Analytics, isLoading: isLoadingAnalytics1 } =
+    useFighterAnalytics(matchup?.fighter1_id ?? "", {
+      enabled: isOpen && !!matchup?.fighter1_id,
+    });
+
+  const { data: fighter2Analytics, isLoading: isLoadingAnalytics2 } =
+    useFighterAnalytics(matchup?.fighter2_id ?? "", {
+      enabled: isOpen && !!matchup?.fighter2_id,
+    });
 
   if (!matchup) return null;
 
@@ -182,12 +209,423 @@ export function MatchupModal({ matchup, isOpen, onClose }: MatchupModalProps) {
             </TabsContent>
 
             <TabsContent value="advanced" className="mt-4">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Advanced Statistics</h3>
-                <p className="text-gray-400">
-                  Advanced statistics and analysis will be shown here.
-                </p>
-              </div>
+              {isLoadingAnalytics1 || isLoadingAnalytics2 ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+                </div>
+              ) : fighter1Analytics && fighter2Analytics ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-4">
+                        <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-gray-700">
+                          {matchup.fighter1_image ? (
+                            <AvatarImage
+                              src={matchup.fighter1_image}
+                              alt={matchup.fighter1_name}
+                              className="object-cover object-center"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-gray-800">
+                              {matchup.fighter1_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="text-lg font-semibold text-center text-blue-400">
+                          {matchup.fighter1_name}
+                        </div>
+                      </div>
+
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-semibold text-white">
+                              Style Analysis
+                            </CardTitle>
+                            <Badge
+                              variant="outline"
+                              className="bg-gray-700 text-blue-400 border-blue-400"
+                            >
+                              {fighter1Analytics.styleAnalysis.primaryStyle}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Striking</span>
+                              <span className="text-white">
+                                {(
+                                  fighter1Analytics.styleAnalysis
+                                    .strikePercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter1Analytics.styleAnalysis
+                                  .strikePercentage * 100
+                              }
+                              className="text-blue-500"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Wrestling</span>
+                              <span className="text-white">
+                                {(
+                                  fighter1Analytics.styleAnalysis
+                                    .wrestlingPercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter1Analytics.styleAnalysis
+                                  .wrestlingPercentage * 100
+                              }
+                              className="text-blue-500"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Grappling</span>
+                              <span className="text-white">
+                                {(
+                                  fighter1Analytics.styleAnalysis
+                                    .grapplingPercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter1Analytics.styleAnalysis
+                                  .grapplingPercentage * 100
+                              }
+                              className="text-blue-500"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-semibold text-white">
+                              Career Metrics
+                            </CardTitle>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "bg-gray-700 border-blue-400",
+                                fighter1Analytics.careerPhases.peakPerformance
+                                  .currentPhase === "Peak"
+                                  ? "text-green-400 border-green-400"
+                                  : fighter1Analytics.careerPhases
+                                      .peakPerformance.currentPhase ===
+                                    "Declining"
+                                  ? "text-yellow-400 border-yellow-400"
+                                  : fighter1Analytics.careerPhases
+                                      .peakPerformance.currentPhase ===
+                                    "Veteran"
+                                  ? "text-red-400 border-red-400"
+                                  : "text-blue-400"
+                              )}
+                            >
+                              {
+                                fighter1Analytics.careerPhases.peakPerformance
+                                  .currentPhase
+                              }
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">
+                                Win Rate
+                              </div>
+                              <div className="text-2xl font-bold text-white">
+                                {fighter1Analytics.styleAnalysis.winRate}%
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">
+                                Finish Rate
+                              </div>
+                              <div className="text-2xl font-bold text-white">
+                                {fighter1Analytics.careerPhases.careerTrajectory.performanceMetrics.finishRate.toFixed(
+                                  1
+                                )}
+                                %
+                              </div>
+                            </div>
+                          </div>
+                          <Separator className="my-4 bg-gray-700" />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-400">
+                                Strike Accuracy Trend
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <TrendIndicator
+                                  value={
+                                    fighter1Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .strikeAccuracyTrend
+                                  }
+                                />
+                                <span className="text-white">
+                                  {Math.abs(
+                                    fighter1Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .strikeAccuracyTrend
+                                  ).toFixed(1)}
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-400">
+                                Takedown Accuracy Trend
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <TrendIndicator
+                                  value={
+                                    fighter1Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .takedownAccuracyTrend
+                                  }
+                                />
+                                <span className="text-white">
+                                  {Math.abs(
+                                    fighter1Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .takedownAccuracyTrend
+                                  ).toFixed(1)}
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="flex flex-col items-center gap-4">
+                        <Avatar className="h-20 w-20 md:h-24 md:w-24 border-2 border-gray-700">
+                          {matchup.fighter2_image ? (
+                            <AvatarImage
+                              src={matchup.fighter2_image}
+                              alt={matchup.fighter2_name}
+                              className="object-cover object-center"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-gray-800">
+                              {matchup.fighter2_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="text-lg font-semibold text-center text-red-400">
+                          {matchup.fighter2_name}
+                        </div>
+                      </div>
+
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-semibold text-white">
+                              Style Analysis
+                            </CardTitle>
+                            <Badge
+                              variant="outline"
+                              className="bg-gray-700 text-red-400 border-red-400"
+                            >
+                              {fighter2Analytics.styleAnalysis.primaryStyle}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Striking</span>
+                              <span className="text-white">
+                                {(
+                                  fighter2Analytics.styleAnalysis
+                                    .strikePercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter2Analytics.styleAnalysis
+                                  .strikePercentage * 100
+                              }
+                              className="text-red-500"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Wrestling</span>
+                              <span className="text-white">
+                                {(
+                                  fighter2Analytics.styleAnalysis
+                                    .wrestlingPercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter2Analytics.styleAnalysis
+                                  .wrestlingPercentage * 100
+                              }
+                              className="text-red-500"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-400">Grappling</span>
+                              <span className="text-white">
+                                {(
+                                  fighter2Analytics.styleAnalysis
+                                    .grapplingPercentage * 100
+                                ).toFixed(1)}
+                                %
+                              </span>
+                            </div>
+                            <Progress
+                              value={
+                                fighter2Analytics.styleAnalysis
+                                  .grapplingPercentage * 100
+                              }
+                              className="text-red-500"
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="bg-gray-800 border-gray-700">
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg font-semibold text-white">
+                              Career Metrics
+                            </CardTitle>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "bg-gray-700 border-red-400",
+                                fighter2Analytics.careerPhases.peakPerformance
+                                  .currentPhase === "Peak"
+                                  ? "text-green-400 border-green-400"
+                                  : fighter2Analytics.careerPhases
+                                      .peakPerformance.currentPhase ===
+                                    "Declining"
+                                  ? "text-yellow-400 border-yellow-400"
+                                  : fighter2Analytics.careerPhases
+                                      .peakPerformance.currentPhase ===
+                                    "Veteran"
+                                  ? "text-red-400 border-red-400"
+                                  : "text-blue-400"
+                              )}
+                            >
+                              {
+                                fighter2Analytics.careerPhases.peakPerformance
+                                  .currentPhase
+                              }
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">
+                                Win Rate
+                              </div>
+                              <div className="text-2xl font-bold text-white">
+                                {fighter2Analytics.styleAnalysis.winRate}%
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="text-sm text-gray-400">
+                                Finish Rate
+                              </div>
+                              <div className="text-2xl font-bold text-white">
+                                {fighter2Analytics.careerPhases.careerTrajectory.performanceMetrics.finishRate.toFixed(
+                                  1
+                                )}
+                                %
+                              </div>
+                            </div>
+                          </div>
+                          <Separator className="my-4 bg-gray-700" />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-400">
+                                Strike Accuracy Trend
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <TrendIndicator
+                                  value={
+                                    fighter2Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .strikeAccuracyTrend
+                                  }
+                                />
+                                <span className="text-white">
+                                  {Math.abs(
+                                    fighter2Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .strikeAccuracyTrend
+                                  ).toFixed(1)}
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-400">
+                                Takedown Accuracy Trend
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <TrendIndicator
+                                  value={
+                                    fighter2Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .takedownAccuracyTrend
+                                  }
+                                />
+                                <span className="text-white">
+                                  {Math.abs(
+                                    fighter2Analytics.careerPhases
+                                      .careerTrajectory.performanceMetrics
+                                      .takedownAccuracyTrend
+                                  ).toFixed(1)}
+                                  %
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-red-400 p-4 text-center">
+                  Failed to load analytics data
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         )}

@@ -169,6 +169,16 @@ func setupCollectorCallbacks(c *colly.Collector, events *[]Event, mu *sync.Mutex
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		currentURL := e.Request.URL.String()
 		if strings.Contains(currentURL, "fightcenter") {
+			// Check if this is a return to the initial URL
+			if currentURL == "https://www.espn.com/mma/fightcenter" && len(*events) > 0 {
+				fmt.Println("Returned to initial URL, finishing scraping...")
+				mu.Lock()
+				writeEventDataToJSON(*events)
+				sendEventDataToAPI(*events)
+				mu.Unlock()
+				os.Exit(0)
+			}
+
 			event := extractEventData(e)
 			mu.Lock()
 			*events = append(*events, event)
@@ -176,12 +186,6 @@ func setupCollectorCallbacks(c *colly.Collector, events *[]Event, mu *sync.Mutex
 			printEventInfo(event)
 		} else {
 			fmt.Println("Unhandled page type:", currentURL)
-			if currentURL == "https://www.espn.com/mma/" {
-				//Close channels, free up workers,
-				writeEventDataToJSON(*events)
-				sendEventDataToAPI(*events)
-				os.Exit(0)
-			}
 		}
 	})
 }
@@ -437,7 +441,7 @@ func sendEventDataToAPI(events []Event) {
 }
 
 func sendEvent(event Event, maxRetries int, retryDelay time.Duration) SendResult {
-	url := "https://introducing-first.onrender.com/api/events"
+	url := os.Getenv("SCRAPER_SERVICE_URL") + "/api/events"
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}

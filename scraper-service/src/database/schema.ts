@@ -1,4 +1,7 @@
 export const createTablesQuery = `
+-- Enable pg_trgm extension for text similarity
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE IF NOT EXISTS events (
     event_id VARCHAR(32) PRIMARY KEY,
     name VARCHAR(255),
@@ -254,4 +257,38 @@ ON CONFLICT (name) DO NOTHING;
 -- Add index for performance
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_weight_class ON promotion_rankings(weight_class_id);
 CREATE INDEX IF NOT EXISTS idx_promotion_rankings_fighter ON promotion_rankings(fighter_id);
+
+CREATE TABLE IF NOT EXISTS news_articles (
+    id VARCHAR(32) PRIMARY KEY,
+    tweet_id VARCHAR(255) UNIQUE NOT NULL,
+    content TEXT NOT NULL,
+    url TEXT NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS news_article_fighters (
+    id SERIAL PRIMARY KEY,
+    article_id VARCHAR(32) REFERENCES news_articles(id) ON DELETE CASCADE,
+    fighter_id VARCHAR(32) REFERENCES fighters(fighter_id) ON DELETE CASCADE,
+    confidence_score FLOAT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(article_id, fighter_id)
+);
+
+CREATE TABLE IF NOT EXISTS news_article_events (
+    id SERIAL PRIMARY KEY,
+    article_id VARCHAR(32) REFERENCES news_articles(id) ON DELETE CASCADE,
+    event_id VARCHAR(32) REFERENCES events(event_id) ON DELETE CASCADE,
+    confidence_score FLOAT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(article_id, event_id)
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_news_articles_published_at ON news_articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_news_article_fighters_article ON news_article_fighters(article_id);
+CREATE INDEX IF NOT EXISTS idx_news_article_fighters_fighter ON news_article_fighters(fighter_id);
+CREATE INDEX IF NOT EXISTS idx_news_article_events_article ON news_article_events(article_id);
+CREATE INDEX IF NOT EXISTS idx_news_article_events_event ON news_article_events(event_id);
 `; 

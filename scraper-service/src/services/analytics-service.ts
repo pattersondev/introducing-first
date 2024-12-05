@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { Fight } from '../types/types';
 
 export class FighterAnalytics {
   private pool: Pool;
@@ -16,8 +17,8 @@ export class FighterAnalytics {
   }> {
     const client = await this.pool.connect();
     try {
-      // Aggregate all stats for the fighter
-      const stats = await client.query(`
+      // First try to get detailed stats
+      const detailedStats = await client.query(`
         WITH fight_totals AS (
           SELECT 
             fighter_id,
@@ -54,31 +55,89 @@ export class FighterAnalytics {
         SELECT * FROM fight_totals
       `, [fighterId]);
 
-      if (stats.rows.length === 0) {
-        throw new Error('No stats found for fighter');
+      // If we have enough detailed stats, use them
+      if (detailedStats.rows.length > 0 && 
+          (detailedStats.rows[0].total_strikes_attempted > 0 ||
+           detailedStats.rows[0].total_takedowns_attempted > 0 ||
+           detailedStats.rows[0].total_submission_attempts > 0)) {
+        const row = detailedStats.rows[0];
+        const total = row.total_strikes_attempted + row.total_takedowns_attempted + row.total_submission_attempts;
+        
+        return {
+          primaryStyle: this.determineStyleFromStats(
+            row.total_strikes_attempted / total,
+            row.total_takedowns_attempted / total,
+            row.total_submission_attempts / total
+          ),
+          strikePercentage: row.total_strikes_attempted / total,
+          wrestlingPercentage: row.total_takedowns_attempted / total,
+          grapplingPercentage: row.total_submission_attempts / total
+        };
       }
 
-      const row = stats.rows[0];
-      const total = row.total_strikes_attempted + row.total_takedowns_attempted + row.total_submission_attempts;
-      
-      const strikePercentage = row.total_strikes_attempted / total;
-      const wrestlingPercentage = row.total_takedowns_attempted / total;
-      const grapplingPercentage = row.total_submission_attempts / total;
+      // Fallback to fight outcome analysis
+      const fightOutcomes = await client.query(`
+        SELECT 
+          result,
+          decision,
+          COUNT(*) as count
+        FROM fights
+        WHERE fighter_id = $1 AND result = 'Win'
+        GROUP BY result, decision
+      `, [fighterId]);
 
-      // Determine primary style
-      let primaryStyle: 'striker' | 'wrestler' | 'grappler' | 'hybrid';
-      if (strikePercentage > 0.6) {
-        primaryStyle = 'striker';
-      } else if (wrestlingPercentage > 0.4) {
-        primaryStyle = 'wrestler';
-      } else if (grapplingPercentage > 0.3) {
-        primaryStyle = 'grappler';
-      } else {
-        primaryStyle = 'hybrid';
+      let strikeScore = 0;
+      let wrestleScore = 0;
+      let grappleScore = 0;
+      let totalFights = 0;
+
+      fightOutcomes.rows.forEach(outcome => {
+        const count = parseInt(outcome.count);
+        totalFights += count;
+        const decision = outcome.decision.toLowerCase();
+
+        if (decision.includes('ko') || decision.includes('tko')) {
+          strikeScore += count * 2; // Weight KO/TKO wins heavily
+        } else if (decision.includes('submission')) {
+          grappleScore += count * 2; // Weight submission wins heavily
+        } else if (decision.includes('decision')) {
+          // For decisions, check additional fight stats
+          strikeScore += count * 0.5;
+          wrestleScore += count * 0.5;
+        }
+      });
+
+      // Get additional metrics for more context
+      const additionalMetrics = await client.query(`
+        SELECT 
+          SUM(CASE WHEN s.kd > 0 THEN 1 ELSE 0 END) as knockdowns,
+          SUM(CASE WHEN c.td > 0 THEN 1 ELSE 0 END) as takedowns,
+          SUM(CASE WHEN g.sm > 0 THEN 1 ELSE 0 END) as submission_attempts
+        FROM fights f
+        LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id AND f.opponent = s.opponent
+        LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id AND f.opponent = c.opponent
+        LEFT JOIN ground_stats g ON f.fighter_id = g.fighter_id AND f.opponent = g.opponent
+        WHERE f.fighter_id = $1
+      `, [fighterId]);
+
+      if (additionalMetrics.rows.length > 0) {
+        const metrics = additionalMetrics.rows[0];
+        strikeScore += (metrics.knockdowns || 0) * 1.5;
+        wrestleScore += (metrics.takedowns || 0) * 1.5;
+        grappleScore += (metrics.submission_attempts || 0) * 1.5;
       }
+
+      const total = Math.max(1, strikeScore + wrestleScore + grappleScore);
+      const strikePercentage = strikeScore / total;
+      const wrestlingPercentage = wrestleScore / total;
+      const grapplingPercentage = grappleScore / total;
 
       return {
-        primaryStyle,
+        primaryStyle: this.determineStyleFromStats(
+          strikePercentage,
+          wrestlingPercentage,
+          grapplingPercentage
+        ),
         strikePercentage,
         wrestlingPercentage,
         grapplingPercentage
@@ -86,6 +145,39 @@ export class FighterAnalytics {
     } finally {
       client.release();
     }
+  }
+
+  private determineStyleFromStats(
+    strikePercentage: number,
+    wrestlingPercentage: number,
+    grapplingPercentage: number
+  ): 'striker' | 'wrestler' | 'grappler' | 'hybrid' {
+    const threshold = 0.4; // Threshold for considering a style dominant
+    const secondaryThreshold = 0.25; // Threshold for considering a style significant
+
+    if (strikePercentage > threshold && wrestlingPercentage < secondaryThreshold && grapplingPercentage < secondaryThreshold) {
+      return 'striker';
+    }
+    if (wrestlingPercentage > threshold && strikePercentage < secondaryThreshold && grapplingPercentage < secondaryThreshold) {
+      return 'wrestler';
+    }
+    if (grapplingPercentage > threshold && strikePercentage < secondaryThreshold && wrestlingPercentage < secondaryThreshold) {
+      return 'grappler';
+    }
+
+    // Check for hybrid styles with two strong components
+    if (strikePercentage >= secondaryThreshold && wrestlingPercentage >= secondaryThreshold) {
+      return 'hybrid';
+    }
+    if (strikePercentage >= secondaryThreshold && grapplingPercentage >= secondaryThreshold) {
+      return 'hybrid';
+    }
+    if (wrestlingPercentage >= secondaryThreshold && grapplingPercentage >= secondaryThreshold) {
+      return 'hybrid';
+    }
+
+    // Default to hybrid if no clear pattern emerges
+    return 'hybrid';
   }
 
   // Analyze style matchup outcomes
@@ -281,20 +373,18 @@ export class FighterAnalytics {
     const client = await this.pool.connect();
     try {
       const stats = await client.query(`
-        WITH defense_stats AS (
-          SELECT 
-            s.tsl as strikes_landed,
-            s.tsa as strikes_attempted,
-            c.tdl as takedowns_landed,
-            c.tda as takedowns_attempted,
-            f.decision,
-            f.result
-          FROM fights f
-          LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id AND f.opponent = s.opponent
-          LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id AND f.opponent = c.opponent
-          WHERE f.fighter_id = $1
-        )
-        SELECT * FROM defense_stats
+        SELECT 
+          s.tsl as strikes_landed,
+          s.tsa as strikes_attempted,
+          c.tdl as takedowns_landed,
+          c.tda as takedowns_attempted,
+          f.decision,
+          f.result,
+          s.kd as knockdowns
+        FROM fights f
+        LEFT JOIN striking_stats s ON f.fighter_id = s.fighter_id AND f.opponent = s.opponent
+        LEFT JOIN clinch_stats c ON f.fighter_id = c.fighter_id AND f.opponent = c.opponent
+        WHERE f.fighter_id = $1
       `, [fighterId]);
 
       let totalStrikesDefended = 0;
@@ -303,6 +393,7 @@ export class FighterAnalytics {
       let totalTakedownsAttempted = 0;
       let submissionAttemptsSurvived = 0;
       let totalFights = stats.rows.length;
+      let totalKnockdowns = 0;
 
       stats.rows.forEach(fight => {
         if (fight.strikes_attempted && fight.strikes_landed) {
@@ -317,6 +408,10 @@ export class FighterAnalytics {
         if (fight.decision && fight.decision.toLowerCase().includes('submission') && fight.result !== 'Loss') {
           submissionAttemptsSurvived++;
         }
+        // Sum up knockdowns received
+        if (fight.knockdowns) {
+          totalKnockdowns += parseInt(fight.knockdowns);
+        }
       });
 
       return {
@@ -329,8 +424,8 @@ export class FighterAnalytics {
         submissionDefenseRate: totalFights > 0 
           ? (submissionAttemptsSurvived / totalFights) * 100 
           : 0,
-        knockdownsReceived: stats.rows.reduce((acc, fight) => acc + (parseInt(fight.kd) || 0), 0),
-        averageDamageAbsorbed: totalStrikesReceived / totalFights
+        knockdownsReceived: totalKnockdowns,
+        averageDamageAbsorbed: totalFights > 0 ? totalStrikesReceived / totalFights : 0
       };
     } finally {
       client.release();
@@ -367,7 +462,7 @@ export class FighterAnalytics {
           totalKnockdowns += knockdowns;
           
           // If they won despite being knocked down
-          if (fight.result === 'Win') {
+          if (fight.result.toLowerCase() === 'w') {
             winsAfterKnockdown++;
             knockdownsRecovered += knockdowns;
           }
@@ -417,7 +512,7 @@ export class FighterAnalytics {
       let recentPerformances: number[] = [];
 
       for (const fight of fights.rows) {
-        if (fight.result === 'Win') {
+        if (fight.result.toLowerCase() === 'w') {
           currentWinStreak++;
           wins++;
           
@@ -829,7 +924,7 @@ export class FighterAnalytics {
   }
 
   private calculateWinRate(fights: any[]): number {
-    const wins = fights.filter(f => f.result === 'Win').length;
+    const wins = fights.filter(f => f.result.toLowerCase() === 'w').length;
     return fights.length > 0 ? wins / fights.length : 0;
   }
 
@@ -1029,10 +1124,9 @@ export class FighterAnalytics {
     return ((recentAvg - historicalAvg) / historicalAvg) * 100;
   }
 
-  private calculateFinishRate(fights: any[]): number {
+  private calculateFinishRate(fights: Fight[]): number {
     const finishes = fights.filter(f => 
-      f.result === 'Win' && 
-      f.decision && 
+      f.result.toLowerCase() === 'w' &&  
       !f.decision.toLowerCase().includes('decision')
     ).length;
     
@@ -1220,8 +1314,57 @@ export class FighterAnalytics {
       return acc + (
         (fight.strike_accuracy || 0) +
         (fight.takedown_accuracy || 0) +
-        (fight.result === 'Win' ? 1 : 0)
+        (fight.result.toLowerCase() === 'w' ? 1 : 0)
       ) / 3;
     }, 0) / fights.length;
+  }
+
+  async calculateFighterRates(fighterId: string): Promise<{
+    winRate: number;
+    finishRate: number;
+  }> {
+    const client = await this.pool.connect();
+    try {
+      const results = await client.query(`
+        WITH fight_stats AS (
+          SELECT 
+            result,
+            decision,
+            COUNT(*) as count
+          FROM fights
+          WHERE fighter_id = $1
+          GROUP BY result, decision
+        ),
+        totals AS (
+          SELECT 
+            SUM(CASE WHEN result = 'W' THEN count ELSE 0 END) as total_wins,
+            SUM(CASE 
+              WHEN result = 'W' 
+              AND (
+                decision ILIKE '%KO%' 
+                OR decision ILIKE '%TKO%' 
+                OR decision ILIKE '%submission%'
+              ) 
+              THEN count 
+              ELSE 0 
+            END) as total_finishes,
+            SUM(count) as total_fights
+          FROM fight_stats
+        )
+        SELECT 
+          ROUND((COALESCE(total_wins, 0)::float / NULLIF(total_fights, 0) * 100)::numeric, 1) as win_rate,
+          ROUND((COALESCE(total_finishes, 0)::float / NULLIF(total_wins, 0) * 100)::numeric, 1) as finish_rate
+        FROM totals
+      `, [fighterId]);
+
+      const { win_rate, finish_rate } = results.rows[0] || { win_rate: 0, finish_rate: 0 };
+
+      return {
+        winRate: Number(win_rate) || 0,
+        finishRate: Number(finish_rate) || 0
+      };
+    } finally {
+      client.release();
+    }
   }
 } 
