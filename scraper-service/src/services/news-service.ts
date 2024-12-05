@@ -21,29 +21,19 @@ export class NewsService {
                 SELECT 
                     fighter_id,
                     first_name || ' ' || last_name as full_name,
-                    first_name,
-                    last_name,
                     image_url
                 FROM fighters
                 WHERE 
-                    -- Check for exact full name match
+                    -- Only check for exact full name match
                     position(lower(first_name || ' ' || last_name) in lower($1)) > 0
-                    -- Or check for exact first and last name separately
-                    OR (
-                        position(lower(first_name) in lower($1)) > 0 
-                        AND position(lower(last_name) in lower($1)) > 0
-                    )
             )
             SELECT DISTINCT 
                 fighter_id, 
                 full_name as name,
                 image_url,
-                CASE 
-                    WHEN position(lower(full_name) in lower($1)) > 0 THEN 1.0
-                    ELSE similarity(full_name, regexp_replace($1, '[^a-zA-Z0-9\\s]', '', 'g'))
-                END as similarity
+                1.0 as similarity  -- Always 1.0 since we only use exact matches
             FROM fighter_names
-            ORDER BY similarity DESC
+            ORDER BY length(full_name) DESC  -- Prefer longer names to avoid substring matches
             LIMIT 5
         `;
         
