@@ -154,13 +154,17 @@ func main() {
 // send test email
 func sendTestEmail(client *resend.Client) error {
 	params := &resend.SendEmailRequest{
-		From:    "Introducing First <onboarding@resend.dev>",
+		From:    "Introducing First <user.services@introducingfirst.io>",
 		To:      []string{"jackmcameron2@gmail.com"},
-		Subject: "Test Email from Introducing First",
+		Subject: "Introducing First - Password Reset Attempt",
 		Html: `
-            <h1>Test Email</h1>
-            <p>This is a test email from your Introducing First application.</p>
-            <p>If you're seeing this, email sending is working correctly!</p>
+            <h1>Password Reset Request</h1>
+            <p>We received a request to reset your password for your Introducing First account.</p>
+            <p>To reset your password, click the link below:</p>
+            <p><a href="{{.ResetLink}}">Reset Password</a></p>
+            <p>This link will expire in 1 hour for security purposes.</p>
+            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+            <p>Best regards,<br>The Introducing First Team</p>
         `,
 	}
 
@@ -831,12 +835,44 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Success case
+	// Generate reset link
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FRONTEND_URL"), token)
+
+	// Initialize resend client
+	client := resend.NewClient(os.Getenv("RESEND_API_KEY"))
+
+	// Prepare email parameters
+	params := &resend.SendEmailRequest{
+		From:    "Introducing First <user.services@introducingfirst.io>",
+		To:      []string{req.Email},
+		Subject: "Password Reset Request",
+		Html: fmt.Sprintf(`
+			<h1>Password Reset Request</h1>
+			<p>We received a request to reset your password for your Introducing First account.</p>
+			<p>To reset your password, click the link below:</p>
+			<p><a href="%s">Reset Password</a></p>
+			<p>This link will expire in 1 hour for security purposes.</p>
+			<p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
+			<p>Best regards,<br>The Introducing First Team</p>
+		`, resetLink),
+	}
+
+	// Send the email
+	_, err = client.Emails.Send(params)
+	if err != nil {
+		log.Printf("Failed to send reset email: %v", err)
+		// Still return success to prevent email enumeration
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "If an account exists with this email, a reset link will be sent",
+		})
+		return
+	}
+
+	// Success case
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{
-		"message":   "Reset link generated",
-		"resetLink": resetLink,
+		"message": "If an account exists with this email, a reset link will be sent",
 	})
 }
 
