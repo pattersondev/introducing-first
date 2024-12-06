@@ -467,6 +467,7 @@ export class EventService {
                 'fighter2_reach', f2.reach,
                 'fighter1_rank', f1.current_promotion_rank,
                 'fighter2_rank', f2.current_promotion_rank,
+                'card_type', m.card_type,
                 'result', m.result,
                 'winner', m.winner,
                 'display_order', m.display_order,
