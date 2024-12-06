@@ -34,6 +34,7 @@ export interface Matchup {
   result?: string;
   winner?: string;
   display_order: number;
+  card_type?: string;
   prediction?: MatchupPrediction;
 }
 
