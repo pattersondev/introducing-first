@@ -86,19 +86,20 @@ export class EventService {
         await client.query(
           `INSERT INTO matchups (
             matchup_id, event_id, fighter1_name, fighter2_name, 
-            result, winner, display_order
+            result, winner, display_order, card_type
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT (matchup_id) 
           DO UPDATE SET 
             fighter1_name = EXCLUDED.fighter1_name,
             fighter2_name = EXCLUDED.fighter2_name,
             result = EXCLUDED.result,
             winner = EXCLUDED.winner,
-            display_order = EXCLUDED.display_order`,
+            display_order = EXCLUDED.display_order,
+            card_type = EXCLUDED.card_type`,
           [
             matchupId, eventId, matchup.Fighter1, matchup.Fighter2,
-            matchup.Result, matchup.Winner, matchup.Order
+            matchup.Result, matchup.Winner, matchup.Order, matchup.CardType
           ]
         );
       }
@@ -205,7 +206,8 @@ export class EventService {
               'fighter2_image', f2.image_url,
               'result', m.result,
               'winner', m.winner,
-              'display_order', m.display_order
+              'display_order', m.display_order,
+              'card_type', m.card_type
             ) ORDER BY m.display_order
           ) AS matchups
         FROM events e

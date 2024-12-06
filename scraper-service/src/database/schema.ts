@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS matchups (
     winner VARCHAR(255),
     display_order INT NOT NULL,
     live_id BIGINT,
-    start_time TIME
+    start_time TIME,
+    card_type VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS fighters (
