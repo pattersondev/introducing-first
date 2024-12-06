@@ -35,7 +35,6 @@ func shouldIgnoreTweet(text string) bool {
 	ignorePatterns := []string{
 		"Join",
 		"LIVE",
-		"Watch",
 		"as they react",
 		"tune in",
 		"Trivia",
@@ -74,7 +73,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	accounts := []string{"UFCRosterWatch", "arielhelwani", "mmafighting", "mmajunkie", "UFCNews", "espnmma"}
+	accounts := []string{"mmafighting", "UFCRosterWatch", "mmajunkie", "UFCNews", "espnmma"}
 	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
 
 	// Launch browser
@@ -141,6 +140,46 @@ func scrapeTweets(page *rod.Page, url string) error {
 	}
 
 	log.Printf("Found most recent tweet")
+
+	// Check if this is a tweet from the account we're scraping
+	authorElement, err := tweet.Element(`[data-testid="User-Name"] a[role="link"]`)
+	if err != nil {
+		log.Printf("Error finding author element: %v", err)
+		return nil
+	}
+
+	authorHref, err := authorElement.Attribute("href")
+	if err != nil {
+		log.Printf("Error getting author href: %v", err)
+		return nil
+	}
+
+	// Debug logging
+	log.Printf("Raw author href: %s", *authorHref)
+
+	// Extract username from URL and compare with expected
+	authorUsername := strings.TrimPrefix(*authorHref, "/")
+	log.Printf("After TrimPrefix: %s", authorUsername)
+
+	authorUsername = strings.Split(authorUsername, "/")[0]
+	log.Printf("After split on /: %s", authorUsername)
+
+	authorUsername = strings.Split(authorUsername, "?")[0]
+	log.Printf("After split on ?: %s", authorUsername)
+
+	expectedUsername := strings.TrimPrefix(url, "https://twitter.com/")
+	expectedUsername = strings.Split(expectedUsername, "/")[0]
+
+	// Convert both to lowercase for case-insensitive comparison
+	authorUsername = strings.ToLower(authorUsername)
+	expectedUsername = strings.ToLower(expectedUsername)
+
+	log.Printf("Final comparison: author='%s' expected='%s'", authorUsername, expectedUsername)
+
+	if authorUsername != expectedUsername {
+		log.Printf("Skipping retweet from @%s (expected @%s)", authorUsername, expectedUsername)
+		return nil
+	}
 
 	// Extract tweet content
 	contentElement, err := tweet.Element("div[data-testid='tweetText']")
