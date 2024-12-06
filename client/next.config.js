@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: ['introducing-first-fighter-images.s3.amazonaws.com'],
-    formats: ['image/avif', 'image/webp'],
+    formats: ['image/webp'],
     minimumCacheTTL: 60,
   },
   scripts: {
@@ -18,7 +18,7 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=3600, must-revalidate',
           },
           {
             key: 'X-Content-Type-Options',
@@ -43,20 +43,7 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/images/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, must-revalidate',
-          },
-        ],
-      },
     ];
-  },
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react', 'date-fns'],
   },
 }
 
