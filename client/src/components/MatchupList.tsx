@@ -110,11 +110,11 @@ export function MatchupList({
     fetchUserPicks();
   }, [user?.id, eventId]);
 
+  const cardTypeOrder = ["Main Card", "Prelims", "Early Prelims"];
+
   const sortedMatchups = matchups
     ? [...matchups].sort((a, b) => a.display_order - b.display_order)
     : [];
-
-  const cardTypeOrder = ["Main Card", "Prelims", "Early Prelims"];
 
   const matchupsByCardType = sortedMatchups.reduce<Record<string, Matchup[]>>(
     (acc, matchup) => {
@@ -128,21 +128,43 @@ export function MatchupList({
     {}
   );
 
+  const getCardTypeOrder = (cardType: string): number => {
+    for (let i = 0; i < cardTypeOrder.length; i++) {
+      if (cardType.includes(cardTypeOrder[i])) {
+        return i;
+      }
+    }
+    return cardTypeOrder.length;
+  };
+
   const orderedGroups = cardTypeOrder
-    .filter((cardType) => matchupsByCardType[cardType]?.length > 0)
+    .filter((cardType) =>
+      Object.keys(matchupsByCardType).some((key) => key.includes(cardType))
+    )
     .map((cardType) => ({
-      type: cardType,
-      matchups: matchupsByCardType[cardType],
+      type:
+        Object.keys(matchupsByCardType).find((key) => key.includes(cardType)) ||
+        cardType,
+      matchups: Object.entries(matchupsByCardType)
+        .filter(([key]) => key.includes(cardType))
+        .flatMap(([_, matches]) => matches),
+      order: cardTypeOrder.indexOf(cardType),
     }));
 
   Object.entries(matchupsByCardType)
-    .filter(([cardType]) => !cardTypeOrder.includes(cardType))
+    .filter(
+      ([cardType]) =>
+        !cardTypeOrder.some((standardType) => cardType.includes(standardType))
+    )
     .forEach(([cardType, matchups]) => {
       orderedGroups.push({
         type: cardType,
         matchups,
+        order: cardTypeOrder.length,
       });
     });
+
+  orderedGroups.sort((a, b) => a.order - b.order);
 
   const isEventInFuture = (date: string) => {
     if (!date) return true;
