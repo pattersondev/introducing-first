@@ -153,19 +153,16 @@ func main() {
 
 // send test email
 func sendTestEmail(client *resend.Client) error {
+	template, err := loadEmailTemplate("emailtemplate-passwordreset")
+	if err != nil {
+		return fmt.Errorf("failed to load template: %v", err)
+	}
+
 	params := &resend.SendEmailRequest{
 		From:    "Introducing First <user.services@introducingfirst.io>",
 		To:      []string{"jackmcameron2@gmail.com"},
-		Subject: "Introducing First - Password Reset Attempt",
-		Html: `
-            <h1>Password Reset Request</h1>
-            <p>We received a request to reset your password for your Introducing First account.</p>
-            <p>To reset your password, click the link below:</p>
-            <p><a href="{{.ResetLink}}">Reset Password</a></p>
-            <p>This link will expire in 1 hour for security purposes.</p>
-            <p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
-            <p>Best regards,<br>The Introducing First Team</p>
-        `,
+		Subject: "Introducing First - Test Email",
+		Html:    template,
 	}
 
 	sent, err := client.Emails.Send(params)
@@ -922,4 +919,13 @@ func resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Password successfully reset",
 	})
+}
+
+func loadEmailTemplate(templateName string) (string, error) {
+	templatePath := fmt.Sprintf("email-templates/%s.html", templateName)
+	content, err := os.ReadFile(templatePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to load email template %s: %v", templateName, err)
+	}
+	return string(content), nil
 }
