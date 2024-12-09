@@ -80,6 +80,10 @@ type UserResponse struct {
 	ProfilePicture string `json:"profilePicture,omitempty"`
 }
 
+type EmailData struct {
+	ResetLink string
+}
+
 // Add these constants
 const (
 	maxUploadSize = 5 << 20 // 5MB
@@ -808,7 +812,7 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 	// Create reset token
 	token, err := db.CreatePasswordResetToken(req.Email)
 	if err != nil {
-		log.Printf("Password reset attempt error: %v", err) // Add logging
+		log.Printf("Password reset attempt error: %v", err)
 		if strings.Contains(err.Error(), "too many reset attempts") {
 			w.WriteHeader(http.StatusTooManyRequests)
 			json.NewEncoder(w).Encode(map[string]string{
@@ -824,7 +828,6 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		// Handle other errors
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{
 			"message": "An error occurred processing your request",
@@ -832,8 +835,19 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate reset link
+	// Load email template
+	template, err := loadEmailTemplate("emailtemplate-passwordreset")
+	if err != nil {
+		log.Printf("Failed to load template: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Generate reset link using frontend URL from environment
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FRONTEND_URL"), token)
+
+	// Replace template variable with actual reset link
+	template = strings.Replace(template, "{{.ResetLink}}", resetLink, -1)
 
 	// Initialize resend client
 	client := resend.NewClient(os.Getenv("RESEND_API_KEY"))
@@ -843,15 +857,7 @@ func requestPasswordResetHandler(w http.ResponseWriter, r *http.Request) {
 		From:    "Introducing First <user.services@introducingfirst.io>",
 		To:      []string{req.Email},
 		Subject: "Password Reset Request",
-		Html: fmt.Sprintf(`
-			<h1>Password Reset Request</h1>
-			<p>We received a request to reset your password for your Introducing First account.</p>
-			<p>To reset your password, click the link below:</p>
-			<p><a href="%s">Reset Password</a></p>
-			<p>This link will expire in 1 hour for security purposes.</p>
-			<p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>
-			<p>Best regards,<br>The Introducing First Team</p>
-		`, resetLink),
+		Html:    template,
 	}
 
 	// Send the email
