@@ -157,23 +157,23 @@ export class EventService {
     try {
       if (shouldReleaseClient) await client.query('BEGIN');
 
-      // Update fighter1_id
+      // Update fighter1_id with case insensitive comparison
       await client.query(`
         UPDATE matchups m
         SET fighter1_id = f.fighter_id
         FROM fighters f
         WHERE 
-          CONCAT(f.first_name, ' ', f.last_name) = m.fighter1_name
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = LOWER(m.fighter1_name)
           AND m.fighter1_id IS NULL
       `);
 
-      // Update fighter2_id
+      // Update fighter2_id with case insensitive comparison
       await client.query(`
         UPDATE matchups m
         SET fighter2_id = f.fighter_id
         FROM fighters f
         WHERE 
-          CONCAT(f.first_name, ' ', f.last_name) = m.fighter2_name
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = LOWER(m.fighter2_name)
           AND m.fighter2_id IS NULL
       `);
 
@@ -206,8 +206,7 @@ export class EventService {
               'fighter2_image', f2.image_url,
               'result', m.result,
               'winner', m.winner,
-              'display_order', m.display_order,
-              'card_type', m.card_type
+              'display_order', m.display_order
             ) ORDER BY m.display_order
           ) AS matchups
         FROM events e
