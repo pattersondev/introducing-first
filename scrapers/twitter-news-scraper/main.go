@@ -40,7 +40,7 @@ func shouldIgnoreTweet(text string) bool {
 		"Trivia",
 		"daily",
 		"edition",
-		"UFC trivia",
+		"trivia",
 		"game",
 		"Monday",
 		"Tuesday",
@@ -49,7 +49,6 @@ func shouldIgnoreTweet(text string) bool {
 		"Sunday",
 		"predictions",
 		"RT @",
-		"you",
 		"roundtable",
 	}
 
@@ -73,27 +72,44 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	accounts := []string{"mmafighting", "UFCRosterWatch", "mmajunkie", "UFCNews", "espnmma"}
-	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
-
-	// Launch browser
-	url := launcher.New().
-		Headless(true).
-		MustLaunch()
-
-	browser := rod.New().
-		ControlURL(url).
-		MustConnect()
-	defer browser.MustClose()
-
-	// Create a new page
-	page := browser.MustPage()
-	defer page.MustClose()
-
-	// Set viewport
-	page.MustSetWindow(0, 0, 1920, 1080)
-
+	// Continuously try to run the scraper
 	for {
+		// Recover from panics
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered from panic: %v", r)
+					log.Println("Waiting 30 seconds before restarting...")
+					time.Sleep(30 * time.Second)
+				}
+			}()
+
+			launch()
+		}()
+
+		log.Println("Process crashed or stopped, restarting...")
+	}
+}
+
+func launch() {
+	accounts := []string{"mmafighting", "UFCRosterWatch", "happypunch", "mmajunkie", "UFCNews", "espnmma"}
+	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
+	for {
+		// Launch browser inside the main loop
+		url := launcher.New().
+			Headless(true).
+			MustLaunch()
+
+		browser := rod.New().
+			ControlURL(url).
+			MustConnect()
+
+		// Create a new page
+		page := browser.MustPage()
+
+		// Set viewport
+		page.MustSetWindow(0, 0, 1920, 1080)
+
 		for _, username := range accounts {
 			log.Printf("Starting scrape for %s", username)
 
@@ -101,7 +117,9 @@ func main() {
 			twitterURL := fmt.Sprintf("https://twitter.com/%s", username)
 			if err := scrapeTweets(page, twitterURL); err != nil {
 				log.Printf("Error scraping %s: %v", username, err)
-				continue
+				// Safely close resources
+				safeClose(page, browser)
+				break
 			}
 
 			log.Printf("Completed scrape for %s", username)
@@ -109,9 +127,27 @@ func main() {
 			time.Sleep(requestDelay)
 		}
 
+		// Clean up resources if we haven't already
+		safeClose(page, browser)
+
 		log.Printf("Completed checking all accounts")
 		log.Printf("Waiting %v before next cycle", cycleDelay)
 		time.Sleep(cycleDelay)
+	}
+}
+
+// safeClose safely closes page and browser without panicking
+func safeClose(page *rod.Page, browser *rod.Browser) {
+	if page != nil {
+		// Use Close() instead of MustClose() to avoid panics
+		if err := page.Close(); err != nil {
+			log.Printf("Error closing page: %v", err)
+		}
+	}
+	if browser != nil {
+		if err := browser.Close(); err != nil {
+			log.Printf("Error closing browser: %v", err)
+		}
 	}
 }
 
