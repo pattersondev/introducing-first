@@ -97,16 +97,22 @@ func main() {
 func startServer() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // default port if not specified
+		port = "10000" // Render's default port
 	}
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 
-	log.Printf("Starting health check server on port %s", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	server := &http.Server{
+		Addr:    "0.0.0.0:" + port, // Explicitly bind to 0.0.0.0
+		Handler: mux,
+	}
+
+	log.Printf("Starting health check server on 0.0.0.0:%s", port)
+	if err := server.ListenAndServe(); err != nil {
 		log.Printf("Error starting server: %v", err)
 	}
 }
