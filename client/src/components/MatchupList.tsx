@@ -129,42 +129,17 @@ export function MatchupList({
   );
 
   const getCardTypeOrder = (cardType: string): number => {
-    for (let i = 0; i < cardTypeOrder.length; i++) {
-      if (cardType.includes(cardTypeOrder[i])) {
-        return i;
-      }
-    }
-    return cardTypeOrder.length;
+    const exactMatch = cardTypeOrder.indexOf(cardType);
+    return exactMatch >= 0 ? exactMatch : cardTypeOrder.length;
   };
 
-  const orderedGroups = cardTypeOrder
-    .filter((cardType) =>
-      Object.keys(matchupsByCardType).some((key) => key.includes(cardType))
-    )
-    .map((cardType) => ({
-      type:
-        Object.keys(matchupsByCardType).find((key) => key.includes(cardType)) ||
-        cardType,
-      matchups: Object.entries(matchupsByCardType)
-        .filter(([key]) => key.includes(cardType))
-        .flatMap(([_, matches]) => matches),
-      order: cardTypeOrder.indexOf(cardType),
-    }));
-
-  Object.entries(matchupsByCardType)
-    .filter(
-      ([cardType]) =>
-        !cardTypeOrder.some((standardType) => cardType.includes(standardType))
-    )
-    .forEach(([cardType, matchups]) => {
-      orderedGroups.push({
-        type: cardType,
-        matchups,
-        order: cardTypeOrder.length,
-      });
-    });
-
-  orderedGroups.sort((a, b) => a.order - b.order);
+  const orderedGroups = Object.entries(matchupsByCardType)
+    .map(([cardType, fights]) => ({
+      type: cardType,
+      matchups: fights,
+      order: getCardTypeOrder(cardType),
+    }))
+    .sort((a, b) => a.order - b.order);
 
   const isEventInFuture = (date: string) => {
     if (!date) return true;
@@ -195,6 +170,8 @@ export function MatchupList({
                       pick.matchup_id === matchup.matchup_id &&
                       pick.selection_fighter_id === matchup.fighter2_id
                   );
+
+                  console.log(matchup.fighter1_name, matchup.card_type);
 
                   return (
                     <Card

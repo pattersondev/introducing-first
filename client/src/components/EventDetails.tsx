@@ -71,10 +71,8 @@ export function EventDetails({ event, isLoading = false }: EventDetailsProps) {
                   {event.early_prelims_time && (
                     <div className="flex items-center justify-end text-sm">
                       <div className="flex items-center bg-gray-800/50 rounded-full px-3 py-1">
-                        <span className="font-medium text-purple-400">
-                          Early Prelims
-                        </span>
-                        <Clock className="w-4 h-4 mx-2 text-purple-400" />
+                        <span className="font-medium">Early Prelims</span>
+                        <Clock className="w-4 h-4 mx-2" />
                         <span className="text-gray-300">
                           {event.early_prelims_time} ET
                         </span>
