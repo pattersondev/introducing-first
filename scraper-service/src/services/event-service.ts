@@ -437,7 +437,10 @@ export class EventService {
             e.event_id, 
             e.name, 
             e.date, 
-            e.location
+            e.location,
+            e.main_card_time,
+            e.prelims_time,
+            e.early_prelims_time
           FROM events e
           WHERE e.date < CURRENT_DATE
           ORDER BY e.date DESC
@@ -448,7 +451,10 @@ export class EventService {
             e.event_id, 
             e.name, 
             e.date, 
-            e.location
+            e.location,
+            e.main_card_time,
+            e.prelims_time,
+            e.early_prelims_time
           FROM events e
           WHERE e.date >= CURRENT_DATE
           ORDER BY e.date ASC
@@ -473,6 +479,9 @@ export class EventService {
           e.name, 
           e.date, 
           e.location,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time,
           COALESCE(
             json_agg(
               json_build_object(
@@ -514,7 +523,14 @@ export class EventService {
         LEFT JOIN matchups m ON e.event_id = m.event_id
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
-        GROUP BY e.event_id, e.name, e.date, e.location
+        GROUP BY 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time
         ORDER BY e.date DESC
       `);
 
