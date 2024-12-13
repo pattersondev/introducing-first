@@ -72,9 +72,6 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// Start the HTTP server in a goroutine
-	go startServer()
-
 	// Continuously try to run the scraper
 	for {
 		// Recover from panics
@@ -91,29 +88,6 @@ func main() {
 		}()
 
 		log.Println("Process crashed or stopped, restarting...")
-	}
-}
-
-func startServer() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "10000" // Render's default port
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
-
-	server := &http.Server{
-		Addr:    "0.0.0.0:" + port, // Explicitly bind to 0.0.0.0
-		Handler: mux,
-	}
-
-	log.Printf("Starting health check server on 0.0.0.0:%s", port)
-	if err := server.ListenAndServe(); err != nil {
-		log.Printf("Error starting server: %v", err)
 	}
 }
 
