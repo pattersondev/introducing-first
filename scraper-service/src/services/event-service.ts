@@ -183,12 +183,14 @@ export class EventService {
       if (shouldReleaseClient) await client.query('BEGIN');
 
       // Update fighter1_id with case insensitive comparison and record check
+      // Replace hyphens with spaces in both fighter names before comparison
       await client.query(`
         UPDATE matchups m
         SET fighter1_id = f.fighter_id
         FROM fighters f
         WHERE 
-          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = LOWER(m.fighter1_name)
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = 
+          LOWER(REPLACE(m.fighter1_name, '-', ' '))
           AND f.win_loss_record = m.fighter1_record
           AND m.fighter1_id IS NULL
       `);
@@ -199,7 +201,8 @@ export class EventService {
         SET fighter2_id = f.fighter_id
         FROM fighters f
         WHERE 
-          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = LOWER(m.fighter2_name)
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = 
+          LOWER(REPLACE(m.fighter2_name, '-', ' '))
           AND f.win_loss_record = m.fighter2_record
           AND m.fighter2_id IS NULL
       `);
