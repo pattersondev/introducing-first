@@ -9,6 +9,9 @@ export interface Event {
   name: string;
   date: string;
   location: string;
+  main_card_time?: string;
+  prelims_time?: string;
+  early_prelims_time?: string;
   matchups: Matchup[];
 }
 
