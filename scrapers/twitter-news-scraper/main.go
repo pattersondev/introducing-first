@@ -35,13 +35,12 @@ func shouldIgnoreTweet(text string) bool {
 	ignorePatterns := []string{
 		"Join",
 		"LIVE",
-		"Watch",
 		"as they react",
 		"tune in",
 		"Trivia",
 		"daily",
 		"edition",
-		"UFC trivia",
+		"trivia",
 		"game",
 		"Monday",
 		"Tuesday",
@@ -50,7 +49,6 @@ func shouldIgnoreTweet(text string) bool {
 		"Sunday",
 		"predictions",
 		"RT @",
-		"you",
 		"roundtable",
 	}
 
@@ -74,27 +72,44 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	accounts := []string{"UFCRosterWatch", "arielhelwani", "mmafighting", "mmajunkie", "UFCNews", "espnmma"}
-	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
-
-	// Launch browser
-	url := launcher.New().
-		Headless(true).
-		MustLaunch()
-
-	browser := rod.New().
-		ControlURL(url).
-		MustConnect()
-	defer browser.MustClose()
-
-	// Create a new page
-	page := browser.MustPage()
-	defer page.MustClose()
-
-	// Set viewport
-	page.MustSetWindow(0, 0, 1920, 1080)
-
+	// Continuously try to run the scraper
 	for {
+		// Recover from panics
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Recovered from panic: %v", r)
+					log.Println("Waiting 30 seconds before restarting...")
+					time.Sleep(30 * time.Second)
+				}
+			}()
+
+			launch()
+		}()
+
+		log.Println("Process crashed or stopped, restarting...")
+	}
+}
+
+func launch() {
+	accounts := []string{"mmafighting", "UFCRosterWatch", "happypunch", "mmajunkie", "UFCNews", "espnmma"}
+	log.Printf("Starting to monitor tweets from %d accounts", len(accounts))
+	for {
+		// Launch browser inside the main loop
+		url := launcher.New().
+			Headless(true).
+			MustLaunch()
+
+		browser := rod.New().
+			ControlURL(url).
+			MustConnect()
+
+		// Create a new page
+		page := browser.MustPage()
+
+		// Set viewport
+		page.MustSetWindow(0, 0, 1920, 1080)
+
 		for _, username := range accounts {
 			log.Printf("Starting scrape for %s", username)
 
@@ -102,7 +117,9 @@ func main() {
 			twitterURL := fmt.Sprintf("https://twitter.com/%s", username)
 			if err := scrapeTweets(page, twitterURL); err != nil {
 				log.Printf("Error scraping %s: %v", username, err)
-				continue
+				// Safely close resources
+				safeClose(page, browser)
+				break
 			}
 
 			log.Printf("Completed scrape for %s", username)
@@ -110,9 +127,27 @@ func main() {
 			time.Sleep(requestDelay)
 		}
 
+		// Clean up resources if we haven't already
+		safeClose(page, browser)
+
 		log.Printf("Completed checking all accounts")
 		log.Printf("Waiting %v before next cycle", cycleDelay)
 		time.Sleep(cycleDelay)
+	}
+}
+
+// safeClose safely closes page and browser without panicking
+func safeClose(page *rod.Page, browser *rod.Browser) {
+	if page != nil {
+		// Use Close() instead of MustClose() to avoid panics
+		if err := page.Close(); err != nil {
+			log.Printf("Error closing page: %v", err)
+		}
+	}
+	if browser != nil {
+		if err := browser.Close(); err != nil {
+			log.Printf("Error closing browser: %v", err)
+		}
 	}
 }
 
@@ -141,6 +176,46 @@ func scrapeTweets(page *rod.Page, url string) error {
 	}
 
 	log.Printf("Found most recent tweet")
+
+	// Check if this is a tweet from the account we're scraping
+	authorElement, err := tweet.Element(`[data-testid="User-Name"] a[role="link"]`)
+	if err != nil {
+		log.Printf("Error finding author element: %v", err)
+		return nil
+	}
+
+	authorHref, err := authorElement.Attribute("href")
+	if err != nil {
+		log.Printf("Error getting author href: %v", err)
+		return nil
+	}
+
+	// Debug logging
+	log.Printf("Raw author href: %s", *authorHref)
+
+	// Extract username from URL and compare with expected
+	authorUsername := strings.TrimPrefix(*authorHref, "/")
+	log.Printf("After TrimPrefix: %s", authorUsername)
+
+	authorUsername = strings.Split(authorUsername, "/")[0]
+	log.Printf("After split on /: %s", authorUsername)
+
+	authorUsername = strings.Split(authorUsername, "?")[0]
+	log.Printf("After split on ?: %s", authorUsername)
+
+	expectedUsername := strings.TrimPrefix(url, "https://twitter.com/")
+	expectedUsername = strings.Split(expectedUsername, "/")[0]
+
+	// Convert both to lowercase for case-insensitive comparison
+	authorUsername = strings.ToLower(authorUsername)
+	expectedUsername = strings.ToLower(expectedUsername)
+
+	log.Printf("Final comparison: author='%s' expected='%s'", authorUsername, expectedUsername)
+
+	if authorUsername != expectedUsername {
+		log.Printf("Skipping retweet from @%s (expected @%s)", authorUsername, expectedUsername)
+		return nil
+	}
 
 	// Extract tweet content
 	contentElement, err := tweet.Element("div[data-testid='tweetText']")

@@ -6,7 +6,10 @@ CREATE TABLE IF NOT EXISTS events (
     event_id VARCHAR(32) PRIMARY KEY,
     name VARCHAR(255),
     date DATE,
-    location VARCHAR(255)
+    location VARCHAR(255),
+    main_card_time VARCHAR(20),
+    prelims_time VARCHAR(20),
+    early_prelims_time VARCHAR(20)
 );
 
 CREATE TABLE IF NOT EXISTS matchups (
@@ -16,11 +19,14 @@ CREATE TABLE IF NOT EXISTS matchups (
     fighter2_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
     fighter1_name VARCHAR(255) NOT NULL,
     fighter2_name VARCHAR(255) NOT NULL,
+    fighter1_record VARCHAR(20),
+    fighter2_record VARCHAR(20),
     result TEXT,
     winner VARCHAR(255),
     display_order INT NOT NULL,
     live_id BIGINT,
-    start_time TIME
+    start_time TIME,
+    card_type VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS fighters (

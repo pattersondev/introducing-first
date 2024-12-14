@@ -183,14 +183,19 @@ export class LivePollingService {
   async pollActiveMatchups() {
     const client = await this.pool.connect();
     try {
-      // Get matchups that should be active (started within last 30 minutes or next 5 minutes)
+      // Get matchups that should be active based on their card type and start time
       const { rows: activeMatchups } = await client.query(`
         SELECT 
           m.matchup_id,
           m.live_id,
           m.fighter1_name,
           m.fighter2_name,
+          m.card_type,
           e.name as event_name,
+          e.date,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time,
           m.start_time
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
@@ -198,6 +203,35 @@ export class LivePollingService {
           m.live_id IS NOT NULL
           AND e.date = CURRENT_DATE
           AND m.result IS NULL
+          AND (
+            -- Check if the card's start time has passed based on card type
+            (m.card_type = 'main' AND CURRENT_TIME >= e.main_card_time::time)
+            OR (m.card_type = 'prelim' AND CURRENT_TIME >= e.prelims_time::time)
+            OR (m.card_type = 'early_prelim' AND CURRENT_TIME >= e.early_prelims_time::time)
+            -- If specific start_time is set, use that
+            OR (m.start_time IS NOT NULL AND CURRENT_TIME >= m.start_time)
+          )
+          -- Only include fights that started within the last 45 minutes
+          -- assuming no fight lasts longer than that
+          AND (
+            CASE 
+              WHEN m.start_time IS NOT NULL THEN 
+                m.start_time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
+              WHEN m.card_type = 'main' THEN 
+                e.main_card_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
+              WHEN m.card_type = 'prelim' THEN 
+                e.prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
+              WHEN m.card_type = 'early_prelim' THEN 
+                e.early_prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
+            END
+          )
+        ORDER BY 
+          CASE 
+            WHEN m.start_time IS NOT NULL THEN m.start_time
+            WHEN m.card_type = 'main' THEN e.main_card_time::time
+            WHEN m.card_type = 'prelim' THEN e.prelims_time::time
+            WHEN m.card_type = 'early_prelim' THEN e.early_prelims_time::time
+          END ASC
       `);
 
       console.log(`Found ${activeMatchups.length} potentially active matchups to poll`);

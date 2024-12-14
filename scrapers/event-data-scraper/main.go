@@ -20,18 +20,24 @@ import (
 )
 
 type Event struct {
-	Name     string
-	Date     string
-	Location string
-	Matchups []FightData
+	Name             string
+	Date             string
+	Location         string
+	MainCardTime     string
+	PrelimsTime      string
+	EarlyPrelimsTime string
+	Matchups         []FightData
 }
 
 type FightData struct {
-	Fighter1 string
-	Fighter2 string
-	Result   string
-	Winner   string
-	Order    int
+	Fighter1       string
+	Fighter2       string
+	Fighter1Record string
+	Fighter2Record string
+	Result         string
+	Winner         string
+	Order          int
+	CardType       string
 }
 
 type SendResult struct {
@@ -232,43 +238,78 @@ func extractEventData(e *colly.HTMLElement) Event {
 	}
 	eventLocation = extractLocationOnly(eventLocation)
 
+	// Extract start times for different card types
+	var mainCardTime, prelimsTime, earlyPrelimsTime string
+	e.ForEach(".MMAHeaderUpsellTunein__container", func(_ int, el *colly.HTMLElement) {
+		cardType := el.ChildText(".h8.clr-gray-01")
+		startTime := el.ChildText(".MMAHeaderUpsellTunein__Meta.n9.clr-gray-04.nowrap")
+
+		switch strings.TrimSpace(cardType) {
+		case "Main Card":
+			mainCardTime = startTime
+		case "Prelims":
+			prelimsTime = startTime
+		case "Early Prelims":
+			earlyPrelimsTime = startTime
+		}
+	})
+
 	event := Event{
-		Name:     eventName,
-		Date:     eventDate,
-		Location: eventLocation,
-		Matchups: []FightData{},
+		Name:             eventName,
+		Date:             eventDate,
+		Location:         eventLocation,
+		MainCardTime:     mainCardTime,
+		PrelimsTime:      prelimsTime,
+		EarlyPrelimsTime: earlyPrelimsTime,
+		Matchups:         []FightData{},
 	}
 
-	e.ForEach("div.MMAGamestrip", func(index int, el *colly.HTMLElement) {
-		fighter1 := cleanFighterName(el.ChildText("div.MMACompetitor:first-child h2"))
-		fighter2 := cleanFighterName(el.ChildText("div.MMACompetitor:last-child h2"))
+	// Find all sections that contain fights
+	e.ForEach("section.Card.MMAFightCard", func(_ int, section *colly.HTMLElement) {
+		// Get the card type from the section header
+		cardType := section.ChildText("h3.Card__Header__Title")
+		fmt.Printf("Found card section: %s\n", cardType) // Debug logging
 
-		result := el.ChildText("div.Gamestrip__Overview .ScoreCell__Time--post")
-		cleanedResult := cleanResult(result)
+		// Process all fights within this section
+		section.ForEach("div.MMAGamestrip", func(index int, el *colly.HTMLElement) {
+			// First fighter data
+			fighter1 := cleanFighterName(el.ChildText("div.MMACompetitor:first-child h2"))
+			fighter1Record := el.ChildText("div.MMACompetitor:first-child .MMACompetitor__Detail .flex.items-center.n9")
 
-		var winner string
-		if cleanedResult == "" {
-			winner = ""
-		} else if el.ChildAttr("svg.MMACompetitor__arrow", "class") != "" {
-			if strings.Contains(el.ChildAttr("svg.MMACompetitor__arrow", "class"), "--reverse") {
-				winner = fighter1
+			// Second fighter data
+			fighter2 := cleanFighterName(el.ChildText("div.MMACompetitor:last-child h2"))
+			fighter2Record := el.ChildText("div.MMACompetitor:last-child .MMACompetitor__Detail .flex.items-center.n9")
+
+			result := el.ChildText("div.Gamestrip__Overview .ScoreCell__Time--post")
+			cleanedResult := cleanResult(result)
+
+			var winner string
+			if cleanedResult == "" {
+				winner = ""
+			} else if el.ChildAttr("svg.MMACompetitor__arrow", "class") != "" {
+				if strings.Contains(el.ChildAttr("svg.MMACompetitor__arrow", "class"), "--reverse") {
+					winner = fighter1
+				} else {
+					winner = fighter2
+				}
 			} else {
-				winner = fighter2
+				winner = "Draw/No Contest"
 			}
-		} else {
-			winner = "Draw/No Contest"
-		}
 
-		if fighter1 != "" && fighter2 != "" && fighter1 != fighter2 {
-			fight := FightData{
-				Fighter1: fighter1,
-				Fighter2: fighter2,
-				Result:   cleanedResult,
-				Winner:   winner,
-				Order:    index,
+			if fighter1 != "" && fighter2 != "" && fighter1 != fighter2 {
+				fight := FightData{
+					Fighter1:       fighter1,
+					Fighter2:       fighter2,
+					Fighter1Record: fighter1Record,
+					Fighter2Record: fighter2Record,
+					Result:         cleanedResult,
+					Winner:         winner,
+					Order:          index,
+					CardType:       cardType,
+				}
+				event.Matchups = append(event.Matchups, fight)
 			}
-			event.Matchups = append(event.Matchups, fight)
-		}
+		})
 	})
 
 	return event
@@ -340,11 +381,34 @@ func extractLocationOnly(fullText string) string {
 }
 
 func printEventInfo(event Event) {
-	fmt.Printf("Event: %s, Date: %s, Location: %s\n", event.Name, event.Date, event.Location)
-	fmt.Printf("Total matchups: %d\n", len(event.Matchups))
-	for _, matchup := range event.Matchups {
-		fmt.Printf("  %s vs %s - Result: %s, Winner: %s\n", matchup.Fighter1, matchup.Fighter2, matchup.Result, matchup.Winner)
+	fmt.Printf("\nEvent: %s\nDate: %s\nLocation: %s\n", event.Name, event.Date, event.Location)
+	fmt.Printf("Start Times:\n")
+	if event.MainCardTime != "" {
+		fmt.Printf("  Main Card: %s\n", event.MainCardTime)
 	}
+	if event.PrelimsTime != "" {
+		fmt.Printf("  Prelims: %s\n", event.PrelimsTime)
+	}
+	if event.EarlyPrelimsTime != "" {
+		fmt.Printf("  Early Prelims: %s\n", event.EarlyPrelimsTime)
+	}
+	fmt.Printf("Total matchups: %d\n", len(event.Matchups))
+
+	var currentCardType string
+	for _, matchup := range event.Matchups {
+		if currentCardType != matchup.CardType {
+			currentCardType = matchup.CardType
+			fmt.Printf("\n=== %s ===\n", currentCardType)
+		}
+		fmt.Printf("  %s (%s) vs %s (%s) - Result: %s, Winner: %s\n",
+			matchup.Fighter1,
+			matchup.Fighter1Record,
+			matchup.Fighter2,
+			matchup.Fighter2Record,
+			matchup.Result,
+			matchup.Winner)
+	}
+	fmt.Println("\n-----------------------------------")
 }
 
 func handleRequest(r *colly.Request) {

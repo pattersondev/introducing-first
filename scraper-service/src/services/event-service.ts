@@ -43,16 +43,30 @@ export class EventService {
         [eventId]
       );
 
-      // Update or insert event with corrected date
+      // Update or insert event with new time fields
       await client.query(
-        `INSERT INTO events (event_id, name, date, location) 
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (event_id) 
-         DO UPDATE SET 
-           name = EXCLUDED.name,
-           date = EXCLUDED.date,
-           location = EXCLUDED.location`,
-        [eventId, event.Name, eventDate.toISOString(), event.Location]
+        `INSERT INTO events (
+            event_id, name, date, location, 
+            main_card_time, prelims_time, early_prelims_time
+        ) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (event_id) 
+        DO UPDATE SET 
+            name = EXCLUDED.name,
+            date = EXCLUDED.date,
+            location = EXCLUDED.location,
+            main_card_time = EXCLUDED.main_card_time,
+            prelims_time = EXCLUDED.prelims_time,
+            early_prelims_time = EXCLUDED.early_prelims_time`,
+        [
+          eventId, 
+          event.Name, 
+          eventDate.toISOString(), 
+          event.Location,
+          event.MainCardTime || null,
+          event.PrelimsTime || null,
+          event.EarlyPrelimsTime || null
+        ]
       );
 
       // For past events, get existing matchups
@@ -85,20 +99,32 @@ export class EventService {
 
         await client.query(
           `INSERT INTO matchups (
-            matchup_id, event_id, fighter1_name, fighter2_name, 
-            result, winner, display_order
+            matchup_id, event_id, fighter1_name, fighter2_name,
+            fighter1_record, fighter2_record,
+            result, winner, display_order, card_type
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
           ON CONFLICT (matchup_id) 
           DO UPDATE SET 
             fighter1_name = EXCLUDED.fighter1_name,
             fighter2_name = EXCLUDED.fighter2_name,
+            fighter1_record = EXCLUDED.fighter1_record,
+            fighter2_record = EXCLUDED.fighter2_record,
             result = EXCLUDED.result,
             winner = EXCLUDED.winner,
-            display_order = EXCLUDED.display_order`,
+            display_order = EXCLUDED.display_order,
+            card_type = EXCLUDED.card_type`,
           [
-            matchupId, eventId, matchup.Fighter1, matchup.Fighter2,
-            matchup.Result, matchup.Winner, matchup.Order
+            matchupId,
+            eventId,
+            matchup.Fighter1,
+            matchup.Fighter2,
+            matchup.Fighter1Record,
+            matchup.Fighter2Record,
+            matchup.Result,
+            matchup.Winner,
+            matchup.Order,
+            matchup.CardType
           ]
         );
       }
@@ -156,23 +182,28 @@ export class EventService {
     try {
       if (shouldReleaseClient) await client.query('BEGIN');
 
-      // Update fighter1_id
+      // Update fighter1_id with case insensitive comparison and record check
+      // Replace hyphens with spaces in both fighter names before comparison
       await client.query(`
         UPDATE matchups m
         SET fighter1_id = f.fighter_id
         FROM fighters f
         WHERE 
-          CONCAT(f.first_name, ' ', f.last_name) = m.fighter1_name
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = 
+          LOWER(REPLACE(m.fighter1_name, '-', ' '))
+          AND f.win_loss_record = m.fighter1_record
           AND m.fighter1_id IS NULL
       `);
 
-      // Update fighter2_id
+      // Update fighter2_id with case insensitive comparison and record check
       await client.query(`
         UPDATE matchups m
         SET fighter2_id = f.fighter_id
         FROM fighters f
         WHERE 
-          CONCAT(f.first_name, ' ', f.last_name) = m.fighter2_name
+          LOWER(CONCAT(f.first_name, ' ', f.last_name)) = 
+          LOWER(REPLACE(m.fighter2_name, '-', ' '))
+          AND f.win_loss_record = m.fighter2_record
           AND m.fighter2_id IS NULL
       `);
 
@@ -409,7 +440,10 @@ export class EventService {
             e.event_id, 
             e.name, 
             e.date, 
-            e.location
+            e.location,
+            e.main_card_time,
+            e.prelims_time,
+            e.early_prelims_time
           FROM events e
           WHERE e.date < CURRENT_DATE
           ORDER BY e.date DESC
@@ -420,7 +454,10 @@ export class EventService {
             e.event_id, 
             e.name, 
             e.date, 
-            e.location
+            e.location,
+            e.main_card_time,
+            e.prelims_time,
+            e.early_prelims_time
           FROM events e
           WHERE e.date >= CURRENT_DATE
           ORDER BY e.date ASC
@@ -445,6 +482,9 @@ export class EventService {
           e.name, 
           e.date, 
           e.location,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time,
           COALESCE(
             json_agg(
               json_build_object(
@@ -465,6 +505,7 @@ export class EventService {
                 'fighter2_reach', f2.reach,
                 'fighter1_rank', f1.current_promotion_rank,
                 'fighter2_rank', f2.current_promotion_rank,
+                'card_type', m.card_type,
                 'result', m.result,
                 'winner', m.winner,
                 'display_order', m.display_order,
@@ -485,7 +526,14 @@ export class EventService {
         LEFT JOIN matchups m ON e.event_id = m.event_id
         LEFT JOIN fighters f1 ON m.fighter1_id = f1.fighter_id
         LEFT JOIN fighters f2 ON m.fighter2_id = f2.fighter_id
-        GROUP BY e.event_id, e.name, e.date, e.location
+        GROUP BY 
+          e.event_id, 
+          e.name, 
+          e.date, 
+          e.location,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time
         ORDER BY e.date DESC
       `);
 
