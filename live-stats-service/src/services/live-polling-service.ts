@@ -190,7 +190,7 @@ export class LivePollingService {
           m.live_id,
           m.fighter1_name,
           m.fighter2_name,
-          m.card_type,
+          m."card_type",
           e.name as event_name,
           e.main_card_time,
           e.prelims_time,
@@ -204,19 +204,19 @@ export class LivePollingService {
                 THEN true 
                 ELSE false 
               END
-            WHEN m.card_type = 'main' AND CURRENT_TIME >= e.main_card_time::time 
+            WHEN m."card_type" = 'main' AND CURRENT_TIME >= e.main_card_time::time 
               AND e.main_card_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
               THEN true
-            WHEN m.card_type = 'prelim' AND CURRENT_TIME >= e.prelims_time::time 
+            WHEN m."card_type" = 'prelim' AND CURRENT_TIME >= e.prelims_time::time 
               AND e.prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
               THEN true
-            WHEN m.card_type = 'early_prelim' AND CURRENT_TIME >= e.early_prelims_time::time 
+            WHEN m."card_type" = 'early_prelim' AND CURRENT_TIME >= e.early_prelims_time::time 
               AND e.early_prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
               THEN true
             ELSE false
           END as is_active
-        FROM matchups m
-        JOIN events e ON m.event_id = e.event_id
+        FROM public.matchups m
+        JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
           AND e.date = CURRENT_DATE

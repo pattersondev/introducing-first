@@ -13,10 +13,10 @@ export class LiveStatsService {
         SELECT 
           m.fighter1_name, 
           m.fighter2_name, 
-          m.card_type,
+          m."card_type",
           e.name as event_name
-        FROM matchups m
-        JOIN events e ON m.event_id = e.event_id
+        FROM public.matchups m
+        JOIN public.events e ON m.event_id = e.event_id
         WHERE m.matchup_id = $1
       `, [matchupId]);
 
