@@ -10,7 +10,11 @@ export class LiveStatsService {
 
       // Get the matchup details for logging
       const { rows: [matchup] } = await client.query(`
-        SELECT m.fighter1_name, m.fighter2_name, m.card_type, e.name as event_name
+        SELECT 
+          m.fighter1_name, 
+          m.fighter2_name, 
+          m.card_type,
+          e.name as event_name
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE m.matchup_id = $1
