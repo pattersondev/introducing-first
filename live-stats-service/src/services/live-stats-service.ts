@@ -8,6 +8,16 @@ export class LiveStatsService {
     try {
       await client.query('BEGIN');
 
+      // Get the matchup details for logging
+      const { rows: [matchup] } = await client.query(`
+        SELECT m.fighter1_name, m.fighter2_name, m.card_type, e.name as event_name
+        FROM matchups m
+        JOIN events e ON m.event_id = e.event_id
+        WHERE m.matchup_id = $1
+      `, [matchupId]);
+
+      console.log(`Processing live stats for ${matchup.fighter1_name} vs ${matchup.fighter2_name} (${matchup.card_type}) at ${matchup.event_name}`);
+
       // Process ALL period stats (full fight stats)
       const allPeriodStats = stats.statistics.find((s: any) => s.period === 'ALL');
       if (allPeriodStats) {
