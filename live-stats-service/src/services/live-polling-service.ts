@@ -204,16 +204,37 @@ export class LivePollingService {
           AND m.result IS NULL  -- Fight hasn't finished yet
       `);
 
+      console.log('Found potential matchups:', matchups.map(m => ({
+        fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
+        event_date: m.event_date,
+        raw_date: new Date(m.event_date)
+      })));
+
       // Convert current time to EST for comparison
       const now = new Date();
       const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
       const estDate = estNow.toISOString().split('T')[0];
+      
+      console.log('Current time info:', {
+        utc: now.toISOString(),
+        est: estNow.toISOString(),
+        estDate
+      });
 
       // Filter matchups based on date in EST
       const activeMatchups = matchups.filter(matchup => {
-        const matchupDate = new Date(matchup.event_date)
-          .toLocaleString('en-US', { timeZone: 'America/New_York' })
-          .split(',')[0];
+        // Log raw date info
+        console.log('\nProcessing matchup:', matchup.fighter1_name, 'vs', matchup.fighter2_name);
+        console.log('Raw event_date:', matchup.event_date);
+        
+        const rawMatchupDate = new Date(matchup.event_date);
+        console.log('Parsed event_date:', rawMatchupDate.toISOString());
+        
+        const matchupDateInEst = new Date(rawMatchupDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        console.log('Event date in EST:', matchupDateInEst.toISOString());
+        
+        const matchupDate = matchupDateInEst.toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0];
+        console.log('Formatted matchup date:', matchupDate);
         
         const [month, day, year] = matchupDate.split('/');
         const formattedMatchupDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -223,14 +244,19 @@ export class LivePollingService {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowDate = tomorrow.toISOString().split('T')[0];
         
-        console.log(`Comparing dates - Matchup: ${formattedMatchupDate}, Current EST: ${estDate}, Tomorrow EST: ${tomorrowDate}`);
+        console.log('Date comparison:', {
+          matchupDate: formattedMatchupDate,
+          today: estDate,
+          tomorrow: tomorrowDate,
+          isToday: formattedMatchupDate === estDate,
+          isTomorrow: formattedMatchupDate === tomorrowDate
+        });
         
-        // Match if the event is today OR tomorrow (for events that start late at night)
         return formattedMatchupDate === estDate || formattedMatchupDate === tomorrowDate;
       });
 
       if (activeMatchups.length > 0) {
-        console.log('Found active matchups:', activeMatchups.map(m => ({
+        console.log('\nFound active matchups:', activeMatchups.map(m => ({
           fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
           event: m.event_name,
           date: m.event_date,
@@ -238,7 +264,7 @@ export class LivePollingService {
           result: m.result
         })));
       } else {
-        console.log(`No active events found. Current EST time: ${estTime}`);
+        console.log(`\nNo active events found. Current EST time: ${estTime}`);
       }
 
       return activeMatchups;
