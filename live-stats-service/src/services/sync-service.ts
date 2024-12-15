@@ -27,13 +27,14 @@ export class SyncService {
           m.winner,
           e.name as event_name,
           e.date as event_date,
-          e.location
+          e.location,
+          e.main_card_time,
+          e.prelims_time,
+          e.early_prelims_time
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE 
-          -- Get all future events
           e.date >= CURRENT_DATE
-          -- Plus last 30 days of events
           OR e.date >= CURRENT_DATE - INTERVAL '30 days'
         ORDER BY e.date ASC
       `);
@@ -44,23 +45,49 @@ export class SyncService {
       for (const matchup of mainMatchups) {
         // Ensure event exists
         await liveStatsClient.query(`
-          INSERT INTO events (event_id, name, date, location)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO events (
+            event_id, 
+            name, 
+            date, 
+            location,
+            main_card_time,
+            prelims_time,
+            early_prelims_time
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           ON CONFLICT (event_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
             date = EXCLUDED.date,
-            location = EXCLUDED.location
-        `, [matchup.event_id, matchup.event_name, matchup.event_date, matchup.location]);
+            location = EXCLUDED.location,
+            main_card_time = EXCLUDED.main_card_time,
+            prelims_time = EXCLUDED.prelims_time,
+            early_prelims_time = EXCLUDED.early_prelims_time
+        `, [
+          matchup.event_id, 
+          matchup.event_name, 
+          matchup.event_date, 
+          matchup.location,
+          matchup.main_card_time,
+          matchup.prelims_time,
+          matchup.early_prelims_time
+        ]);
 
-        // Update matchup
+        // Update matchup - only include columns that exist in live stats DB
         await liveStatsClient.query(`
           INSERT INTO matchups (
-            matchup_id, event_id, fighter1_name, fighter2_name,
-            live_id, start_time, weight_class, fight_type,
-            display_order, result, winner, last_synced
+            matchup_id,
+            event_id,
+            fighter1_name,
+            fighter2_name,
+            live_id,
+            start_time,
+            display_order,
+            result,
+            winner,
+            last_synced
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
           ON CONFLICT (matchup_id) 
           DO UPDATE SET 
             fighter1_name = EXCLUDED.fighter1_name,
@@ -78,8 +105,6 @@ export class SyncService {
           matchup.fighter2_name,
           matchup.live_id,
           matchup.start_time,
-          matchup.weight_class,
-          matchup.fight_type,
           matchup.display_order,
           matchup.result,
           matchup.winner
