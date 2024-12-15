@@ -84,10 +84,9 @@ export class SyncService {
             start_time,
             display_order,
             result,
-            winner,
-            last_synced
+            winner
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
           ON CONFLICT (matchup_id) 
           DO UPDATE SET 
             fighter1_name = EXCLUDED.fighter1_name,
@@ -96,8 +95,7 @@ export class SyncService {
             start_time = EXCLUDED.start_time,
             display_order = EXCLUDED.display_order,
             result = EXCLUDED.result,
-            winner = EXCLUDED.winner,
-            last_synced = CURRENT_TIMESTAMP
+            winner = EXCLUDED.winner
         `, [
           matchup.matchup_id,
           matchup.event_id,
@@ -206,10 +204,9 @@ export class SyncService {
               start_time,
               display_order,
               result,
-              winner,
-              last_synced
+              winner
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (matchup_id) 
             DO UPDATE SET 
               fighter1_name = EXCLUDED.fighter1_name,
@@ -218,8 +215,7 @@ export class SyncService {
               start_time = EXCLUDED.start_time,
               display_order = EXCLUDED.display_order,
               result = EXCLUDED.result,
-              winner = EXCLUDED.winner,
-              last_synced = CURRENT_TIMESTAMP
+              winner = EXCLUDED.winner
           `, [
             matchup.matchup_id,
             matchup.event_id,
