@@ -41,6 +41,11 @@ export class SyncService {
 
       console.log(`Found ${mainMatchups.length} matchups to sync`);
 
+      console.log('Sample matchup live_ids:', mainMatchups.slice(0, 3).map(m => ({
+        matchup_id: m.matchup_id,
+        live_id: m.live_id
+      })));
+
       // Process each matchup
       for (const matchup of mainMatchups) {
         // Ensure event exists
@@ -128,7 +133,7 @@ export class SyncService {
     try {
       console.log('Starting event sync...');
       
-      // Get all current events from main DB
+      // Remove live_id from events query since it doesn't exist in the table
       const { rows: mainEvents } = await mainClient.query(`
         SELECT 
           event_id, 
@@ -137,8 +142,7 @@ export class SyncService {
           location,
           main_card_time,
           prelims_time,
-          early_prelims_time,
-          live_id
+          early_prelims_time
         FROM events 
         WHERE date >= CURRENT_DATE - INTERVAL '1 day'
         ORDER BY date ASC
@@ -148,7 +152,7 @@ export class SyncService {
 
       // Sync each event and its matchups
       for (const event of mainEvents) {
-        // Upsert event
+        // Remove live_id from events insert
         await liveClient.query(`
           INSERT INTO events (
             event_id, 
@@ -157,10 +161,9 @@ export class SyncService {
             location,
             main_card_time,
             prelims_time,
-            early_prelims_time,
-            live_id
+            early_prelims_time
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           ON CONFLICT (event_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
@@ -168,8 +171,7 @@ export class SyncService {
             location = EXCLUDED.location,
             main_card_time = EXCLUDED.main_card_time,
             prelims_time = EXCLUDED.prelims_time,
-            early_prelims_time = EXCLUDED.early_prelims_time,
-            live_id = EXCLUDED.live_id
+            early_prelims_time = EXCLUDED.early_prelims_time
         `, [
           event.event_id,
           event.name,
@@ -177,8 +179,7 @@ export class SyncService {
           event.location,
           event.main_card_time,
           event.prelims_time,
-          event.early_prelims_time,
-          event.live_id
+          event.early_prelims_time
         ]);
 
         // Get and sync matchups for this event
