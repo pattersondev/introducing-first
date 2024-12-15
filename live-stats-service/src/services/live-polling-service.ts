@@ -219,16 +219,11 @@ export class LivePollingService {
         JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND (
-            -- Check for events today
-            e.date = (CURRENT_DATE AT TIME ZONE 'EST')::date
-            -- Or events that might be stored with tomorrow's date
-            OR e.date = ((CURRENT_DATE AT TIME ZONE 'EST') + INTERVAL '1 day')::date
-            -- Or events from yesterday that might still be ongoing
-            OR e.date = ((CURRENT_DATE AT TIME ZONE 'EST') - INTERVAL '1 day')::date
-          )
+          AND e.date BETWEEN 
+            ((CURRENT_DATE AT TIME ZONE 'EST') - INTERVAL '1 day')::date 
+            AND ((CURRENT_DATE AT TIME ZONE 'EST') + INTERVAL '1 day')::date
           AND m.result IS NULL
-        ORDER BY m.start_time NULLS LAST
+        ORDER BY m.start_time NULLS LAST, m.display_order ASC
       `);
 
       // Only proceed if we have matchups and the event has started
