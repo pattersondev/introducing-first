@@ -133,7 +133,6 @@ export class SyncService {
     try {
       console.log('Starting event sync...');
       
-      // Remove live_id from events query since it doesn't exist in the table
       const { rows: mainEvents } = await mainClient.query(`
         SELECT 
           event_id, 
@@ -150,9 +149,8 @@ export class SyncService {
 
       console.log(`Found ${mainEvents.length} events to sync`);
 
-      // Sync each event and its matchups
+      // Sync each event only - remove matchup syncing
       for (const event of mainEvents) {
-        // Remove live_id from events insert
         await liveClient.query(`
           INSERT INTO events (
             event_id, 
@@ -181,60 +179,6 @@ export class SyncService {
           event.prelims_time,
           event.early_prelims_time
         ]);
-
-        // Get and sync matchups for this event
-        const { rows: matchups } = await mainClient.query(`
-          SELECT 
-            matchup_id,
-            event_id,
-            fighter1_name,
-            fighter2_name,
-            live_id,
-            start_time,
-            display_order,
-            result,
-            winner
-          FROM matchups 
-          WHERE event_id = $1
-        `, [event.event_id]);
-
-        for (const matchup of matchups) {
-          await liveClient.query(`
-            INSERT INTO matchups (
-              matchup_id,
-              event_id,
-              fighter1_name,
-              fighter2_name,
-              live_id,
-              start_time,
-              display_order,
-              result,
-              winner
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (matchup_id) 
-            DO UPDATE SET 
-              fighter1_name = EXCLUDED.fighter1_name,
-              fighter2_name = EXCLUDED.fighter2_name,
-              live_id = EXCLUDED.live_id,
-              start_time = EXCLUDED.start_time,
-              display_order = EXCLUDED.display_order,
-              result = EXCLUDED.result,
-              winner = EXCLUDED.winner
-          `, [
-            matchup.matchup_id,
-            matchup.event_id,
-            matchup.fighter1_name,
-            matchup.fighter2_name,
-            matchup.live_id,
-            matchup.start_time,
-            matchup.display_order,
-            matchup.result,
-            matchup.winner
-          ]);
-        }
-
-        console.log(`Synced event ${event.name} with ${matchups.length} matchups`);
       }
 
       console.log('Event sync completed successfully');
