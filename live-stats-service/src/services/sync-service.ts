@@ -11,6 +11,14 @@ export class SyncService {
     const mainClient = await this.scraperPool.connect();
 
     try {
+      // Debug database connections
+      const { rows: dbCheck1 } = await mainClient.query('SELECT current_database()');
+      const { rows: dbCheck2 } = await liveStatsClient.query('SELECT current_database()');
+      console.log('Database connections:', {
+        scraper: dbCheck1[0].current_database,
+        liveStats: dbCheck2[0].current_database
+      });
+
       await liveStatsClient.query('BEGIN');
       
       // Get all matchups from main service
