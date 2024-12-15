@@ -227,7 +227,7 @@ export class LivePollingService {
       const eventStarted = activeMatchups.some(m => m.event_started);
       if (!eventStarted) {
         if (activeMatchups.length > 0) {
-          console.log(`Event ${activeMatchups[0].event_name} has not started yet. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
+          console.log(`Event has not started yet. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
           console.log(`Event times - Early Prelims: ${activeMatchups[0].early_prelims_time}, Prelims: ${activeMatchups[0].prelims_time}, Main Card: ${activeMatchups[0].main_card_time}`);
         }
         return;
