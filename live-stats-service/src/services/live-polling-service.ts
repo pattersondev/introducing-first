@@ -196,21 +196,29 @@ export class LivePollingService {
           e.early_prelims_time,
           m.start_time,
           CASE
-            -- Check if any card has started
-            WHEN e.early_prelims_time IS NOT NULL AND CURRENT_TIME >= e.early_prelims_time::time THEN true
-            WHEN e.prelims_time IS NOT NULL AND CURRENT_TIME >= e.prelims_time::time THEN true
-            WHEN e.main_card_time IS NOT NULL AND CURRENT_TIME >= e.main_card_time::time THEN true
+            -- Check if any card has started (converting to EST)
+            WHEN e.early_prelims_time IS NOT NULL 
+              AND (CURRENT_TIMESTAMP AT TIME ZONE 'EST')::time >= e.early_prelims_time::time 
+              THEN true
+            WHEN e.prelims_time IS NOT NULL 
+              AND (CURRENT_TIMESTAMP AT TIME ZONE 'EST')::time >= e.prelims_time::time 
+              THEN true
+            WHEN e.main_card_time IS NOT NULL 
+              AND (CURRENT_TIMESTAMP AT TIME ZONE 'EST')::time >= e.main_card_time::time 
+              THEN true
             ELSE false
           END as event_started,
           CASE
-            WHEN m.start_time IS NOT NULL AND CURRENT_TIME >= m.start_time THEN true
+            WHEN m.start_time IS NOT NULL 
+              AND (CURRENT_TIMESTAMP AT TIME ZONE 'EST')::time >= m.start_time 
+              THEN true
             ELSE false
           END as fight_started
         FROM public.matchups m
         JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND e.date = CURRENT_DATE
+          AND e.date = (CURRENT_DATE AT TIME ZONE 'EST')::date
           AND m.result IS NULL
         ORDER BY m.start_time NULLS LAST
       `);
@@ -218,11 +226,14 @@ export class LivePollingService {
       // Only proceed if we have matchups and the event has started
       const eventStarted = activeMatchups.some(m => m.event_started);
       if (!eventStarted) {
-        console.log(`Event ${activeMatchups[0].event_name} has not started yet`);
+        if (activeMatchups.length > 0) {
+          console.log(`Event ${activeMatchups[0].event_name} has not started yet. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
+          console.log(`Event times - Early Prelims: ${activeMatchups[0].early_prelims_time}, Prelims: ${activeMatchups[0].prelims_time}, Main Card: ${activeMatchups[0].main_card_time}`);
+        }
         return;
       }
 
-      console.log(`Found ${activeMatchups.length} matchups to monitor`);
+      console.log(`Found ${activeMatchups.length} matchups to monitor at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
 
       for (const matchup of activeMatchups) {
         const isCurrentlyPolling = this.pollingIntervals.has(matchup.matchup_id);
