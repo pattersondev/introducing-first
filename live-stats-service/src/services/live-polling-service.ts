@@ -218,7 +218,7 @@ export class LivePollingService {
       // Only proceed if we have matchups and the event has started
       const eventStarted = activeMatchups.some(m => m.event_started);
       if (!eventStarted) {
-        console.log('Event has not started yet');
+        console.log(`Event ${activeMatchups[0].event_name} has not started yet`);
         return;
       }
 
