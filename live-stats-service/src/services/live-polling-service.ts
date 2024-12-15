@@ -219,8 +219,12 @@ export class LivePollingService {
         JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND e.date >= ((CURRENT_DATE AT TIME ZONE 'EST') - INTERVAL '1 day')::date
-          AND e.date <= (CURRENT_DATE AT TIME ZONE 'EST')::date
+          AND (
+            -- Check for events scheduled "today" (which might be stored as tomorrow)
+            e.date = ((CURRENT_DATE AT TIME ZONE 'EST') + INTERVAL '1 day')::date
+            -- Or events from "yesterday" (which might be stored as today)
+            OR e.date = (CURRENT_DATE AT TIME ZONE 'EST')::date
+          )
           AND m.result IS NULL
         ORDER BY m.start_time NULLS LAST
       `);
@@ -230,7 +234,7 @@ export class LivePollingService {
       if (!eventStarted) {
         if (activeMatchups.length > 0) {
           console.log(`Event has not started yet. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
-          console.log(`Event date: ${activeMatchups[0]?.date}`);
+          console.log(`Event date in DB: ${activeMatchups[0]?.date}`);
           console.log(`Event times - Early Prelims: ${activeMatchups[0]?.early_prelims_time}, Prelims: ${activeMatchups[0]?.prelims_time}, Main Card: ${activeMatchups[0]?.main_card_time}`);
         } else {
           console.log(`No active events found. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
