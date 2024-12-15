@@ -184,20 +184,13 @@ export class SyncService {
           SELECT 
             matchup_id,
             event_id,
-            fighter1_id,
-            fighter2_id,
             fighter1_name,
             fighter2_name,
-            fighter1_record,
-            fighter2_record,
             live_id,
             start_time,
-            weight_class,
-            fight_type,
             display_order,
             result,
-            winner,
-            card_type
+            winner
           FROM matchups 
           WHERE event_id = $1
         `, [event.event_id]);
@@ -207,57 +200,36 @@ export class SyncService {
             INSERT INTO matchups (
               matchup_id,
               event_id,
-              fighter1_id,
-              fighter2_id,
               fighter1_name,
               fighter2_name,
-              fighter1_record,
-              fighter2_record,
               live_id,
               start_time,
-              weight_class,
-              fight_type,
               display_order,
               result,
               winner,
-              card_type,
               last_synced
             ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, CURRENT_TIMESTAMP)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
             ON CONFLICT (matchup_id) 
             DO UPDATE SET 
-              fighter1_id = EXCLUDED.fighter1_id,
-              fighter2_id = EXCLUDED.fighter2_id,
               fighter1_name = EXCLUDED.fighter1_name,
               fighter2_name = EXCLUDED.fighter2_name,
-              fighter1_record = EXCLUDED.fighter1_record,
-              fighter2_record = EXCLUDED.fighter2_record,
               live_id = EXCLUDED.live_id,
               start_time = EXCLUDED.start_time,
-              weight_class = EXCLUDED.weight_class,
-              fight_type = EXCLUDED.fight_type,
               display_order = EXCLUDED.display_order,
               result = EXCLUDED.result,
               winner = EXCLUDED.winner,
-              card_type = EXCLUDED.card_type,
               last_synced = CURRENT_TIMESTAMP
           `, [
             matchup.matchup_id,
             matchup.event_id,
-            matchup.fighter1_id,
-            matchup.fighter2_id,
             matchup.fighter1_name,
             matchup.fighter2_name,
-            matchup.fighter1_record,
-            matchup.fighter2_record,
             matchup.live_id,
             matchup.start_time,
-            matchup.weight_class,
-            matchup.fight_type,
             matchup.display_order,
             matchup.result,
-            matchup.winner,
-            matchup.card_type
+            matchup.winner
           ]);
         }
 
