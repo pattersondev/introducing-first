@@ -52,9 +52,10 @@ export class SyncService {
             location,
             main_card_time,
             prelims_time,
-            early_prelims_time
+            early_prelims_time,
+            live_id
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT (event_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
@@ -62,7 +63,8 @@ export class SyncService {
             location = EXCLUDED.location,
             main_card_time = EXCLUDED.main_card_time,
             prelims_time = EXCLUDED.prelims_time,
-            early_prelims_time = EXCLUDED.early_prelims_time
+            early_prelims_time = EXCLUDED.early_prelims_time,
+            live_id = EXCLUDED.live_id
         `, [
           matchup.event_id, 
           matchup.event_name, 
