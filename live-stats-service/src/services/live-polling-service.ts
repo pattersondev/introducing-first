@@ -187,31 +187,8 @@ export class LivePollingService {
       const estTime = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
       console.log('Checking for active matchups at EST:', estTime);
 
-      // First, let's see what matchups exist with live_ids
-      const { rows: allLiveMatchups } = await client.query(`
-        SELECT 
-          m.matchup_id,
-          m.fighter1_name,
-          m.fighter2_name,
-          m.live_id,
-          e.date as event_date,
-          e.name as event_name,
-          m.result
-        FROM matchups m
-        JOIN events e ON m.event_id = e.event_id
-        WHERE m.live_id IS NOT NULL
-      `);
-
-      console.log('All matchups with live_ids:', allLiveMatchups.map(m => ({
-        fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
-        event: m.event_name,
-        date: m.event_date,
-        live_id: m.live_id,
-        result: m.result
-      })));
-
-      // Now get active matchups with our date filter
-      const { rows: activeMatchups } = await client.query(`
+      // Get all potential matchups
+      const { rows: matchups } = await client.query(`
         SELECT 
           m.matchup_id,
           m.fighter1_name,
@@ -224,21 +201,26 @@ export class LivePollingService {
         JOIN events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND (
-            DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = 
-              DATE(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')
-            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = 
-              DATE(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York' + INTERVAL '1 day')
-            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = 
-              DATE(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York' - INTERVAL '1 day')
-          )
           AND m.result IS NULL  -- Fight hasn't finished yet
       `);
 
-      console.log('Date checks:', {
-        current: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0],
-        yesterday: new Date(Date.now() - 86400000).toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0],
-        tomorrow: new Date(Date.now() + 86400000).toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0]
+      // Convert current time to EST for comparison
+      const now = new Date();
+      const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+      const estDate = estNow.toISOString().split('T')[0];
+
+      // Filter matchups based on date in EST
+      const activeMatchups = matchups.filter(matchup => {
+        const matchupDate = new Date(matchup.event_date)
+          .toLocaleString('en-US', { timeZone: 'America/New_York' })
+          .split(',')[0];
+        
+        const [month, day, year] = matchupDate.split('/');
+        const formattedMatchupDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        
+        console.log(`Comparing dates - Matchup: ${formattedMatchupDate}, Current EST: ${estDate}`);
+        
+        return formattedMatchupDate === estDate;
       });
 
       if (activeMatchups.length > 0) {
