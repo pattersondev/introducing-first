@@ -53,6 +53,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronUp } from "lucide-react";
+import Artboard13 from "@/assets/svg/Artboard_13.svg";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -99,7 +100,13 @@ export default function AppSidebar() {
       collapsible="icon"
     >
       <SidebarHeader className="border-b border-gray-800 px-4 py-6 bg-gray-950">
-        <Flower className="h-6 w-6 text-white" />
+        <img
+          src={Artboard13.src}
+          alt="Introducing First"
+          width={200}
+          height={200}
+          className="mx-auto"
+        />
       </SidebarHeader>
       <SidebarContent className="bg-gray-950">
         <Collapsible defaultOpen className="group/collapsible">

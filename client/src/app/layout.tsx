@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/AppSideBar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Providers } from "./providers";
+import Artboard18 from "@/assets/SVG/Artboard 18.svg";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -24,6 +25,11 @@ export const metadata: Metadata = {
     "Comprehensive MMA fighter statistics, rankings, and analytics. Track fighter records, matchups, and performance metrics.",
   keywords:
     "MMA, UFC, fighter stats, MMA analytics, fighter rankings, Bellator, PFL, ONE Championship, kickboxing, boxing, grappling, MMA predictions, MMA betting, Introducing First",
+  icons: {
+    icon: Artboard18.src,
+    shortcut: Artboard18.src,
+    apple: Artboard18.src,
+  },
 };
 
 export default function RootLayout({
