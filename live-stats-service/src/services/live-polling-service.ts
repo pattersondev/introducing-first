@@ -188,6 +188,22 @@ export class LivePollingService {
       console.log('Checking for active matchups at EST:', estTime);
 
       // Get all potential matchups
+      const { rows: allMatchups } = await client.query(`
+        SELECT 
+          m.matchup_id,
+          m.fighter1_name,
+          m.fighter2_name,
+          m.live_id,
+          e.date as event_date,
+          e.name as event_name,
+          m.result
+        FROM matchups m
+        JOIN events e ON m.event_id = e.event_id
+      `);
+
+      console.log('All matchups in database:', allMatchups.length);
+
+      // Get matchups with live_ids
       const { rows: matchups } = await client.query(`
         SELECT 
           m.matchup_id,
@@ -202,12 +218,15 @@ export class LivePollingService {
         WHERE 
           m.live_id IS NOT NULL
           AND m.result IS NULL  -- Fight hasn't finished yet
+        ORDER BY e.date ASC
       `);
 
       console.log('Found potential matchups:', matchups.map(m => ({
         fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
         event_date: m.event_date,
-        raw_date: new Date(m.event_date)
+        raw_date: new Date(m.event_date),
+        live_id: m.live_id,
+        result: m.result
       })));
 
       // Convert current time to EST for comparison
