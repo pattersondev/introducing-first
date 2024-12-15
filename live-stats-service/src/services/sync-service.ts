@@ -52,10 +52,9 @@ export class SyncService {
             location,
             main_card_time,
             prelims_time,
-            early_prelims_time,
-            live_id
+            early_prelims_time
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           ON CONFLICT (event_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
@@ -63,8 +62,7 @@ export class SyncService {
             location = EXCLUDED.location,
             main_card_time = EXCLUDED.main_card_time,
             prelims_time = EXCLUDED.prelims_time,
-            early_prelims_time = EXCLUDED.early_prelims_time,
-            live_id = EXCLUDED.live_id
+            early_prelims_time = EXCLUDED.early_prelims_time
         `, [
           matchup.event_id, 
           matchup.event_name, 
@@ -73,7 +71,6 @@ export class SyncService {
           matchup.main_card_time,
           matchup.prelims_time,
           matchup.early_prelims_time,
-          matchup.live_id
         ]);
 
         // Update matchup - only include columns that exist in live stats DB
