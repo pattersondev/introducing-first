@@ -225,9 +225,9 @@ export class LivePollingService {
         WHERE 
           m.live_id IS NOT NULL
           AND (
-            e.date = CURRENT_DATE 
-            OR e.date = CURRENT_DATE + INTERVAL '1 day'
-            OR e.date = CURRENT_DATE - INTERVAL '1 day'
+            DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE
+            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE + INTERVAL '1 day'
+            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE - INTERVAL '1 day'
           )
           AND m.result IS NULL  -- Fight hasn't finished yet
       `);
