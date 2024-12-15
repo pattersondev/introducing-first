@@ -14,6 +14,13 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
+// Add debug logging for database URLs (with passwords removed)
+const maskPassword = (url: string) => url.replace(/:[^:@]*@/, ':***@');
+console.log('Database URLs:', {
+  liveStats: maskPassword(process.env.LIVE_STATS_DATABASE_URL || ''),
+  scraper: maskPassword(process.env.SCRAPER_SERVICE_DATABASE_URL || '')
+});
+
 // Database pools with SSL configuration
 const liveStatsPool = new Pool({
   connectionString: process.env.LIVE_STATS_DATABASE_URL,
