@@ -14,13 +14,28 @@ export class LiveStatsService {
           m.fighter1_name, 
           m.fighter2_name, 
           m."card_type",
-          e.name as event_name
+          e.name as event_name,
+          m.live_id,
+          m.start_time,
+          e.date as event_date
         FROM public.matchups m
         JOIN public.events e ON m.event_id = e.event_id
         WHERE m.matchup_id = $1
+          AND m.live_id IS NOT NULL
+          AND (
+            e.date = CURRENT_DATE 
+            OR e.date = CURRENT_DATE + INTERVAL '1 day'
+            OR e.date = CURRENT_DATE - INTERVAL '1 day'
+          )
       `, [matchupId]);
 
+      if (!matchup) {
+        console.log(`No live matchup found for ID ${matchupId}`);
+        return;
+      }
+
       console.log(`Processing live stats for ${matchup.fighter1_name} vs ${matchup.fighter2_name} (${matchup.card_type}) at ${matchup.event_name}`);
+      console.log(`Event date: ${matchup.event_date}, Live ID: ${matchup.live_id}`);
 
       // Process ALL period stats (full fight stats)
       const allPeriodStats = stats.statistics.find((s: any) => s.period === 'ALL');
