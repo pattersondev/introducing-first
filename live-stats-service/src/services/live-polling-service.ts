@@ -218,9 +218,15 @@ export class LivePollingService {
         const [month, day, year] = matchupDate.split('/');
         const formattedMatchupDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         
-        console.log(`Comparing dates - Matchup: ${formattedMatchupDate}, Current EST: ${estDate}`);
+        // Get tomorrow's date in EST
+        const tomorrow = new Date(estNow);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDate = tomorrow.toISOString().split('T')[0];
         
-        return formattedMatchupDate === estDate;
+        console.log(`Comparing dates - Matchup: ${formattedMatchupDate}, Current EST: ${estDate}, Tomorrow EST: ${tomorrowDate}`);
+        
+        // Match if the event is today OR tomorrow (for events that start late at night)
+        return formattedMatchupDate === estDate || formattedMatchupDate === tomorrowDate;
       });
 
       if (activeMatchups.length > 0) {
