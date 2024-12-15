@@ -219,10 +219,44 @@ func UpsertPick(user_id string, matchup_id string, event_id string, selection_fi
 }
 
 func UpdateMatchupPickResults(winning_fighter_id string, event_id string, matchup_id string) error {
-	//select all picks in picks db with pick result = 'pending' and matchup_id = '$matchup_id' and event_id = '$event_id'
+	// First, query all pending picks for this matchup
+	sqlSelect := "SELECT pick_id, selection_fighter_id FROM public.picks WHERE pick_result = 'pending' AND matchup_id = $1 AND event_id = $2;"
 
-	//for each pick
-	//if pick.selection_fighter_id == winning_fighter_id, set pick.pick_result to 'correct', else set pick to 'incorrect'
+	rows, err := usersDb.Query(sqlSelect, matchup_id, event_id)
+	if err != nil {
+		return fmt.Errorf("error querying pending picks: %w", err)
+	}
+	defer rows.Close()
+
+	// Process each pick
+	for rows.Next() {
+		var pickID int
+		var selectionFighterID string
+
+		err := rows.Scan(&pickID, &selectionFighterID)
+		if err != nil {
+			return fmt.Errorf("error scanning pick row: %w", err)
+		}
+
+		// Determine if the pick was correct
+		var result string
+		if selectionFighterID == winning_fighter_id {
+			result = "correct"
+		} else {
+			result = "incorrect"
+		}
+
+		// Update the pick result
+		sqlUpdate := "UPDATE public.picks SET pick_result = $1, updated_at = CURRENT_TIMESTAMP WHERE pick_id = $2;"
+		_, err = usersDb.Exec(sqlUpdate, result, pickID)
+		if err != nil {
+			return fmt.Errorf("error updating pick result for pick_id %d: %w", pickID, err)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return fmt.Errorf("error iterating over picks: %w", err)
+	}
 
 	return nil
 }

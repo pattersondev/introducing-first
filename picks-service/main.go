@@ -60,6 +60,7 @@ func main() {
 	http.HandleFunc("/api/v1/getPicksForEvent", enableCORS(getPicksForEventHandler))
 	http.HandleFunc("/api/v1/getPicksForUserAndEvent", enableCORS(getPicksForUserAndEventHandler))
 	http.HandleFunc("/api/v1/getPicksForMatchup", enableCORS(getPicksForMatchupHandler))
+	http.HandleFunc("/api/v1/updateMatchupPickResults", enableCORS(updateMatchupPickResults))
 
 	port := getEnvWithFallback("PORT", "8080")
 	fmt.Printf("Server starting on :%s\n", port)
@@ -69,6 +70,21 @@ func main() {
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the Go backend!")
+}
+
+func updateMatchupPickResults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	matchupId := r.FormValue("matchupId")
+	eventId := r.FormValue("eventId")
+	winningFighterId := r.FormValue("winningFighterId")
+
+	db.UpdateMatchupPickResults(winningFighterId, eventId, matchupId)
+
+	fmt.Fprintf(w, "Successfully updated matchup pick results!")
 }
 
 func getPicksForEventHandler(w http.ResponseWriter, r *http.Request) {
