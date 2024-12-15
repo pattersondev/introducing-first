@@ -191,6 +191,7 @@ export class LivePollingService {
           m.fighter1_name,
           m.fighter2_name,
           e.name as event_name,
+          e.date,
           e.main_card_time,
           e.prelims_time,
           e.early_prelims_time,
@@ -218,7 +219,8 @@ export class LivePollingService {
         JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND e.date = (CURRENT_DATE AT TIME ZONE 'EST')::date
+          AND e.date >= ((CURRENT_DATE AT TIME ZONE 'EST') - INTERVAL '1 day')::date
+          AND e.date <= (CURRENT_DATE AT TIME ZONE 'EST')::date
           AND m.result IS NULL
         ORDER BY m.start_time NULLS LAST
       `);
@@ -228,7 +230,10 @@ export class LivePollingService {
       if (!eventStarted) {
         if (activeMatchups.length > 0) {
           console.log(`Event has not started yet. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
-          console.log(`Event times - Early Prelims: ${activeMatchups[0].early_prelims_time}, Prelims: ${activeMatchups[0].prelims_time}, Main Card: ${activeMatchups[0].main_card_time}`);
+          console.log(`Event date: ${activeMatchups[0]?.date}`);
+          console.log(`Event times - Early Prelims: ${activeMatchups[0]?.early_prelims_time}, Prelims: ${activeMatchups[0]?.prelims_time}, Main Card: ${activeMatchups[0]?.main_card_time}`);
+        } else {
+          console.log(`No active events found. Current EST time: ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })}`);
         }
         return;
       }
