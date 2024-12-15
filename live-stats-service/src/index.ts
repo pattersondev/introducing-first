@@ -66,6 +66,7 @@ function setupCronJobs() {
   cron.schedule('0 * * * *', async () => {
     try {
       await syncService.syncMatchups();
+      await syncService.syncEvents();
     } catch (error) {
       console.error('Error in sync cron job:', error);
     }
