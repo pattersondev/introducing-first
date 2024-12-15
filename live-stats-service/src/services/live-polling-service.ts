@@ -212,6 +212,9 @@ export class LivePollingService {
 
       // Now get active matchups with our date filter
       const { rows: activeMatchups } = await client.query(`
+        WITH current_time AS (
+          SELECT CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York' as est_now
+        )
         SELECT 
           m.matchup_id,
           m.fighter1_name,
@@ -222,20 +225,21 @@ export class LivePollingService {
           m.result
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
+        CROSS JOIN current_time ct
         WHERE 
           m.live_id IS NOT NULL
           AND (
-            DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE
-            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE + INTERVAL '1 day'
-            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = CURRENT_DATE - INTERVAL '1 day'
+            DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = DATE(ct.est_now)
+            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = DATE(ct.est_now + INTERVAL '1 day')
+            OR DATE(e.date AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York') = DATE(ct.est_now - INTERVAL '1 day')
           )
           AND m.result IS NULL  -- Fight hasn't finished yet
       `);
 
       console.log('Date checks:', {
-        current: new Date().toISOString().split('T')[0],
-        yesterday: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-        tomorrow: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+        current: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0],
+        yesterday: new Date(Date.now() - 86400000).toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0],
+        tomorrow: new Date(Date.now() + 86400000).toLocaleString('en-US', { timeZone: 'America/New_York' }).split(',')[0]
       });
 
       if (activeMatchups.length > 0) {
