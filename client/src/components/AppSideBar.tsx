@@ -53,7 +53,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronUp } from "lucide-react";
-import Artboard13 from "@/assets/svg/Artboard_13.svg";
+import Artboard13 from "@/assets/SVG/Artboard_13.svg";
 
 export default function AppSidebar() {
   const pathname = usePathname();
