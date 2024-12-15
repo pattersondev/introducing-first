@@ -187,6 +187,30 @@ export class LivePollingService {
       const estTime = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
       console.log('Checking for active matchups at EST:', estTime);
 
+      // First, let's see what matchups exist with live_ids
+      const { rows: allLiveMatchups } = await client.query(`
+        SELECT 
+          m.matchup_id,
+          m.fighter1_name,
+          m.fighter2_name,
+          m.live_id,
+          e.date as event_date,
+          e.name as event_name,
+          m.result
+        FROM matchups m
+        JOIN events e ON m.event_id = e.event_id
+        WHERE m.live_id IS NOT NULL
+      `);
+
+      console.log('All matchups with live_ids:', allLiveMatchups.map(m => ({
+        fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
+        event: m.event_name,
+        date: m.event_date,
+        live_id: m.live_id,
+        result: m.result
+      })));
+
+      // Now get active matchups with our date filter
       const { rows: activeMatchups } = await client.query(`
         SELECT 
           m.matchup_id,
@@ -194,7 +218,8 @@ export class LivePollingService {
           m.fighter2_name,
           m.live_id,
           e.date as event_date,
-          e.name as event_name
+          e.name as event_name,
+          m.result
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE 
@@ -207,12 +232,19 @@ export class LivePollingService {
           AND m.result IS NULL  -- Fight hasn't finished yet
       `);
 
+      console.log('Date checks:', {
+        current: new Date().toISOString().split('T')[0],
+        yesterday: new Date(Date.now() - 86400000).toISOString().split('T')[0],
+        tomorrow: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      });
+
       if (activeMatchups.length > 0) {
         console.log('Found active matchups:', activeMatchups.map(m => ({
           fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
           event: m.event_name,
           date: m.event_date,
-          live_id: m.live_id
+          live_id: m.live_id,
+          result: m.result
         })));
       } else {
         console.log(`No active events found. Current EST time: ${estTime}`);
