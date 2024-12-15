@@ -203,7 +203,32 @@ export class LivePollingService {
 
       console.log('All matchups in database:', allMatchups.length);
 
-      // Get matchups with live_ids
+      // Check matchups with live_ids
+      const { rows: matchupsWithLiveIds } = await client.query(`
+        SELECT 
+          m.matchup_id,
+          m.fighter1_name,
+          m.fighter2_name,
+          m.live_id,
+          e.date as event_date,
+          e.name as event_name,
+          m.result
+        FROM matchups m
+        JOIN events e ON m.event_id = e.event_id
+        WHERE m.live_id IS NOT NULL
+        ORDER BY e.date DESC
+        LIMIT 5
+      `);
+
+      console.log('Sample matchups with live_ids:', matchupsWithLiveIds.map(m => ({
+        fighters: `${m.fighter1_name} vs ${m.fighter2_name}`,
+        event: m.event_name,
+        date: m.event_date,
+        live_id: m.live_id,
+        result: m.result || 'NO RESULT'
+      })));
+
+      // Get matchups with live_ids and no result
       const { rows: matchups } = await client.query(`
         SELECT 
           m.matchup_id,
@@ -217,7 +242,7 @@ export class LivePollingService {
         JOIN events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
-          AND m.result IS NULL  -- Fight hasn't finished yet
+          AND (m.result IS NULL OR m.result = '')  -- Check for both NULL and empty string
         ORDER BY e.date ASC
       `);
 
