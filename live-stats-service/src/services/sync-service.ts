@@ -72,7 +72,8 @@ export class SyncService {
           matchup.location,
           matchup.main_card_time,
           matchup.prelims_time,
-          matchup.early_prelims_time
+          matchup.early_prelims_time,
+          matchup.live_id
         ]);
 
         // Update matchup - only include columns that exist in live stats DB
