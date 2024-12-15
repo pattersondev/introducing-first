@@ -356,7 +356,6 @@ func getRandomUserAgent() string {
 }
 
 func updateMatchupsInDatabase(matches []MatchData) error {
-	// Construct the URL for the scraper service
 	baseURL := os.Getenv("SCRAPER_SERVICE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:3001" // Default to localhost if not set
@@ -370,8 +369,8 @@ func updateMatchupsInDatabase(matches []MatchData) error {
 			continue
 		}
 
-		// Log the request body
-		fmt.Printf("Sending request body: %s\n", string(body))
+		// Log the request body before sending
+		fmt.Printf("\nSending match data to API:\n%s\n", string(body))
 
 		// Send POST request to update matchup
 		resp, err := http.Post(
@@ -380,7 +379,7 @@ func updateMatchupsInDatabase(matches []MatchData) error {
 			bytes.NewBuffer(body),
 		)
 		if err != nil {
-			fmt.Printf("Error updating matchup in database: %v\n", err)
+			fmt.Printf("Error sending request to API: %v\n", err)
 			continue
 		}
 
@@ -393,11 +392,6 @@ func updateMatchupsInDatabase(matches []MatchData) error {
 		}
 
 		resp.Body.Close()
-
-		fmt.Printf("Updated live data for matchup: %s vs %s\n",
-			match.Fighter1,
-			match.Fighter2,
-		)
 	}
 	return nil
 }

@@ -617,7 +617,14 @@ export class EventService {
     try {
       await client.query('BEGIN');
 
-      console.log('Received match data:', matchData);
+      console.log('Match data received:', {
+        fighter1: matchData.fighter1,
+        fighter2: matchData.fighter2,
+        date: matchData.date,
+        eventName: matchData.event_name,
+        liveId: matchData.live_id,
+        startTime: matchData.start_time
+      });
 
       // Normalize names by removing spaces and converting to lowercase
       const normalizeNames = (name: string) => name.toLowerCase().replace(/\s+/g, '');
@@ -631,7 +638,9 @@ export class EventService {
           m.fighter1_name, 
           m.fighter2_name, 
           e.date,
-          e.name as event_name
+          e.name as event_name,
+          m.live_id,
+          m.start_time
         FROM matchups m
         JOIN events e ON m.event_id = e.event_id
         WHERE 
@@ -640,7 +649,7 @@ export class EventService {
             OR 
             (REPLACE(LOWER(m.fighter1_name), ' ', '') = $2 AND REPLACE(LOWER(m.fighter2_name), ' ', '') = $1)
           )
-          AND e.date BETWEEN DATE($3) - INTERVAL '3 days' AND DATE($3) + INTERVAL '3 days'
+          AND e.date BETWEEN DATE($3) - INTERVAL '7 days' AND DATE($3) + INTERVAL '7 days'
           AND LOWER(e.name) LIKE LOWER($4)
       `, [
         fighter1Normalized,
@@ -652,6 +661,8 @@ export class EventService {
       console.log('Query result:', result.rows);
 
       if (result.rows.length > 0) {
+        console.log('Found existing matchup:', result.rows[0]);
+        
         const updateResult = await client.query(`
           UPDATE matchups 
           SET 
@@ -659,7 +670,11 @@ export class EventService {
             start_time = $2::TIME
           WHERE matchup_id = $3
           RETURNING matchup_id, live_id, start_time, fighter1_name, fighter2_name
-        `, [matchData.live_id, matchData.start_time, result.rows[0].matchup_id]);
+        `, [
+          matchData.live_id, 
+          matchData.start_time, 
+          result.rows[0].matchup_id
+        ]);
 
         console.log('Update result:', updateResult.rows[0]);
         console.log(`Updated live data for matchup between ${matchData.fighter1} and ${matchData.fighter2}`);
