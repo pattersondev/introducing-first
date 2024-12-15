@@ -78,7 +78,7 @@ async function startServer() {
     await initializeDatabase();
     
     // Initial sync
-    await syncService.syncMatchups();
+    await syncService.forceSyncEvents();
     
     // Setup cron jobs
     setupCronJobs();
