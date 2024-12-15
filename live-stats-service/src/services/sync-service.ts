@@ -2,13 +2,13 @@ import { Pool } from 'pg';
 
 export class SyncService {
   constructor(
-    private mainPool: Pool,
-    private liveStatsPool: Pool
+    private liveStatsPool: Pool,
+    private scraperPool: Pool
   ) {}
 
   async syncMatchups() {
     const liveStatsClient = await this.liveStatsPool.connect();
-    const mainClient = await this.mainPool.connect();
+    const mainClient = await this.scraperPool.connect();
 
     try {
       await liveStatsClient.query('BEGIN');
@@ -122,7 +122,7 @@ export class SyncService {
   }
 
   async syncEvents() {
-    const mainClient = await this.mainPool.connect();
+    const mainClient = await this.scraperPool.connect();
     const liveClient = await this.liveStatsPool.connect();
 
     try {

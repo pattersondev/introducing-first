@@ -167,7 +167,7 @@ func main() {
 
 	// Add progress tracking
 	processedCount := 0
-	totalEvents := 1000 // Total events to process
+	totalEvents := 400 // Total events to process
 	startTime := time.Now()
 
 	// Start worker goroutines

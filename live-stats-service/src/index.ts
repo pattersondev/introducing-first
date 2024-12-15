@@ -30,7 +30,7 @@ const scraperServicePool = new Pool({
 });
 
 // Initialize services
-const syncService = new SyncService(liveStatsPool, scraperServicePool);
+const syncService = new SyncService(scraperServicePool, liveStatsPool);
 const liveStatsService = new LiveStatsService(liveStatsPool);
 
 // Create HTTP server
