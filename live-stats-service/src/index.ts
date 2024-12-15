@@ -62,7 +62,6 @@ async function initializeDatabase() {
 
 // Setup cron jobs
 function setupCronJobs() {
-  // Sync matchups every hour
   cron.schedule('0 * * * *', async () => {
     try {
       await syncService.syncMatchups();
