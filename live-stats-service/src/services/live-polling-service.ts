@@ -183,60 +183,66 @@ export class LivePollingService {
   async pollActiveMatchups() {
     const client = await this.pool.connect();
     try {
-      // Get matchups that should be active based on event times and card type
+      // Get all matchups for today's event
       const { rows: activeMatchups } = await client.query(`
         SELECT 
           m.matchup_id,
           m.live_id,
           m.fighter1_name,
           m.fighter2_name,
-          m.card_type,
           e.name as event_name,
           e.main_card_time,
           e.prelims_time,
           e.early_prelims_time,
           m.start_time,
           CASE
-            WHEN m.start_time IS NOT NULL THEN 
-              CASE 
-                WHEN CURRENT_TIME >= m.start_time 
-                AND m.start_time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
-                THEN true 
-                ELSE false 
-              END
-            WHEN m.card_type = 'main' AND CURRENT_TIME >= e.main_card_time::time 
-              AND e.main_card_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
-              THEN true
-            WHEN m.card_type = 'prelim' AND CURRENT_TIME >= e.prelims_time::time 
-              AND e.prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
-              THEN true
-            WHEN m.card_type = 'early_prelim' AND CURRENT_TIME >= e.early_prelims_time::time 
-              AND e.early_prelims_time::time >= (CURRENT_TIME - INTERVAL '45 minutes')::time
-              THEN true
+            -- Check if any card has started
+            WHEN e.early_prelims_time IS NOT NULL AND CURRENT_TIME >= e.early_prelims_time::time THEN true
+            WHEN e.prelims_time IS NOT NULL AND CURRENT_TIME >= e.prelims_time::time THEN true
+            WHEN e.main_card_time IS NOT NULL AND CURRENT_TIME >= e.main_card_time::time THEN true
             ELSE false
-          END as is_active
-        FROM matchups m
-        JOIN events e ON m.event_id = e.event_id
+          END as event_started,
+          CASE
+            WHEN m.start_time IS NOT NULL AND CURRENT_TIME >= m.start_time THEN true
+            ELSE false
+          END as fight_started
+        FROM public.matchups m
+        JOIN public.events e ON m.event_id = e.event_id
         WHERE 
           m.live_id IS NOT NULL
           AND e.date = CURRENT_DATE
           AND m.result IS NULL
+        ORDER BY m.start_time NULLS LAST
       `);
 
-      // Filter to only active matchups
-      const activeMatchupsFiltered = activeMatchups.filter(m => m.is_active);
-      
-      console.log(`Found ${activeMatchupsFiltered.length} potentially active matchups to poll`);
-
-      for (const matchup of activeMatchupsFiltered) {
-        console.log(`Polling matchup: ${matchup.fighter1_name} vs ${matchup.fighter2_name} (${matchup.card_type})`);
-        await this.pollMatchup(matchup);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Only proceed if we have matchups and the event has started
+      const eventStarted = activeMatchups.some(m => m.event_started);
+      if (!eventStarted) {
+        console.log('Event has not started yet');
+        return;
       }
 
-      // Clean up any frequent polling for matchups that are no longer in the active window
-      const activeMatchupIds = new Set(activeMatchupsFiltered.map(m => m.matchup_id));
-      for (const matchupId of this.activeMatchups) {
+      console.log(`Found ${activeMatchups.length} matchups to monitor`);
+
+      for (const matchup of activeMatchups) {
+        const isCurrentlyPolling = this.pollingIntervals.has(matchup.matchup_id);
+        const shouldPollFrequently = matchup.fight_started;
+
+        if (!isCurrentlyPolling) {
+          // Start new polling for this matchup
+          console.log(`Starting polling for ${matchup.fighter1_name} vs ${matchup.fighter2_name}`);
+          this.startPollingForMatchup(matchup);
+        } else if (shouldPollFrequently !== this.activeMatchups.has(matchup.matchup_id)) {
+          // Update polling frequency if fight status changed
+          console.log(`Updating polling frequency for ${matchup.fighter1_name} vs ${matchup.fighter2_name}`);
+          this.stopFrequentPolling(matchup.matchup_id);
+          this.startPollingForMatchup(matchup);
+        }
+      }
+
+      // Clean up polling for finished fights
+      const activeMatchupIds = new Set(activeMatchups.map(m => m.matchup_id));
+      for (const matchupId of this.pollingIntervals.keys()) {
         if (!activeMatchupIds.has(matchupId)) {
           this.stopFrequentPolling(matchupId);
         }
@@ -244,6 +250,29 @@ export class LivePollingService {
     } finally {
       client.release();
     }
+  }
+
+  private startPollingForMatchup(matchup: any) {
+    // Clear any existing interval
+    this.stopFrequentPolling(matchup.matchup_id);
+
+    const pollInterval = matchup.fight_started ? 5000 : 60000; // 5 seconds if fight started, 1 minute if not
+    
+    if (matchup.fight_started) {
+      this.activeMatchups.add(matchup.matchup_id);
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        await this.pollMatchup(matchup);
+      } catch (error) {
+        console.error(`Error polling matchup ${matchup.matchup_id}:`, error);
+      }
+    }, pollInterval);
+
+    this.pollingIntervals.set(matchup.matchup_id, interval);
+
+    console.log(`Started ${matchup.fight_started ? 'frequent' : 'infrequent'} polling for ${matchup.fighter1_name} vs ${matchup.fighter2_name}`);
   }
 
   startPolling(intervalSeconds: number = 10) {
