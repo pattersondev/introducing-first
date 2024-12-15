@@ -137,7 +137,8 @@ export class SyncService {
           location,
           main_card_time,
           prelims_time,
-          early_prelims_time
+          early_prelims_time,
+          live_id
         FROM events 
         WHERE date >= CURRENT_DATE - INTERVAL '1 day'
         ORDER BY date ASC
@@ -156,9 +157,10 @@ export class SyncService {
             location,
             main_card_time,
             prelims_time,
-            early_prelims_time
+            early_prelims_time,
+            live_id
           ) 
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           ON CONFLICT (event_id) 
           DO UPDATE SET 
             name = EXCLUDED.name,
@@ -166,7 +168,8 @@ export class SyncService {
             location = EXCLUDED.location,
             main_card_time = EXCLUDED.main_card_time,
             prelims_time = EXCLUDED.prelims_time,
-            early_prelims_time = EXCLUDED.early_prelims_time
+            early_prelims_time = EXCLUDED.early_prelims_time,
+            live_id = EXCLUDED.live_id
         `, [
           event.event_id,
           event.name,
@@ -174,7 +177,8 @@ export class SyncService {
           event.location,
           event.main_card_time,
           event.prelims_time,
-          event.early_prelims_time
+          event.early_prelims_time,
+          event.live_id
         ]);
 
         // Get and sync matchups for this event
