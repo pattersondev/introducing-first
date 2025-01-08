@@ -345,7 +345,7 @@ func main() {
 		}
 	})
 
-	c.Visit("https://www.espn.com/mma/fightcenter")
+	c.Visit("https://www.espn.com/mma/fighter/stats/_/id/3088812/kamaru-usman")
 	wg.Wait() // Wait for all goroutines to finish
 
 	// After scraping is complete, convert the map to a slice
