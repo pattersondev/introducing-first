@@ -162,8 +162,6 @@ func worker(c *colly.Collector, urlChan chan string, wg *sync.WaitGroup, visited
 }
 
 func setupCollectorCallbacks(c *colly.Collector, events *[]Event, mu *sync.Mutex, visitedURLs map[string]bool) {
-	// fighterMap := make(map[string]*Fighter)
-
 	c.OnRequest(func(r *colly.Request) {
 		handleRequest(r)
 	})
@@ -187,9 +185,11 @@ func setupCollectorCallbacks(c *colly.Collector, events *[]Event, mu *sync.Mutex
 
 			event := extractEventData(e)
 			mu.Lock()
-			*events = append(*events, event)
+			if event.Name != "" {
+				*events = append(*events, event)
+				printEventInfo(event)
+			}
 			mu.Unlock()
-			printEventInfo(event)
 		} else {
 			fmt.Println("Unhandled page type:", currentURL)
 		}

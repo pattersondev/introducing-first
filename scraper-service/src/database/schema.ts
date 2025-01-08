@@ -12,23 +12,6 @@ CREATE TABLE IF NOT EXISTS events (
     early_prelims_time VARCHAR(20)
 );
 
-CREATE TABLE IF NOT EXISTS matchups (
-    matchup_id VARCHAR(32) PRIMARY KEY,
-    event_id VARCHAR(32) REFERENCES events(event_id),
-    fighter1_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
-    fighter2_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
-    fighter1_name VARCHAR(255) NOT NULL,
-    fighter2_name VARCHAR(255) NOT NULL,
-    fighter1_record VARCHAR(20),
-    fighter2_record VARCHAR(20),
-    result TEXT,
-    winner VARCHAR(255),
-    display_order INT NOT NULL,
-    live_id BIGINT,
-    start_time TIME,
-    card_type VARCHAR(50)
-);
-
 CREATE TABLE IF NOT EXISTS fighters (
     fighter_id VARCHAR(32) PRIMARY KEY,
     first_name VARCHAR(255),
@@ -48,6 +31,23 @@ CREATE TABLE IF NOT EXISTS fighters (
     image_url VARCHAR(255),
     current_promotion_rank INT,
     weight_class VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS matchups (
+    matchup_id VARCHAR(32) PRIMARY KEY,
+    event_id VARCHAR(32) REFERENCES events(event_id),
+    fighter1_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
+    fighter2_id VARCHAR(32) NULL REFERENCES fighters(fighter_id),
+    fighter1_name VARCHAR(255) NOT NULL,
+    fighter2_name VARCHAR(255) NOT NULL,
+    fighter1_record VARCHAR(20),
+    fighter2_record VARCHAR(20),
+    result TEXT,
+    winner VARCHAR(255),
+    display_order INT NOT NULL,
+    live_id BIGINT,
+    start_time TIME,
+    card_type VARCHAR(50)
 );
 
 CREATE TABLE IF NOT EXISTS fights (
